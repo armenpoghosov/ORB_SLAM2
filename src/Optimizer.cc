@@ -82,8 +82,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             maxKFid=pKF->mnId;
     }
 
-    const float thHuber2D = sqrt(5.99);
-    const float thHuber3D = sqrt(7.815);
+    const float thHuber2D = sqrtf(5.99f);
+    const float thHuber3D = sqrtf(7.815f);
 
     // Set MapPoint vertices
     for(size_t i=0; i<vpMP.size(); i++)

@@ -58,7 +58,7 @@ public:
    * @param a descriptor
    * @param s string version
    */
-  static void fromString(TDescriptor &a, const std::string &s);
+  static void fromString(TDescriptor &a, std::istringstream &s);
 
   /**
    * Returns a mat with the descriptors in float format

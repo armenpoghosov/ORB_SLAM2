@@ -30,7 +30,8 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-KeyFrameDatabase::KeyFrameDatabase (const ORBVocabulary &voc):
+KeyFrameDatabase::KeyFrameDatabase(ORBVocabulary const& voc)
+    :
     mpVoc(&voc)
 {
     mvInvertedFile.resize(voc.size());
@@ -41,8 +42,8 @@ void KeyFrameDatabase::add(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutex);
 
-    for(DBoW2::BowVector::const_iterator vit= pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit!=vend; vit++)
-        mvInvertedFile[vit->first].push_back(pKF);
+    for (auto const& pair : pKF->mBowVec)
+        mvInvertedFile[pair.first].push_back(pKF);
 }
 
 void KeyFrameDatabase::erase(KeyFrame* pKF)
@@ -204,32 +205,32 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     {
         unique_lock<mutex> lock(mMutex);
 
-        for(DBoW2::BowVector::const_iterator vit=F->mBowVec.begin(), vend=F->mBowVec.end(); vit != vend; vit++)
+        for (DBoW2::BowVector::const_iterator vit = F->mBowVec.begin(), vend = F->mBowVec.end(); vit != vend; ++vit)
         {
             list<KeyFrame*> &lKFs =   mvInvertedFile[vit->first];
 
-            for(list<KeyFrame*>::iterator lit=lKFs.begin(), lend= lKFs.end(); lit!=lend; lit++)
+            for (KeyFrame* pKFi : lKFs)
             {
-                KeyFrame* pKFi=*lit;
-                if(pKFi->mnRelocQuery!=F->mnId)
+                if (pKFi->mnRelocQuery != F->mnId)
                 {
-                    pKFi->mnRelocWords=0;
-                    pKFi->mnRelocQuery=F->mnId;
+                    pKFi->mnRelocWords = 0;
+                    pKFi->mnRelocQuery = F->mnId;
                     lKFsSharingWords.push_back(pKFi);
                 }
                 pKFi->mnRelocWords++;
             }
         }
     }
-    if(lKFsSharingWords.empty())
+
+    if (lKFsSharingWords.empty())
         return vector<KeyFrame*>();
 
     // Only compare against those keyframes that share enough words
-    int maxCommonWords=0;
-    for(list<KeyFrame*>::iterator lit=lKFsSharingWords.begin(), lend= lKFsSharingWords.end(); lit!=lend; lit++)
+    int maxCommonWords = 0;
+    for (KeyFrame* pKFi : lKFsSharingWords)
     {
-        if((*lit)->mnRelocWords>maxCommonWords)
-            maxCommonWords=(*lit)->mnRelocWords;
+        if (pKFi->mnRelocWords > maxCommonWords)
+            maxCommonWords = pKFi->mnRelocWords;
     }
 
     int minCommonWords = maxCommonWords*0.8f;
@@ -288,19 +289,20 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
 
     // Return all those keyframes with a score higher than 0.75*bestScore
     float minScoreToRetain = 0.75f*bestAccScore;
+
     set<KeyFrame*> spAlreadyAddedKF;
+
     vector<KeyFrame*> vpRelocCandidates;
     vpRelocCandidates.reserve(lAccScoreAndMatch.size());
-    for(list<pair<float,KeyFrame*> >::iterator it=lAccScoreAndMatch.begin(), itend=lAccScoreAndMatch.end(); it!=itend; it++)
+
+    for (auto const& pair : lAccScoreAndMatch)
     {
-        const float &si = it->first;
-        if(si>minScoreToRetain)
+        if (pair.first > minScoreToRetain)
         {
-            KeyFrame* pKFi = it->second;
-            if(!spAlreadyAddedKF.count(pKFi))
+            auto const& pair_set = spAlreadyAddedKF.insert(pair.second);
+            if (pair_set.second)
             {
-                vpRelocCandidates.push_back(pKFi);
-                spAlreadyAddedKF.insert(pKFi);
+                vpRelocCandidates.push_back(pair.second);
             }
         }
     }

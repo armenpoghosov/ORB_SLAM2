@@ -29,6 +29,7 @@
 #include <iostream>
 #include <typeinfo>
 #include <cassert>
+#include <algorithm>
 
 using namespace std;
 
@@ -102,7 +103,7 @@ namespace g2o {
   {
     size_t solverNameColumnLength = 0;
     for (CreatorList::const_iterator it = _creator.begin(); it != _creator.end(); ++it)
-      solverNameColumnLength = std::max(solverNameColumnLength, (*it)->property().name.size());
+      solverNameColumnLength = (std::max)(solverNameColumnLength, (*it)->property().name.size());
     solverNameColumnLength += 4;
 
     for (CreatorList::const_iterator it = _creator.begin(); it != _creator.end(); ++it) {

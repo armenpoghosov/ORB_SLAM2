@@ -1,113 +1,110 @@
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM2)
 
-IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE Release)
-ENDIF()
+add_compile_options(-bigobj -MTd)
 
-MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 -march=native ")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3 -march=native")
-
-# Check C++11 or C++0x support
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX11)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-   add_definitions(-DCOMPILEDWITHC11)
-   message(STATUS "Using flag -std=c++11.")
-elseif(COMPILER_SUPPORTS_CXX0X)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-   add_definitions(-DCOMPILEDWITHC0X)
-   message(STATUS "Using flag -std=c++0x.")
-else()
-   message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
-endif()
-
-LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
-
-find_package(OpenCV 3.0 QUIET)
-if(NOT OpenCV_FOUND)
-   find_package(OpenCV 2.4.3 QUIET)
-   if(NOT OpenCV_FOUND)
-      message(FATAL_ERROR "OpenCV > 2.4.3 not found.")
-   endif()
-endif()
-
-find_package(Eigen3 3.1.0 REQUIRED)
-find_package(Pangolin REQUIRED)
+add_definitions(-DINITGUID)
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
-${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
-)
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\tests\\eigen_test\\Eigen"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\include"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\include")
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
-add_library(${PROJECT_NAME} SHARED
-src/System.cc
-src/Tracking.cc
-src/LocalMapping.cc
-src/LoopClosing.cc
-src/ORBextractor.cc
-src/ORBmatcher.cc
-src/FrameDrawer.cc
-src/Converter.cc
-src/MapPoint.cc
-src/KeyFrame.cc
-src/Map.cc
-src/MapDrawer.cc
-src/Optimizer.cc
-src/PnPsolver.cc
-src/Frame.cc
-src/KeyFrameDatabase.cc
-src/Sim3Solver.cc
-src/Initializer.cc
-src/Viewer.cc
+add_library(${PROJECT_NAME}
+    src/System.cc
+    src/Tracking.cc
+    src/LocalMapping.cc
+    src/LoopClosing.cc
+    src/ORBextractor.cc
+    src/ORBmatcher.cc
+    src/FrameDrawer.cc
+    src/Converter.cc
+    src/MapPoint.cc
+    src/KeyFrame.cc
+    src/Map.cc
+    src/MapDrawer.cc
+    src/Optimizer.cc
+    src/PnPsolver.cc
+    src/Frame.cc
+    src/KeyFrameDatabase.cc
+    src/Sim3Solver.cc
+    src/Initializer.cc
+    src/Viewer.cc
+    )
+set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+set(OpenCV_LIBS
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ade.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\IlmImfd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ippicvmt.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ippiwd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ittnotifyd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libjasperd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libjpeg-turbod.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libpngd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libprotobufd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libtiffd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libwebpd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_calib3d411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_core411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_dnn411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_features2d411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_flann411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_gapi411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_highgui411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_imgcodecs411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_imgproc411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_ml411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_objdetect411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_photo411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_stitching411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_video411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_videoio411d.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\quircd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\zlibd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\pangolin.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\glewd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\libpng16_staticd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\jpeg.lib"
+"OpenGL32.Lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\ORB_SLAM2\\Thirdparty\\DBoW2\\lib\\Debug\\DBoW2.lib"
+"Mfplat.lib"
+"Mf.lib"
+"Mfreadwrite.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\zlibstaticd.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\ORB_SLAM2\\Thirdparty\\g2o\\bin\\Debug\\g2o.lib"
+"strmiids.lib"
 )
 
-target_link_libraries(${PROJECT_NAME}
-${OpenCV_LIBS}
-${EIGEN3_LIBS}
-${Pangolin_LIBRARIES}
-${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
-${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
-)
-
-# Build examples
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
 
-add_executable(rgbd_tum
-Examples/RGB-D/rgbd_tum.cc)
+add_executable(rgbd_tum Examples/RGB-D/rgbd_tum.cc)
 target_link_libraries(rgbd_tum ${PROJECT_NAME})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
 
-add_executable(stereo_kitti
-Examples/Stereo/stereo_kitti.cc)
+add_executable(stereo_kitti Examples/Stereo/stereo_kitti.cc )
 target_link_libraries(stereo_kitti ${PROJECT_NAME})
 
-add_executable(stereo_euroc
-Examples/Stereo/stereo_euroc.cc)
+add_executable(stereo_euroc Examples/Stereo/stereo_euroc.cc)
 target_link_libraries(stereo_euroc ${PROJECT_NAME})
-
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
 
-add_executable(mono_tum
-Examples/Monocular/mono_tum.cc)
+add_executable(mono_tum Examples/Monocular/mono_tum.cc)
 target_link_libraries(mono_tum ${PROJECT_NAME})
 
-add_executable(mono_kitti
-Examples/Monocular/mono_kitti.cc)
+add_executable(mono_kitti Examples/Monocular/mono_kitti.cc)
 target_link_libraries(mono_kitti ${PROJECT_NAME})
 
-add_executable(mono_euroc
-Examples/Monocular/mono_euroc.cc)
+add_executable(mono_euroc Examples/Monocular/mono_euroc.cc)
 target_link_libraries(mono_euroc ${PROJECT_NAME})
+
 

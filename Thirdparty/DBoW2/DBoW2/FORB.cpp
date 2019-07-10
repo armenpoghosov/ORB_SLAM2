@@ -13,7 +13,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
-#include <stdint-gcc.h>
+#include <cstdint>
 
 #include "FORB.h"
 
@@ -117,21 +117,19 @@ std::string FORB::toString(const FORB::TDescriptor &a)
 
 // --------------------------------------------------------------------------
   
-void FORB::fromString(FORB::TDescriptor &a, const std::string &s)
+void FORB::fromString(FORB::TDescriptor& a, istringstream& ss)
 {
-  a.create(1, FORB::L, CV_8U);
-  unsigned char *p = a.ptr<unsigned char>();
+    a.create(1, FORB::L, CV_8U);
+    unsigned char *p = a.ptr<unsigned char>();
   
-  stringstream ss(s);
-  for(int i = 0; i < FORB::L; ++i, ++p)
-  {
-    int n;
-    ss >> n;
+    for(int i = 0; i < FORB::L; ++i, ++p)
+    {
+        int n;
+        ss >> n;
     
-    if(!ss.fail()) 
-      *p = (unsigned char)n;
-  }
-  
+        if (!ss.fail()) 
+            *p = (unsigned char)n;
+    }
 }
 
 // --------------------------------------------------------------------------

@@ -24,12 +24,11 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <mutex>
 
 #include "KeyFrame.h"
 #include "Frame.h"
 #include "ORBVocabulary.h"
-
-#include<mutex>
 
 
 namespace ORB_SLAM2
@@ -43,7 +42,7 @@ class KeyFrameDatabase
 {
 public:
 
-    KeyFrameDatabase(const ORBVocabulary &voc);
+    KeyFrameDatabase(ORBVocabulary const& voc);
 
    void add(KeyFrame* pKF);
 
@@ -59,14 +58,12 @@ public:
 
 protected:
 
-  // Associated vocabulary
-  const ORBVocabulary* mpVoc;
-
-  // Inverted file
-  std::vector<list<KeyFrame*> > mvInvertedFile;
-
-  // Mutex
-  std::mutex mMutex;
+    // Associated vocabulary
+    ORBVocabulary const*                mpVoc;
+    // Inverted file
+    std::vector<std::list<KeyFrame*> >  mvInvertedFile;
+    // Mutex
+    std::mutex                          mMutex;
 };
 
 } //namespace ORB_SLAM

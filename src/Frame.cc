@@ -116,12 +116,21 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     AssignFeaturesToGrid();
 }
 
-Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
-    :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
-     mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
+Frame::Frame(cv::Mat const& imGray, cv::Mat const& imDepth, double const& timeStamp,
+        ORBextractor* extractor, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef,
+        float const& bf, float const& thDepth)
+    :
+    mpORBvocabulary(voc),
+    mpORBextractorLeft(extractor),
+    mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
+    mTimeStamp(timeStamp),
+    mK(K.clone()),
+    mDistCoef(distCoef.clone()),
+    mbf(bf),
+    mThDepth(thDepth)
 {
     // Frame ID
-    mnId=nNextId++;
+    mnId = nNextId++;
 
     // Scale Level Info
     mnScaleLevels = mpORBextractorLeft->GetLevels();
@@ -133,22 +142,22 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
-    ExtractORB(0,imGray);
+    ExtractORB(0, imGray);
 
     N = mvKeys.size();
 
-    if(mvKeys.empty())
+    if (mvKeys.empty())
         return;
 
     UndistortKeyPoints();
 
     ComputeStereoFromRGBD(imDepth);
 
-    mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
-    mvbOutlier = vector<bool>(N,false);
+    mvpMapPoints = vector<MapPoint*>(N, static_cast<MapPoint*>(NULL));
+    mvbOutlier = vector<bool>(N, false);
 
     // This is done only for the first Frame (or after a change in the calibration)
-    if(mbInitialComputations)
+    if (mbInitialComputations)
     {
         ComputeImageBounds(imGray);
 
@@ -244,7 +253,7 @@ void Frame::AssignFeaturesToGrid()
     }
 }
 
-void Frame::ExtractORB(int flag, const cv::Mat &im)
+void Frame::ExtractORB(int flag, cv::Mat const&im)
 {
     if(flag==0)
         (*mpORBextractorLeft)(im,cv::Mat(),mvKeys,mDescriptors);
@@ -351,7 +360,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
     {
         for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
         {
-            const vector<size_t> vCell = mGrid[ix][iy];
+            const vector<size_t>& vCell = mGrid[ix][iy];
             if(vCell.empty())
                 continue;
 

@@ -27,7 +27,7 @@
 
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 
-#include<stdint-gcc.h>
+#include<cstdint>
 
 using namespace std;
 
@@ -827,11 +827,11 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const
     cv::Mat Rcw = pKF->GetRotation();
     cv::Mat tcw = pKF->GetTranslation();
 
-    const float &fx = pKF->fx;
-    const float &fy = pKF->fy;
-    const float &cx = pKF->cx;
-    const float &cy = pKF->cy;
-    const float &bf = pKF->mbf;
+    float const& fx = pKF->fx;
+    float const& fy = pKF->fy;
+    float const& cx = pKF->cx;
+    float const& cy = pKF->cy;
+    float const& bf = pKF->mbf;
 
     cv::Mat Ow = pKF->GetCameraCenter();
 

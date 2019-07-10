@@ -28,6 +28,8 @@
 #include<opencv2/core/core.hpp>
 #include<mutex>
 
+#include <cstdint>
+
 namespace ORB_SLAM2
 {
 
@@ -35,12 +37,12 @@ class KeyFrame;
 class Map;
 class Frame;
 
-
 class MapPoint
 {
 public:
-    MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap);
-    MapPoint(const cv::Mat &Pos,  Map* pMap, Frame* pFrame, const int &idxF);
+
+    MapPoint(cv::Mat const& Pos, KeyFrame* pRefKF, Map* pMap);
+    MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int const& idxF);
 
     void SetWorldPos(const cv::Mat &Pos);
     cv::Mat GetWorldPos();
@@ -66,9 +68,9 @@ public:
     void IncreaseVisible(int n=1);
     void IncreaseFound(int n=1);
     float GetFoundRatio();
-    inline int GetFound(){
-        return mnFound;
-    }
+
+    int GetFound()
+        { return mnFound; }
 
     void ComputeDistinctiveDescriptors();
 
@@ -78,12 +80,17 @@ public:
 
     float GetMinDistanceInvariance();
     float GetMaxDistanceInvariance();
-    int PredictScale(const float &currentDist, KeyFrame*pKF);
-    int PredictScale(const float &currentDist, Frame* pF);
+
+    int PredictScale(float currentDist, KeyFrame* pKF);
+    int PredictScale(float currentDist, Frame* pF);
 
 public:
-    long unsigned int mnId;
-    static long unsigned int nNextId;
+
+
+    uint64_t        mnId;
+    
+    static uint64_t nNextId;
+    
     long int mnFirstKFid;
     long int mnFirstFrame;
     int nObs;

@@ -26,34 +26,77 @@
 namespace ORB_SLAM2
 {
 
-long unsigned int KeyFrame::nNextId=0;
+long unsigned int KeyFrame::nNextId = 0;
 
-KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
-    mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
-    mfGridElementWidthInv(F.mfGridElementWidthInv), mfGridElementHeightInv(F.mfGridElementHeightInv),
-    mnTrackReferenceForFrame(0), mnFuseTargetForKF(0), mnBALocalForKF(0), mnBAFixedForKF(0),
-    mnLoopQuery(0), mnLoopWords(0), mnRelocQuery(0), mnRelocWords(0), mnBAGlobalForKF(0),
-    fx(F.fx), fy(F.fy), cx(F.cx), cy(F.cy), invfx(F.invfx), invfy(F.invfy),
-    mbf(F.mbf), mb(F.mb), mThDepth(F.mThDepth), N(F.N), mvKeys(F.mvKeys), mvKeysUn(F.mvKeysUn),
-    mvuRight(F.mvuRight), mvDepth(F.mvDepth), mDescriptors(F.mDescriptors.clone()),
-    mBowVec(F.mBowVec), mFeatVec(F.mFeatVec), mnScaleLevels(F.mnScaleLevels), mfScaleFactor(F.mfScaleFactor),
-    mfLogScaleFactor(F.mfLogScaleFactor), mvScaleFactors(F.mvScaleFactors), mvLevelSigma2(F.mvLevelSigma2),
-    mvInvLevelSigma2(F.mvInvLevelSigma2), mnMinX(F.mnMinX), mnMinY(F.mnMinY), mnMaxX(F.mnMaxX),
-    mnMaxY(F.mnMaxY), mK(F.mK), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB),
-    mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
-    mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
+KeyFrame::KeyFrame(Frame&F, Map* pMap, KeyFrameDatabase* pKFDB)
+    :
+    mnFrameId(F.mnId),
+    mTimeStamp(F.mTimeStamp),
+    mnGridCols(FRAME_GRID_COLS),
+    mnGridRows(FRAME_GRID_ROWS),
+    mfGridElementWidthInv(F.mfGridElementWidthInv),
+    mfGridElementHeightInv(F.mfGridElementHeightInv),
+    mnTrackReferenceForFrame(0),
+    mnFuseTargetForKF(0),
+    mnBALocalForKF(0),
+    mnBAFixedForKF(0),
+    mnLoopQuery(0),
+    mnLoopWords(0),
+    mnRelocQuery(0),
+    mnRelocWords(0),
+    mnBAGlobalForKF(0),
+    fx(F.fx),
+    fy(F.fy),
+    cx(F.cx),
+    cy(F.cy),
+    invfx(F.invfx),
+    invfy(F.invfy),
+    mbf(F.mbf),
+    mb(F.mb),
+    mThDepth(F.mThDepth),
+    N(F.N),
+    mvKeys(F.mvKeys),
+    mvKeysUn(F.mvKeysUn),
+    mvuRight(F.mvuRight),
+    mvDepth(F.mvDepth),
+    mDescriptors(F.mDescriptors.clone()),
+    mBowVec(F.mBowVec),
+    mFeatVec(F.mFeatVec),
+    mnScaleLevels(F.mnScaleLevels),
+    mfScaleFactor(F.mfScaleFactor),
+    mfLogScaleFactor(F.mfLogScaleFactor),
+    mvScaleFactors(F.mvScaleFactors),
+    mvLevelSigma2(F.mvLevelSigma2),
+    mvInvLevelSigma2(F.mvInvLevelSigma2),
+    mnMinX(F.mnMinX),
+    mnMinY(F.mnMinY),
+    mnMaxX(F.mnMaxX),
+    mnMaxY(F.mnMaxY),
+    mK(F.mK),
+    mvpMapPoints(F.mvpMapPoints),
+    mpKeyFrameDB(pKFDB),
+    mpORBvocabulary(F.mpORBvocabulary),
+    mbFirstConnection(true),
+    mpParent(NULL),
+    mbNotErase(false),
+    mbToBeErased(false),
+    mbBad(false),
+    mHalfBaseline(F.mb / 2),
+    mpMap(pMap)
 {
-    mnId=nNextId++;
+    mnId = nNextId++;
 
     mGrid.resize(mnGridCols);
-    for(int i=0; i<mnGridCols;i++)
+
+    for (int i = 0; i < mnGridCols; ++i)
     {
         mGrid[i].resize(mnGridRows);
-        for(int j=0; j<mnGridRows; j++)
+
+        for (int j = 0; j < mnGridRows; ++j)
             mGrid[i][j] = F.mGrid[i][j];
     }
 
-    SetPose(F.mTcw);    
+    SetPose(F.mTcw);
 }
 
 void KeyFrame::ComputeBoW()
@@ -159,9 +202,12 @@ void KeyFrame::UpdateBestCovisibles()
 set<KeyFrame*> KeyFrame::GetConnectedKeyFrames()
 {
     unique_lock<mutex> lock(mMutexConnections);
+
     set<KeyFrame*> s;
-    for(map<KeyFrame*,int>::iterator mit=mConnectedKeyFrameWeights.begin();mit!=mConnectedKeyFrameWeights.end();mit++)
-        s.insert(mit->first);
+
+    for (auto const& pair : mConnectedKeyFrameWeights)
+        s.insert(pair.first);
+
     return s;
 }
 
@@ -174,10 +220,11 @@ vector<KeyFrame*> KeyFrame::GetVectorCovisibleKeyFrames()
 vector<KeyFrame*> KeyFrame::GetBestCovisibilityKeyFrames(const int &N)
 {
     unique_lock<mutex> lock(mMutexConnections);
-    if((int)mvpOrderedConnectedKeyFrames.size()<N)
+
+    if ((int)mvpOrderedConnectedKeyFrames.size() < N)
         return mvpOrderedConnectedKeyFrames;
-    else
-        return vector<KeyFrame*>(mvpOrderedConnectedKeyFrames.begin(),mvpOrderedConnectedKeyFrames.begin()+N);
+
+    return vector<KeyFrame*>(mvpOrderedConnectedKeyFrames.begin(), mvpOrderedConnectedKeyFrames.begin() + N);
 
 }
 
@@ -185,26 +232,21 @@ vector<KeyFrame*> KeyFrame::GetCovisiblesByWeight(const int &w)
 {
     unique_lock<mutex> lock(mMutexConnections);
 
-    if(mvpOrderedConnectedKeyFrames.empty())
+    if (mvpOrderedConnectedKeyFrames.empty())
         return vector<KeyFrame*>();
 
     vector<int>::iterator it = upper_bound(mvOrderedWeights.begin(),mvOrderedWeights.end(),w,KeyFrame::weightComp);
-    if(it==mvOrderedWeights.end())
+    if (it==mvOrderedWeights.end())
         return vector<KeyFrame*>();
-    else
-    {
-        int n = it-mvOrderedWeights.begin();
-        return vector<KeyFrame*>(mvpOrderedConnectedKeyFrames.begin(), mvpOrderedConnectedKeyFrames.begin()+n);
-    }
+
+    int n = it-mvOrderedWeights.begin();
+    return vector<KeyFrame*>(mvpOrderedConnectedKeyFrames.begin(), mvpOrderedConnectedKeyFrames.begin()+n);
 }
 
 int KeyFrame::GetWeight(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexConnections);
-    if(mConnectedKeyFrameWeights.count(pKF))
-        return mConnectedKeyFrameWeights[pKF];
-    else
-        return 0;
+    return mConnectedKeyFrameWeights.count(pKF) ? mConnectedKeyFrameWeights[pKF] : 0;
 }
 
 void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx)
