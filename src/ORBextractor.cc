@@ -62,7 +62,6 @@
 
 #include "ORBextractor.h"
 
-
 using namespace cv;
 using namespace std;
 
@@ -73,8 +72,7 @@ const int PATCH_SIZE = 31;
 const int HALF_PATCH_SIZE = 15;
 const int EDGE_THRESHOLD = 19;
 
-
-static float IC_Angle(const Mat& image, Point2f pt,  const vector<int> & u_max)
+static float IC_Angle(Mat const& image, Point2f pt, vector<int> const& u_max)
 {
     int m_01 = 0, m_10 = 0;
 
@@ -103,22 +101,21 @@ static float IC_Angle(const Mat& image, Point2f pt,  const vector<int> & u_max)
     return fastAtan2((float)m_01, (float)m_10);
 }
 
+const float factorPI = (float)(CV_PI / 180.f);
 
-const float factorPI = (float)(CV_PI/180.f);
-static void computeOrbDescriptor(const KeyPoint& kpt,
-                                 const Mat& img, const Point* pattern,
-                                 uchar* desc)
+static void computeOrbDescriptor(KeyPoint const& kpt, Mat const& img, Point const* pattern, uchar* desc)
 {
-    float angle = (float)kpt.angle*factorPI;
-    float a = (float)cos(angle), b = (float)sin(angle);
+    float angle = (float)kpt.angle * factorPI;
 
-    const uchar* center = &img.at<uchar>(cvRound(kpt.pt.y), cvRound(kpt.pt.x));
-    const int step = (int)img.step;
+    float a = (float)cos(angle);
+    float b = (float)sin(angle);
 
-    #define GET_VALUE(idx) \
-        center[cvRound(pattern[idx].x*b + pattern[idx].y*a)*step + \
-               cvRound(pattern[idx].x*a - pattern[idx].y*b)]
+    uchar const* center = &img.at<uchar>(cvRound(kpt.pt.y), cvRound(kpt.pt.x));
+    int const step = (int)img.step;
 
+#define GET_VALUE(idx) \
+    center[cvRound(pattern[idx].x * b + pattern[idx].y * a) * step + \
+        cvRound(pattern[idx].x * a - pattern[idx].y * b)]
 
     for (int i = 0; i < 32; ++i, pattern += 16)
     {
@@ -143,11 +140,20 @@ static void computeOrbDescriptor(const KeyPoint& kpt,
         desc[i] = (uchar)val;
     }
 
-    #undef GET_VALUE
+#undef GET_VALUE
+}
+
+static void computeDescriptors(Mat const& image,
+    vector<KeyPoint>& keypoints, Mat& descriptors, vector<Point> const& pattern)
+{
+    descriptors = Mat::zeros((int)keypoints.size(), 32, CV_8UC1);
+
+    for (size_t i = 0; i < keypoints.size(); ++i)
+        computeOrbDescriptor(keypoints[i], image, &pattern[0], descriptors.ptr((int)i));
 }
 
 
-static int bit_pattern_31_[256*4] =
+static int bit_pattern_31_[256 * 4] =
 {
     8,-3, 9,5/*mean (0), correlation (0)*/,
     4,2, 7,-12/*mean (1.12461e-05), correlation (0.0437584)*/,
@@ -481,11 +487,8 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int
 
 static void computeOrientation(const Mat& image, vector<KeyPoint>& keypoints, const vector<int>& umax)
 {
-    for (vector<KeyPoint>::iterator keypoint = keypoints.begin(),
-         keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
-    {
-        keypoint->angle = IC_Angle(image, keypoint->pt, umax);
-    }
+    for (KeyPoint& keypoint : keypoints)
+        keypoint.angle = IC_Angle(image, keypoint.pt, umax);
 }
 
 void ExtractorNode::DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNode &n3, ExtractorNode &n4)
@@ -518,30 +521,29 @@ void ExtractorNode::DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNo
     n4.BR = BR;
     n4.vKeys.reserve(vKeys.size());
 
-    //Associate points to childs
-    for(size_t i=0;i<vKeys.size();i++)
+    // Associate points to childs
+    for (cv::KeyPoint const& kp : vKeys)
     {
-        const cv::KeyPoint &kp = vKeys[i];
-        if(kp.pt.x<n1.UR.x)
+        if (kp.pt.x < n1.UR.x)
         {
-            if(kp.pt.y<n1.BR.y)
+            if (kp.pt.y<n1.BR.y)
                 n1.vKeys.push_back(kp);
             else
                 n3.vKeys.push_back(kp);
         }
-        else if(kp.pt.y<n1.BR.y)
+        else if (kp.pt.y < n1.BR.y)
             n2.vKeys.push_back(kp);
         else
             n4.vKeys.push_back(kp);
     }
 
-    if(n1.vKeys.size()==1)
+    if (n1.vKeys.size() == 1)
         n1.bNoMore = true;
-    if(n2.vKeys.size()==1)
+    if (n2.vKeys.size() == 1)
         n2.bNoMore = true;
-    if(n3.vKeys.size()==1)
+    if (n3.vKeys.size() == 1)
         n3.bNoMore = true;
-    if(n4.vKeys.size()==1)
+    if (n4.vKeys.size() == 1)
         n4.bNoMore = true;
 
 }
@@ -641,7 +643,7 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
                 if (n1.vKeys.size() > 1)
                 {
                     nToExpand++;
-                    vSizeAndPointerToNode.push_back(make_pair(n1.vKeys.size(),&lNodes.front()));
+                    vSizeAndPointerToNode.push_back(make_pair(n1.vKeys.size(), &lNodes.front()));
                     lNodes.front().lit = lNodes.begin();
                 }
             }
@@ -698,11 +700,11 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
 
                 prevSize = lNodes.size();
 
-                vector<pair<int,ExtractorNode*> > vPrevSizeAndPointerToNode = vSizeAndPointerToNode;
-                vSizeAndPointerToNode.clear();
+                vector< pair<int, ExtractorNode*> > vPrevSizeAndPointerToNode;
+                vPrevSizeAndPointerToNode.swap(vSizeAndPointerToNode);
 
-                sort(vPrevSizeAndPointerToNode.begin(),vPrevSizeAndPointerToNode.end());
-                for(int j=vPrevSizeAndPointerToNode.size()-1;j>=0;j--)
+                sort(vPrevSizeAndPointerToNode.begin(), vPrevSizeAndPointerToNode.end());
+                for (int j = vPrevSizeAndPointerToNode.size() - 1; j >= 0; --j)
                 {
                     ExtractorNode n1,n2,n3,n4;
                     vPrevSizeAndPointerToNode[j].second->DivideNode(n1,n2,n3,n4);
@@ -823,18 +825,19 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
             for (int j = 0; j < nCols; ++j)
             {
                 const float iniX = minBorderX + j * wCell;
-                float maxX = iniX + wCell + 6;
                 if (iniX >= maxBorderX - 6)
                     continue;
 
-                if(maxX>maxBorderX)
+                float maxX = iniX + wCell + 6;
+                if (maxX > maxBorderX)
                     maxX = maxBorderX;
 
                 vector<cv::KeyPoint> vKeysCell;
-                FAST(mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX), vKeysCell, iniThFAST, true);
+                cv::Mat mat_fast = mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX);
+                FAST(mat_fast, vKeysCell, iniThFAST, true);
 
                 if (vKeysCell.empty())
-                    FAST(mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX), vKeysCell, minThFAST, true);
+                    FAST(mat_fast, vKeysCell, minThFAST, true);
 
                 for (auto vit = vKeysCell.begin(); vit != vKeysCell.end(); ++vit)
                 {
@@ -849,21 +852,19 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
         }
 
         vector<KeyPoint> & keypoints = allKeypoints[level];
-        keypoints.reserve(nfeatures);
 
         keypoints = DistributeOctTree(vToDistributeKeys, minBorderX, maxBorderX,
-                                      minBorderY, maxBorderY,mnFeaturesPerLevel[level], level);
+            minBorderY, maxBorderY, mnFeaturesPerLevel[level], level);
 
-        const int scaledPatchSize = PATCH_SIZE*mvScaleFactor[level];
+        const float scaledPatchSize = PATCH_SIZE * mvScaleFactor[level];
 
         // Add border to coordinates and scale information
-        const int nkps = keypoints.size();
-        for(int i=0; i<nkps ; i++)
+        for (KeyPoint& cp : keypoints)
         {
-            keypoints[i].pt.x+=minBorderX;
-            keypoints[i].pt.y+=minBorderY;
-            keypoints[i].octave=level;
-            keypoints[i].size = scaledPatchSize;
+            cp.pt.x += minBorderX;
+            cp.pt.y += minBorderY;
+            cp.octave = level;
+            cp.size = scaledPatchSize;
         }
     }
 
@@ -872,220 +873,32 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
         computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
 }
 
-void ORBextractor::ComputeKeyPointsOld(std::vector<std::vector<KeyPoint> > &allKeypoints)
-{
-    allKeypoints.resize(nlevels);
-
-    float imageRatio = (float)mvImagePyramid[0].cols/mvImagePyramid[0].rows;
-
-    for (int level = 0; level < nlevels; ++level)
-    {
-        const int nDesiredFeatures = mnFeaturesPerLevel[level];
-
-        const int levelCols = sqrt((float)nDesiredFeatures/(5*imageRatio));
-        const int levelRows = imageRatio*levelCols;
-
-        const int minBorderX = EDGE_THRESHOLD;
-        const int minBorderY = minBorderX;
-        const int maxBorderX = mvImagePyramid[level].cols-EDGE_THRESHOLD;
-        const int maxBorderY = mvImagePyramid[level].rows-EDGE_THRESHOLD;
-
-        const int W = maxBorderX - minBorderX;
-        const int H = maxBorderY - minBorderY;
-        const int cellW = ceil((float)W/levelCols);
-        const int cellH = ceil((float)H/levelRows);
-
-        const int nCells = levelRows*levelCols;
-        const int nfeaturesCell = ceil((float)nDesiredFeatures/nCells);
-
-        vector<vector<vector<KeyPoint> > > cellKeyPoints(levelRows, vector<vector<KeyPoint> >(levelCols));
-
-        vector<vector<int> > nToRetain(levelRows,vector<int>(levelCols,0));
-        vector<vector<int> > nTotal(levelRows,vector<int>(levelCols,0));
-        vector<vector<bool> > bNoMore(levelRows,vector<bool>(levelCols,false));
-        vector<int> iniXCol(levelCols);
-        vector<int> iniYRow(levelRows);
-        int nNoMore = 0;
-        int nToDistribute = 0;
-
-
-        float hY = cellH + 6;
-
-        for(int i=0; i<levelRows; i++)
-        {
-            const float iniY = minBorderY + i*cellH - 3;
-            iniYRow[i] = iniY;
-
-            if(i == levelRows-1)
-            {
-                hY = maxBorderY+3-iniY;
-                if(hY<=0)
-                    continue;
-            }
-
-            float hX = cellW + 6;
-
-            for(int j=0; j<levelCols; j++)
-            {
-                float iniX;
-
-                if(i==0)
-                {
-                    iniX = minBorderX + j*cellW - 3;
-                    iniXCol[j] = iniX;
-                }
-                else
-                {
-                    iniX = iniXCol[j];
-                }
-
-
-                if(j == levelCols-1)
-                {
-                    hX = maxBorderX+3-iniX;
-                    if(hX<=0)
-                        continue;
-                }
-
-
-                Mat cellImage = mvImagePyramid[level].rowRange(iniY,iniY+hY).colRange(iniX,iniX+hX);
-
-                cellKeyPoints[i][j].reserve(nfeaturesCell*5);
-
-                FAST(cellImage,cellKeyPoints[i][j],iniThFAST,true);
-
-                if(cellKeyPoints[i][j].size()<=3)
-                {
-                    cellKeyPoints[i][j].clear();
-
-                    FAST(cellImage,cellKeyPoints[i][j],minThFAST,true);
-                }
-
-
-                const int nKeys = cellKeyPoints[i][j].size();
-                nTotal[i][j] = nKeys;
-
-                if(nKeys>nfeaturesCell)
-                {
-                    nToRetain[i][j] = nfeaturesCell;
-                    bNoMore[i][j] = false;
-                }
-                else
-                {
-                    nToRetain[i][j] = nKeys;
-                    nToDistribute += nfeaturesCell-nKeys;
-                    bNoMore[i][j] = true;
-                    nNoMore++;
-                }
-
-            }
-        }
-
-
-        // Retain by score
-
-        while(nToDistribute>0 && nNoMore<nCells)
-        {
-            int nNewFeaturesCell = nfeaturesCell + ceil((float)nToDistribute/(nCells-nNoMore));
-            nToDistribute = 0;
-
-            for(int i=0; i<levelRows; i++)
-            {
-                for(int j=0; j<levelCols; j++)
-                {
-                    if(!bNoMore[i][j])
-                    {
-                        if(nTotal[i][j]>nNewFeaturesCell)
-                        {
-                            nToRetain[i][j] = nNewFeaturesCell;
-                            bNoMore[i][j] = false;
-                        }
-                        else
-                        {
-                            nToRetain[i][j] = nTotal[i][j];
-                            nToDistribute += nNewFeaturesCell-nTotal[i][j];
-                            bNoMore[i][j] = true;
-                            nNoMore++;
-                        }
-                    }
-                }
-            }
-        }
-
-        vector<KeyPoint> & keypoints = allKeypoints[level];
-        keypoints.reserve(nDesiredFeatures*2);
-
-        const int scaledPatchSize = PATCH_SIZE*mvScaleFactor[level];
-
-        // Retain by score and transform coordinates
-        for(int i=0; i<levelRows; i++)
-        {
-            for(int j=0; j<levelCols; j++)
-            {
-                vector<KeyPoint> &keysCell = cellKeyPoints[i][j];
-                KeyPointsFilter::retainBest(keysCell,nToRetain[i][j]);
-                if((int)keysCell.size()>nToRetain[i][j])
-                    keysCell.resize(nToRetain[i][j]);
-
-
-                for(size_t k=0, kend=keysCell.size(); k<kend; k++)
-                {
-                    keysCell[k].pt.x+=iniXCol[j];
-                    keysCell[k].pt.y+=iniYRow[i];
-                    keysCell[k].octave=level;
-                    keysCell[k].size = scaledPatchSize;
-                    keypoints.push_back(keysCell[k]);
-                }
-            }
-        }
-
-        if((int)keypoints.size()>nDesiredFeatures)
-        {
-            KeyPointsFilter::retainBest(keypoints,nDesiredFeatures);
-            keypoints.resize(nDesiredFeatures);
-        }
-    }
-
-    // and compute orientations
-    for (int level = 0; level < nlevels; ++level)
-        computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
-}
-
-static void computeDescriptors(const Mat& image, vector<KeyPoint>& keypoints, Mat& descriptors,
-                               const vector<Point>& pattern)
-{
-    descriptors = Mat::zeros((int)keypoints.size(), 32, CV_8UC1);
-
-    for (size_t i = 0; i < keypoints.size(); i++)
-        computeOrbDescriptor(keypoints[i], image, &pattern[0], descriptors.ptr((int)i));
-}
-
-void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPoint>& _keypoints,
-                      OutputArray _descriptors)
+void ORBextractor::operator () (InputArray _image, InputArray _mask,
+    std::vector<KeyPoint>& _keypoints, OutputArray _descriptors)
 { 
-    if(_image.empty())
+    if (_image.empty())
         return;
 
     Mat image = _image.getMat();
-    assert(image.type() == CV_8UC1 );
+    assert(image.type() == CV_8UC1);
 
     // Pre-compute the scale pyramid
     ComputePyramid(image);
 
-    vector < vector<KeyPoint> > allKeypoints;
+    std::vector<std::vector<KeyPoint> > allKeypoints;
     ComputeKeyPointsOctTree(allKeypoints);
-    //ComputeKeyPointsOld(allKeypoints);
+
+    std::size_t nkeypoints = 0;
+    for (std::vector<KeyPoint> const& level_vector : allKeypoints)
+        nkeypoints += level_vector.size();
 
     Mat descriptors;
 
-    int nkeypoints = 0;
-    for (int level = 0; level < nlevels; ++level)
-        nkeypoints += (int)allKeypoints[level].size();
-    if( nkeypoints == 0 )
+    if (nkeypoints == 0)
         _descriptors.release();
     else
     {
-        _descriptors.create(nkeypoints, 32, CV_8U);
+        _descriptors.create((int)nkeypoints, 32, CV_8U);
         descriptors = _descriptors.getMat();
     }
 
@@ -1096,9 +909,10 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
     for (int level = 0; level < nlevels; ++level)
     {
         vector<KeyPoint>& keypoints = allKeypoints[level];
-        int nkeypointsLevel = (int)keypoints.size();
 
-        if(nkeypointsLevel==0)
+        int const nkeypointsLevel = (int)keypoints.size();
+
+        if (nkeypointsLevel == 0)
             continue;
 
         // preprocess the resized image
@@ -1114,11 +928,12 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         // Scale keypoint coordinates
         if (level != 0)
         {
-            float scale = mvScaleFactor[level]; //getScale(level, firstLevel, scaleFactor);
-            for (vector<KeyPoint>::iterator keypoint = keypoints.begin(),
-                 keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
-                keypoint->pt *= scale;
+            float const scale = mvScaleFactor[level];
+
+            for (KeyPoint& keypoint : keypoints)
+                keypoint.pt *= scale;
         }
+
         // And add the keypoints to the output
         _keypoints.insert(_keypoints.end(), keypoints.begin(), keypoints.end());
     }

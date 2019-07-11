@@ -30,7 +30,6 @@
 
 #include<mutex>
 
-
 namespace ORB_SLAM2
 {
 
@@ -40,6 +39,7 @@ class Viewer;
 class FrameDrawer
 {
 public:
+
     FrameDrawer(Map* pMap);
 
     // Update info from the last processed frame.
@@ -53,19 +53,18 @@ protected:
     void DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText);
 
     // Info of the frame to be drawn
-    cv::Mat mIm;
-    int N;
-    vector<cv::KeyPoint> mvCurrentKeys;
-    vector<bool> mvbMap, mvbVO;
-    bool mbOnlyTracking;
-    int mnTracked, mnTrackedVO;
-    vector<cv::KeyPoint> mvIniKeys;
-    vector<int> mvIniMatches;
-    int mState;
-
-    Map* mpMap;
-
-    std::mutex mMutex;
+    cv::Mat                 mIm;
+    int                     N;
+    vector<cv::KeyPoint>    mvCurrentKeys;
+    vector<bool> mvbMap,    mvbVO;
+    bool                    mbOnlyTracking;
+    int                     mnTracked;
+    int                     mnTrackedVO;
+    vector<cv::KeyPoint>    mvIniKeys;
+    vector<int>             mvIniMatches;
+    int                     mState;
+    Map*                    mpMap;
+    std::mutex              mMutex;
 };
 
 } //namespace ORB_SLAM

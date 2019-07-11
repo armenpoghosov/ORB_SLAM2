@@ -62,20 +62,16 @@ public:
         FAST_SCORE      = 1
     };
 
-    ORBextractor(int nfeatures, float scaleFactor, int nlevels,
-                 int iniThFAST, int minThFAST);
-
-    ~ORBextractor(){}
+    ORBextractor(int nfeatures, float scaleFactor, int nlevels, int iniThFAST, int minThFAST);
 
     // Compute the ORB features and descriptors on an image.
     // ORB are dispersed on the image using an octree.
     // Mask is ignored in the current implementation.
-    void operator()( cv::InputArray image, cv::InputArray mask,
-      std::vector<cv::KeyPoint>& keypoints,
-      cv::OutputArray descriptors);
+    void operator () (cv::InputArray image, cv::InputArray mask,
+        std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors);
 
     int GetLevels() const
-        { return nlevels; } 
+        { return nlevels; }
 
     float GetScaleFactor() const
         { return (float)scaleFactor; } // PAE: what the hack!?
@@ -98,12 +94,12 @@ protected:
 
     void ComputePyramid(cv::Mat image);
     void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);    
-    std::vector<cv::KeyPoint> DistributeOctTree(const std::vector<cv::KeyPoint>& vToDistributeKeys, const int &minX,
-                                           const int &maxX, const int &minY, const int &maxY, const int &nFeatures, const int &level);
 
-    void ComputeKeyPointsOld(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);
+    std::vector<cv::KeyPoint> DistributeOctTree(std::vector<cv::KeyPoint> const& vToDistributeKeys,
+        const int &minX, const int &maxX, const int &minY, const int &maxY, const int &nFeatures, const int &level);
 
-       
+    // old code .. void ComputeKeyPointsOld(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);
+
     std::vector<cv::Point>  pattern;
     int                     nfeatures;
     double                  scaleFactor;

@@ -181,23 +181,22 @@ void FrameDrawer::Update(Tracking *pTracker)
         mvIniKeys=pTracker->mInitialFrame.mvKeys;
         mvIniMatches=pTracker->mvIniMatches;
     }
-    else if(pTracker->mLastProcessedState==Tracking::OK)
+    else if (pTracker->mLastProcessedState == Tracking::OK)
     {
-        for(int i=0;i<N;i++)
+        for (int i = 0; i < N; ++i)
         {
             MapPoint* pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
-            if(pMP)
+
+            if (pMP != nullptr && !pTracker->mCurrentFrame.mvbOutlier[i])
             {
-                if(!pTracker->mCurrentFrame.mvbOutlier[i])
-                {
-                    if(pMP->Observations()>0)
-                        mvbMap[i]=true;
-                    else
-                        mvbVO[i]=true;
-                }
+                if (pMP->Observations() > 0)
+                    mvbMap[i] = true;
+                else
+                    mvbVO[i] = true;
             }
         }
     }
+
     mState=static_cast<int>(pTracker->mLastProcessedState);
 }
 

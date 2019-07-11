@@ -93,7 +93,7 @@ public:
     bool PosInGrid(cv::KeyPoint const& kp, int& posX, int& posY);
 
     vector<size_t> GetFeaturesInArea(float const& x, float const& y, float const& r,
-        const int minLevel = -1, const int maxLevel = -1) const;
+        int minLevel = -1, int maxLevel = -1) const;
 
     // Search a match for each keypoint in the left image to a keypoint in the right image.
     // If there is a match, depth is computed and the right coordinate associated to the left keypoint is stored.

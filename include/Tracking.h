@@ -54,8 +54,9 @@ class Tracking
 {  
 
 public:
+
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
-             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
+        KeyFrameDatabase* pKFDB, const string &strSettingPath, int sensor);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
     cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
@@ -73,18 +74,21 @@ public:
     void ChangeCalibration(const string &strSettingPath);
 
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
-    void InformOnlyTracking(const bool &flag);
-
+    void InformOnlyTracking(bool flag)
+    {
+        mbOnlyTracking = flag;
+    }
 
 public:
 
     // Tracking states
-    enum eTrackingState{
-        SYSTEM_NOT_READY=-1,
-        NO_IMAGES_YET=0,
-        NOT_INITIALIZED=1,
-        OK=2,
-        LOST=3
+    enum eTrackingState
+    {
+        SYSTEM_NOT_READY    = -1,
+        NO_IMAGES_YET       = 0,
+        NOT_INITIALIZED     = 1,
+        OK                  = 2,
+        LOST                = 3
     };
 
     eTrackingState mState;
@@ -149,47 +153,48 @@ protected:
     // points in the map. Still tracking will continue if there are enough matches with temporal points.
     // In that case we are doing visual odometry. The system will try to do relocalization to recover
     // "zero-drift" localization to the map.
-    bool mbVO;
+    bool                    mbVO;
 
-    //Other Thread Pointers
-    LocalMapping* mpLocalMapper;
-    LoopClosing* mpLoopClosing;
+    // Other Thread Pointers
+    LocalMapping*           mpLocalMapper;
+    LoopClosing*            mpLoopClosing;
 
-    //ORB
-    ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
-    ORBextractor* mpIniORBextractor;
+    // ORB
+    ORBextractor*           mpORBextractorLeft;
+    ORBextractor*           mpORBextractorRight;
+    ORBextractor*           mpIniORBextractor;
 
-    //BoW
-    ORBVocabulary* mpORBVocabulary;
-    KeyFrameDatabase* mpKeyFrameDB;
+    // BoW
+    ORBVocabulary*          mpORBVocabulary;
+    KeyFrameDatabase*       mpKeyFrameDB;
 
     // Initalization (only for monocular)
-    Initializer* mpInitializer;
+    Initializer*            mpInitializer;
 
-    //Local Map
-    KeyFrame* mpReferenceKF;
-    std::vector<KeyFrame*> mvpLocalKeyFrames;
-    std::vector<MapPoint*> mvpLocalMapPoints;
+    // Local Map
+    KeyFrame*               mpReferenceKF;
+    std::vector<KeyFrame*>  mvpLocalKeyFrames;
+    std::vector<MapPoint*>  mvpLocalMapPoints;
     
     // System
-    System* mpSystem;
+    System*                 mpSystem;
     
-    //Drawers
-    Viewer* mpViewer;
-    FrameDrawer* mpFrameDrawer;
-    MapDrawer* mpMapDrawer;
+    // Drawers
+    Viewer*                 mpViewer;
+    FrameDrawer*            mpFrameDrawer;
+    MapDrawer*              mpMapDrawer;
 
-    //Map
-    Map* mpMap;
+    // Map
+    Map*                    mpMap;
 
     //Calibration matrix
-    cv::Mat mK;
-    cv::Mat mDistCoef;
-    float mbf;
+    cv::Mat                 mK;
+    cv::Mat                 mDistCoef;
+    float                   mbf;
 
     //New KeyFrame rules (according to fps)
-    int mMinFrames;
-    int mMaxFrames;
+    int                     mMinFrames;
+    int                     mMaxFrames;
 
     // Threshold close/far points
     // Points seen as close by the stereo/RGBD sensor are considered reliable

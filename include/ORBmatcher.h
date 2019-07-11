@@ -35,17 +35,24 @@ namespace ORB_SLAM2
 {
 
 class ORBmatcher
-{    
+{
 public:
 
-    ORBmatcher(float nnratio=0.6, bool checkOri=true);
+    enum : int
+    {
+        TH_HIGH         = 100,
+        TH_LOW          = 50,
+        HISTO_LENGTH    = 30
+    };
+
+    ORBmatcher(float nnratio = 0.6, bool checkOri = true);
 
     // Computes the Hamming distance between two ORB descriptors
-    static int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
+    static int DescriptorDistance(cv::Mat const& a, cv::Mat const& b);
 
     // Search matches between Frame keypoints and projected MapPoints. Returns number of matches
     // Used to track the local map (Tracking)
-    int SearchByProjection(Frame &F, const std::vector<MapPoint*> &vpMapPoints, const float th=3);
+    int SearchByProjection(Frame& F, std::vector<MapPoint*> const& vpMapPoints, float th = 3);
 
     // Project MapPoints tracked in last frame into the current frame and search matches.
     // Used to track from previous frame (Tracking)
@@ -77,28 +84,24 @@ public:
     int SearchBySim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches12, const float &s12, const cv::Mat &R12, const cv::Mat &t12, const float th);
 
     // Project MapPoints into KeyFrame and search for duplicated MapPoints.
-    int Fuse(KeyFrame* pKF, const vector<MapPoint *> &vpMapPoints, const float th=3.0);
+    int Fuse(KeyFrame* pKF, vector<MapPoint*> const& vpMapPoints, float th = 3.0);
 
     // Project MapPoints into KeyFrame using a given Sim3 and search for duplicated MapPoints.
     int Fuse(KeyFrame* pKF, cv::Mat Scw, const std::vector<MapPoint*> &vpPoints, float th, vector<MapPoint *> &vpReplacePoint);
-
-public:
-
-    static const int TH_LOW;
-    static const int TH_HIGH;
-    static const int HISTO_LENGTH;
-
 
 protected:
 
     bool CheckDistEpipolarLine(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &F12, const KeyFrame *pKF);
 
-    float RadiusByViewingCos(const float &viewCos);
+    static float RadiusByViewingCos(float viewCos)
+    {
+        return viewCos > 0.998 ? 2.5f : 4.0f;
+    }
 
     void ComputeThreeMaxima(std::vector<int>* histo, const int L, int &ind1, int &ind2, int &ind3);
 
-    float mfNNratio;
-    bool mbCheckOrientation;
+    float   mfNNratio;
+    bool    mbCheckOrientation;
 };
 
 }// namespace ORB_SLAM
