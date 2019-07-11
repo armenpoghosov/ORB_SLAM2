@@ -40,7 +40,8 @@ class Map;
 class LocalMapping
 {
 public:
-    LocalMapping(Map* pMap, const float bMonocular);
+
+    LocalMapping(Map* pMap, bool bMonocular);
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -67,7 +68,8 @@ public:
     void RequestFinish();
     bool isFinished();
 
-    int KeyframesInQueue(){
+    int KeyframesInQueue()
+    {
         unique_lock<std::mutex> lock(mMutexNewKFs);
         return mlNewKeyFrames.size();
     }
@@ -83,44 +85,34 @@ protected:
 
     void KeyFrameCulling();
 
-    cv::Mat ComputeF12(KeyFrame* &pKF1, KeyFrame* &pKF2);
+    cv::Mat ComputeF12(KeyFrame* pKF1, KeyFrame* pKF2);
 
     cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
 
-    bool mbMonocular;
-
     void ResetIfRequested();
-    bool mbResetRequested;
-    std::mutex mMutexReset;
-
     bool CheckFinish();
     void SetFinish();
-    bool mbFinishRequested;
-    bool mbFinished;
-    std::mutex mMutexFinish;
 
-    Map* mpMap;
-
-    LoopClosing* mpLoopCloser;
-    Tracking* mpTracker;
-
-    std::list<KeyFrame*> mlNewKeyFrames;
-
-    KeyFrame* mpCurrentKeyFrame;
-
-    std::list<MapPoint*> mlpRecentAddedMapPoints;
-
-    std::mutex mMutexNewKFs;
-
-    bool mbAbortBA;
-
-    bool mbStopped;
-    bool mbStopRequested;
-    bool mbNotStop;
-    std::mutex mMutexStop;
-
-    bool mbAcceptKeyFrames;
-    std::mutex mMutexAccept;
+    bool                    mbResetRequested;
+    bool                    mbMonocular;
+    bool                    mbFinishRequested;
+    bool                    mbFinished;
+    std::mutex              mMutexReset;
+    std::mutex              mMutexFinish;
+    Map*                    mpMap;
+    LoopClosing*            mpLoopCloser;
+    Tracking*               mpTracker;
+    std::list<KeyFrame*>    mlNewKeyFrames;
+    KeyFrame*               mpCurrentKeyFrame;
+    std::list<MapPoint*>    mlpRecentAddedMapPoints;
+    std::mutex              mMutexNewKFs;
+    bool                    mbAbortBA;
+    bool                    mbStopped;
+    bool                    mbStopRequested;
+    bool                    mbNotStop;
+    std::mutex              mMutexStop;
+    bool                    mbAcceptKeyFrames;
+    std::mutex              mMutexAccept;
 };
 
 } //namespace ORB_SLAM

@@ -236,11 +236,11 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
 }
 
 
-cv::Mat Tracking::GrabImageMonocular(cv::Mat const& im, double const& timestamp)
+cv::Mat Tracking::GrabImageMonocular(cv::Mat const& im, double timestamp)
 {
     mImGray = im;
 
-    if(mImGray.channels()==3)
+    if (mImGray.channels() == 3)
     {
         if (mbRGB)
             cvtColor(mImGray, mImGray, CV_RGB2GRAY);
@@ -267,26 +267,26 @@ cv::Mat Tracking::GrabImageMonocular(cv::Mat const& im, double const& timestamp)
 
 void Tracking::Track()
 {
-    if(mState==NO_IMAGES_YET)
+    if (mState == NO_IMAGES_YET)
     {
         mState = NOT_INITIALIZED;
     }
 
-    mLastProcessedState=mState;
+    mLastProcessedState = mState;
 
     // Get Map Mutex -> Map cannot be changed
     unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
 
-    if(mState==NOT_INITIALIZED)
+    if (mState == NOT_INITIALIZED)
     {
-        if(mSensor==System::STEREO || mSensor==System::RGBD)
+        if (mSensor == System::STEREO || mSensor == System::RGBD)
             StereoInitialization();
         else
             MonocularInitialization();
 
         mpFrameDrawer->Update(this);
 
-        if(mState!=OK)
+        if (mState != OK)
             return;
     }
     else
@@ -563,29 +563,7 @@ void Tracking::StereoInitialization()
 
 void Tracking::MonocularInitialization()
 {
-
-    if(!mpInitializer)
-    {
-        // Set Reference Frame
-        if(mCurrentFrame.mvKeys.size()>100)
-        {
-            mInitialFrame = Frame(mCurrentFrame);
-            mLastFrame = Frame(mCurrentFrame);
-            mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
-            for(size_t i=0; i<mCurrentFrame.mvKeysUn.size(); i++)
-                mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
-
-            if(mpInitializer)
-                delete mpInitializer;
-
-            mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
-
-            fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
-
-            return;
-        }
-    }
-    else
+    if (mpInitializer != nullptr)
     {
         // Try to initialize
         if((int)mCurrentFrame.mvKeys.size()<=100)
@@ -601,7 +579,7 @@ void Tracking::MonocularInitialization()
         int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
 
         // Check if there are enough correspondences
-        if(nmatches<100)
+        if (nmatches < 100)
         {
             delete mpInitializer;
             mpInitializer = static_cast<Initializer*>(NULL);
@@ -633,14 +611,28 @@ void Tracking::MonocularInitialization()
             CreateInitialMapMonocular();
         }
     }
+    // Set Reference Frame
+    else if (mCurrentFrame.mvKeys.size() > 100)
+    {
+        mInitialFrame = Frame(mCurrentFrame);
+        mLastFrame = Frame(mCurrentFrame);
+
+        mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
+
+        for (size_t i = 0; i < mCurrentFrame.mvKeysUn.size(); ++i)
+            mvbPrevMatched[i] = mCurrentFrame.mvKeysUn[i].pt;
+
+        mpInitializer =  new Initializer(mCurrentFrame, 1.0, 200);
+
+        fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
+    }
 }
 
 void Tracking::CreateInitialMapMonocular()
 {
     // Create KeyFrames
-    KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpMap,mpKeyFrameDB);
-    KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
-
+    KeyFrame* pKFini = new KeyFrame(mInitialFrame, mpMap, mpKeyFrameDB);
+    KeyFrame* pKFcur = new KeyFrame(mCurrentFrame, mpMap, mpKeyFrameDB);
 
     pKFini->ComputeBoW();
     pKFcur->ComputeBoW();
