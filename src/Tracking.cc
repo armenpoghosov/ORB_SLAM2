@@ -82,8 +82,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     DistCoef.at<float>(1) = fSettings["Camera.k2"];
     DistCoef.at<float>(2) = fSettings["Camera.p1"];
     DistCoef.at<float>(3) = fSettings["Camera.p2"];
-    
-    const float k3 = fSettings["Camera.k3"];
+
+    float const k3 = fSettings["Camera.k3"];
     if (k3 != 0)
     {
         DistCoef.resize(5);

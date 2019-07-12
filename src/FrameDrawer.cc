@@ -86,7 +86,7 @@ cv::Mat FrameDrawer::DrawFrame()
             }
             else
             {
-                cv::circle(im, vCurrentKeys[i].pt, 1, cv::Scalar(0, 255, 0), -1);
+                cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
             }
 
         }
@@ -133,7 +133,6 @@ cv::Mat FrameDrawer::DrawFrame()
 
     return imWithInfo;
 }
-
 
 void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 {

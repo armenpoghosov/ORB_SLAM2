@@ -66,7 +66,7 @@ public:
     std::set<KeyFrame *> GetConnectedKeyFrames();
     std::vector<KeyFrame* > GetVectorCovisibleKeyFrames();
     std::vector<KeyFrame*> GetBestCovisibilityKeyFrames(const int &N);
-    std::vector<KeyFrame*> GetCovisiblesByWeight(const int &w);
+    std::vector<KeyFrame*> GetCovisiblesByWeight(int w);
     int GetWeight(KeyFrame* pKF);
 
     // Spanning tree functions
@@ -96,7 +96,7 @@ public:
     cv::Mat UnprojectStereo(int i);
 
     // Image
-    bool IsInImage(const float &x, const float &y) const;
+    bool IsInImage(float x, float y) const;
 
     // Enable/Disable bad flag changes
     void SetNotErase();

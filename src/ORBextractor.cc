@@ -58,6 +58,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
 #include <vector>
 
 #include "ORBextractor.h"
@@ -706,50 +707,22 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
 
                 for (int j = vPrevSizeAndPointerToNode.size() - 1; j >= 0; --j)
                 {
-                    ExtractorNode n1, n2, n3, n4;
-                    vPrevSizeAndPointerToNode[j].second->DivideNode(n1, n2, n3, n4);
+                    ExtractorNode childs[4];
+                    vPrevSizeAndPointerToNode[j].second->DivideNode(childs[0], childs[1], childs[2], childs[3]);
 
                     // Add childs if they contain points
-                    if (!n1.vKeys.empty())
+                    for (int index = 0; index < 4; ++index)
                     {
-                        lNodes.push_front(n1);
+                        ExtractorNode& node = childs[index];
 
-                        if (n1.vKeys.size() > 1)
+                        if (node.vKeys.empty())
+                            continue;
+
+                        lNodes.push_front(node);
+
+                        if (node.vKeys.size() > 1)
                         {
-                            vSizeAndPointerToNode.push_back(make_pair(n1.vKeys.size(), &lNodes.front()));
-                            lNodes.front().lit = lNodes.begin();
-                        }
-                    }
-
-                    if (!n2.vKeys.empty())
-                    {
-                        lNodes.push_front(n2);
-
-                        if (n2.vKeys.size() > 1)
-                        {
-                            vSizeAndPointerToNode.push_back(make_pair(n2.vKeys.size(), &lNodes.front()));
-                            lNodes.front().lit = lNodes.begin();
-                        }
-                    }
-
-                    if (!n3.vKeys.empty())
-                    {
-                        lNodes.push_front(n3);
-
-                        if (n3.vKeys.size() > 1)
-                        {
-                            vSizeAndPointerToNode.push_back(make_pair(n3.vKeys.size(), &lNodes.front()));
-                            lNodes.front().lit = lNodes.begin();
-                        }
-                    }
-
-                    if (n4.vKeys.empty())
-                    {
-                        lNodes.push_front(n4);
-
-                        if (n4.vKeys.size() > 1)
-                        {
-                            vSizeAndPointerToNode.push_back(make_pair(n4.vKeys.size(), &lNodes.front()));
+                            vSizeAndPointerToNode.push_back(std::make_pair(node.vKeys.size(), &lNodes.front()));
                             lNodes.front().lit = lNodes.begin();
                         }
                     }
@@ -795,6 +768,8 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
 void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoints)
 {
     allKeypoints.resize(nlevels);
+
+    cv::Ptr<cv::cuda::FastFeatureDetector> gpuFastDetector = cv::cuda::FastFeatureDetector::create(100, true, 2);
 
     float const W = 30;
 

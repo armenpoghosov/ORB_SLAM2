@@ -92,7 +92,7 @@ public:
     // Compute the cell of a keypoint (return false if outside the grid)
     bool PosInGrid(cv::KeyPoint const& kp, int& posX, int& posY);
 
-    vector<size_t> GetFeaturesInArea(float const& x, float const& y, float const& r,
+    vector<size_t> GetFeaturesInArea(float x, float y, float r,
         int minLevel = -1, int maxLevel = -1) const;
 
     // Search a match for each keypoint in the left image to a keypoint in the right image.
