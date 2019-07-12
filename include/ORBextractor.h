@@ -27,8 +27,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-
-
 namespace ORB_SLAM2
 {
 
@@ -60,6 +58,13 @@ public:
     {
         HARRIS_SCORE    = 0,
         FAST_SCORE      = 1
+    };
+
+    enum : int
+    {
+        PATCH_SIZE      = 31,
+        HALF_PATCH_SIZE = 15,
+        EDGE_THRESHOLD  = 19
     };
 
     ORBextractor(int nfeatures, float scaleFactor, int nlevels, int iniThFAST, int minThFAST);
@@ -96,7 +101,7 @@ protected:
     void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);    
 
     std::vector<cv::KeyPoint> DistributeOctTree(std::vector<cv::KeyPoint> const& vToDistributeKeys,
-        const int &minX, const int &maxX, const int &minY, const int &maxY, const int &nFeatures, const int &level);
+        int minX, int maxX, int minY, int maxY, int nFeatures, int level);
 
     // old code .. void ComputeKeyPointsOld(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);
 

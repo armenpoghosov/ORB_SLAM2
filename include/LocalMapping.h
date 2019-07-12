@@ -42,13 +42,13 @@ class LocalMapping
 public:
 
     LocalMapping(Map* pMap, bool bMonocular);
+    ~LocalMapping();
 
-    void SetLoopCloser(LoopClosing* pLoopCloser);
+    void SetLoopCloser(LoopClosing* pLoopCloser)
+        { mpLoopCloser = pLoopCloser; }
 
-    void SetTracker(Tracking* pTracker);
-
-    // Main function
-    void Run();
+    void SetTracker(Tracking *pTracker)
+        { mpTracker = pTracker; }
 
     void InsertKeyFrame(KeyFrame* pKF);
 
@@ -75,6 +75,9 @@ public:
     }
 
 protected:
+
+    // Main function
+    void Run();
 
     bool CheckNewKeyFrames();
     void ProcessNewKeyFrame();
@@ -113,6 +116,7 @@ protected:
     std::mutex              mMutexStop;
     bool                    mbAcceptKeyFrames;
     std::mutex              mMutexAccept;
+    std::thread             m_thread;
 };
 
 } //namespace ORB_SLAM

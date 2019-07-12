@@ -63,7 +63,7 @@ MapPoint::MapPoint(cv::Mat const& Pos, KeyFrame *pRefKF, Map* pMap)
 MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int const& idxF)
     :
     mnFirstKFid(-1),
-    mnFirstFrame(pFrame->mnId),
+    mnFirstFrame(pFrame->m_id),
     nObs(0),
     mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),

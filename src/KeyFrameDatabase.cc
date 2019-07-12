@@ -211,10 +211,10 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
 
             for (KeyFrame* pKFi : lKFs)
             {
-                if (pKFi->mnRelocQuery != F->mnId)
+                if (pKFi->mnRelocQuery != F->m_id)
                 {
                     pKFi->mnRelocWords = 0;
-                    pKFi->mnRelocQuery = F->mnId;
+                    pKFi->mnRelocQuery = F->m_id;
                     lKFsSharingWords.push_back(pKFi);
                 }
                 pKFi->mnRelocWords++;
@@ -271,7 +271,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
         for(vector<KeyFrame*>::iterator vit=vpNeighs.begin(), vend=vpNeighs.end(); vit!=vend; vit++)
         {
             KeyFrame* pKF2 = *vit;
-            if(pKF2->mnRelocQuery!=F->mnId)
+            if(pKF2->mnRelocQuery!=F->m_id)
                 continue;
 
             accScore+=pKF2->mRelocScore;

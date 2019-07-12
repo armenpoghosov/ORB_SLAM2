@@ -90,17 +90,15 @@ System::System(string const& strVocFile, string const& strSettingsFile, eSensor 
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
-    mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run,mpLocalMapper);
 
     //Initialize the Loop Closing thread and launch
+    // NOTE: PAE: thread is opened here!
     mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR);
-    mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
 
     //Initialize the Viewer thread and launch
     if (bUseViewer)
     {
-        mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile);
-        mptViewer = new thread(&Viewer::Run, mpViewer);
+        mpViewer = new Viewer(this, mpFrameDrawer, mpMapDrawer, mpTracker, strSettingsFile);
         mpTracker->SetViewer(mpViewer);
     }
 
@@ -288,14 +286,15 @@ void System::DeactivateLocalizationMode()
 bool System::MapChanged()
 {
     static int n=0;
+
     int curn = mpMap->GetLastBigChangeIdx();
-    if(n<curn)
+    if( n < curn)
     {
         n=curn;
         return true;
     }
-    else
-        return false;
+
+    return false;
 }
 
 void System::Reset()
@@ -308,10 +307,12 @@ void System::Shutdown()
 {
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
-    if(mpViewer)
+
+    if (mpViewer != nullptr)
     {
         mpViewer->RequestFinish();
-        while(!mpViewer->isFinished())
+
+        while (!mpViewer->isFinished())
             std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
 
@@ -321,7 +322,7 @@ void System::Shutdown()
         std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
 
-    if(mpViewer)
+    if (mpViewer != nullptr)
         pangolin::BindToContext("ORB-SLAM2: Map Viewer");
 }
 

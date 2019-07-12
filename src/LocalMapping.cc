@@ -23,7 +23,7 @@
 #include "ORBmatcher.h"
 #include "Optimizer.h"
 
-#include<mutex>
+#include <mutex>
 
 namespace ORB_SLAM2
 {
@@ -40,16 +40,16 @@ LocalMapping::LocalMapping(Map *pMap, bool bMonocular)
     mbStopRequested(false),
     mbNotStop(false),
     mbAcceptKeyFrames(true)
-{}
-
-void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
 {
-    mpLoopCloser = pLoopCloser;
+    m_thread = std::thread(&LocalMapping::Run, this);
 }
 
-void LocalMapping::SetTracker(Tracking *pTracker)
+LocalMapping::~LocalMapping()
 {
-    mpTracker=pTracker;
+    RequestFinish();
+
+    if (m_thread.joinable())
+        m_thread.join();
 }
 
 void LocalMapping::Run()

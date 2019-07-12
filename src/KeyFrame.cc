@@ -30,7 +30,7 @@ long unsigned int KeyFrame::nNextId = 0;
 
 KeyFrame::KeyFrame(Frame&F, Map* pMap, KeyFrameDatabase* pKFDB)
     :
-    mnFrameId(F.mnId),
+    mnFrameId(F.m_id),
     mTimeStamp(F.mTimeStamp),
     mnGridCols(FRAME_GRID_COLS),
     mnGridRows(FRAME_GRID_ROWS),

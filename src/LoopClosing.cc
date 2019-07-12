@@ -36,51 +36,57 @@ namespace ORB_SLAM2
 {
 
 LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale):
-    mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
-    mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
-    mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0)
+    mbResetRequested(false),
+    mbFinishRequested(false),
+    mbFinished(true),
+    mpMap(pMap),
+    mpKeyFrameDB(pDB),
+    mpORBVocabulary(pVoc),
+    mpMatchedKF(NULL),
+    mLastLoopKFid(0),
+    mbRunningGBA(false),
+    mbFinishedGBA(true),
+    mbStopGBA(false),
+    mpThreadGBA(NULL),
+    mbFixScale(bFixScale),
+    mnFullBAIdx(0)
 {
     mnCovisibilityConsistencyTh = 3;
+    m_thread = std::thread(&ORB_SLAM2::LoopClosing::Run, this);
 }
 
-void LoopClosing::SetTracker(Tracking *pTracker)
+LoopClosing::~LoopClosing()
 {
-    mpTracker=pTracker;
-}
+    RequestFinish();
 
-void LoopClosing::SetLocalMapper(LocalMapping *pLocalMapper)
-{
-    mpLocalMapper=pLocalMapper;
+    if (m_thread.joinable())
+        m_thread.join();
 }
-
 
 void LoopClosing::Run()
 {
-    mbFinished =false;
+    mbFinished = false;
 
-    while(1)
+    for (;;)
     {
         // Check if there are keyframes in the queue
-        if(CheckNewKeyFrames())
-        {
+        if (CheckNewKeyFrames() &&
             // Detect loop candidates and check covisibility consistency
-            if(DetectLoop())
-            {
-               // Compute similarity transformation [sR|t]
-               // In the stereo/RGBD case s=1
-               if(ComputeSim3())
-               {
-                   // Perform loop fusion and pose graph optimization
-                   CorrectLoop();
-               }
-            }
+            DetectLoop() &&
+            // Compute similarity transformation [sR|t]
+            // In the stereo/RGBD case s=1
+            ComputeSim3())
+        {
+            // Perform loop fusion and pose graph optimization
+            CorrectLoop();
         }       
 
         ResetIfRequested();
 
-        if(CheckFinish())
+        if (CheckFinish())
             break;
 
+        // TODO: PAE: wait for new frames?
         std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
 
@@ -90,14 +96,14 @@ void LoopClosing::Run()
 void LoopClosing::InsertKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexLoopQueue);
-    if(pKF->mnId!=0)
+    if (pKF->mnId != 0)
         mlpLoopKeyFrameQueue.push_back(pKF);
 }
 
 bool LoopClosing::CheckNewKeyFrames()
 {
     unique_lock<mutex> lock(mMutexLoopQueue);
-    return(!mlpLoopKeyFrameQueue.empty());
+    return !mlpLoopKeyFrameQueue.empty();
 }
 
 bool LoopClosing::DetectLoop()
@@ -111,7 +117,7 @@ bool LoopClosing::DetectLoop()
     }
 
     //If the map contains less than 10 KF or less than 10 KF have passed from last loop detection
-    if(mpCurrentKF->mnId<mLastLoopKFid+10)
+    if (mpCurrentKF->mnId<mLastLoopKFid+10)
     {
         mpKeyFrameDB->add(mpCurrentKF);
         mpCurrentKF->SetErase();
@@ -263,18 +269,15 @@ bool LoopClosing::ComputeSim3()
         }
 
         int nmatches = matcher.SearchByBoW(mpCurrentKF,pKF,vvpMapPointMatches[i]);
-
-        if(nmatches<20)
+        if (nmatches < 20)
         {
             vbDiscarded[i] = true;
             continue;
         }
-        else
-        {
-            Sim3Solver* pSolver = new Sim3Solver(mpCurrentKF,pKF,vvpMapPointMatches[i],mbFixScale);
-            pSolver->SetRansacParameters(0.99,20,300);
-            vpSim3Solvers[i] = pSolver;
-        }
+
+        Sim3Solver* pSolver = new Sim3Solver(mpCurrentKF,pKF,vvpMapPointMatches[i],mbFixScale);
+        pSolver->SetRansacParameters(0.99,20,300);
+        vpSim3Solvers[i] = pSolver;
 
         nCandidates++;
     }
@@ -620,13 +623,15 @@ void LoopClosing::RequestReset()
         mbResetRequested = true;
     }
 
-    while(1)
+    for (;;)
     {
         {
-        unique_lock<mutex> lock2(mMutexReset);
-        if(!mbResetRequested)
-            break;
+            unique_lock<mutex> lock2(mMutexReset);
+
+            if (!mbResetRequested)
+                break;
         }
+
         std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
 }
@@ -634,11 +639,12 @@ void LoopClosing::RequestReset()
 void LoopClosing::ResetIfRequested()
 {
     unique_lock<mutex> lock(mMutexReset);
-    if(mbResetRequested)
+
+    if (mbResetRequested)
     {
         mlpLoopKeyFrameQueue.clear();
-        mLastLoopKFid=0;
-        mbResetRequested=false;
+        mLastLoopKFid = 0;
+        mbResetRequested = false;
     }
 }
 
@@ -655,7 +661,8 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
     // We need to propagate the correction through the spanning tree
     {
         unique_lock<mutex> lock(mMutexGBA);
-        if(idx!=mnFullBAIdx)
+
+        if (idx != mnFullBAIdx)
             return;
 
         if(!mbStopGBA)

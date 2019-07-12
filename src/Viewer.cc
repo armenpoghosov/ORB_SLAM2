@@ -26,9 +26,17 @@
 namespace ORB_SLAM2
 {
 
-Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking, const string &strSettingPath):
-    mpSystem(pSystem), mpFrameDrawer(pFrameDrawer),mpMapDrawer(pMapDrawer), mpTracker(pTracking),
-    mbFinishRequested(false), mbFinished(true), mbStopped(true), mbStopRequested(false)
+Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer,
+        MapDrawer *pMapDrawer, Tracking *pTracking, string const& strSettingPath)
+    :
+    mpSystem(pSystem),
+    mpFrameDrawer(pFrameDrawer),
+    mpMapDrawer(pMapDrawer),
+    mpTracker(pTracking),
+    mbFinishRequested(false),
+    mbFinished(true),
+    mbStopped(true),
+    mbStopRequested(false)
 {
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
 
@@ -49,6 +57,14 @@ Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer
     mViewpointY = fSettings["Viewer.ViewpointY"];
     mViewpointZ = fSettings["Viewer.ViewpointZ"];
     mViewpointF = fSettings["Viewer.ViewpointF"];
+
+    m_thread = std::thread(&Viewer::Run, this);
+}
+
+Viewer::~Viewer()
+{
+    if (m_thread.joinable())
+        m_thread.join();
 }
 
 void Viewer::Run()
@@ -92,7 +108,7 @@ void Viewer::Run()
     bool bFollow = true;
     bool bLocalizationMode = false;
 
-    while(1)
+    while (true)
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -221,7 +237,6 @@ bool Viewer::Stop()
     }
 
     return false;
-
 }
 
 void Viewer::Release()

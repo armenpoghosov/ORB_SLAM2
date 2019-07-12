@@ -32,6 +32,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <cstdint>
+
 namespace ORB_SLAM2
 {
 
@@ -51,19 +53,18 @@ public:
     Frame(Frame const& frame);
 
     // Constructor for stereo cameras.
-    Frame(cv::Mat const& imLeft, cv::Mat const& imRight, double const& timeStamp,
-        ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc,
-        cv::Mat& K, cv::Mat& distCoef, float const& bf, float const& thDepth);
+    Frame(cv::Mat const& imLeft, cv::Mat const& imRight, double timeStamp,
+        ORBextractor* extractorLeft, ORBextractor* extractorRight,
+        ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, float bf, float thDepth);
 
     // Constructor for RGB-D cameras.
-    Frame(cv::Mat const& imGray, cv::Mat const& imDepth, double const& timeStamp,
-        ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K,
-        cv::Mat& distCoef, float const& bf, float const& thDepth);
+    Frame(cv::Mat const& imGray, cv::Mat const& imDepth,
+        double timeStamp, ORBextractor* extractor, ORBVocabulary* voc,
+        cv::Mat &K, cv::Mat& distCoef, float bf, float thDepth);
 
     // Constructor for Monocular cameras.
-    Frame(cv::Mat const& imGray, double const& timeStamp,
-        ORBextractor* extractor, ORBVocabulary* voc,
-        cv::Mat& K, cv::Mat& distCoef, float const& bf, float const& thDepth);
+    Frame(cv::Mat const& imGray, double timeStamp, ORBextractor* extractor,
+        ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, float bf, float thDepth);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, cv::Mat const& im);
@@ -106,6 +107,9 @@ public:
     cv::Mat UnprojectStereo(const int &i);
 
 public:
+
+    // NOTE: PAE: stupid function to be refactored ... just for the sake of reducing code size
+    void ensure_initial_computations(cv::Mat const& img_first, cv::Mat const& K);
 
     // Vocabulary used for relocalization.
     ORBVocabulary*              mpORBvocabulary;
@@ -178,8 +182,8 @@ public:
     cv::Mat                     mTcw;
 
     // Current and Next Frame id.
-    static long unsigned int    nNextId;
-    long unsigned int           mnId;
+    static uint64_t             s_next_id;
+    uint64_t                    m_id;
 
     // Reference Keyframe.
     KeyFrame*                   mpReferenceKF;

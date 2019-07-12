@@ -163,23 +163,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
 }
 
-void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
-{
-    mpLocalMapper=pLocalMapper;
-}
-
-void Tracking::SetLoopClosing(LoopClosing *pLoopClosing)
-{
-    mpLoopClosing=pLoopClosing;
-}
-
-void Tracking::SetViewer(Viewer *pViewer)
-{
-    mpViewer=pViewer;
-}
-
-
-cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp)
+cv::Mat Tracking::GrabImageStereo(cv::Mat const& imRectLeft, cv::Mat const& imRectRight, double timestamp)
 {
     mImGray = imRectLeft;
     cv::Mat imGrayRight = imRectRight;
@@ -219,24 +203,24 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
 }
 
 
-cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp)
+cv::Mat Tracking::GrabImageRGBD(cv::Mat const& imRGB, cv::Mat const& imD, double timestamp)
 {
     mImGray = imRGB;
     cv::Mat imDepth = imD;
 
-    if(mImGray.channels()==3)
+    if (mImGray.channels() == 3)
     {
-        if(mbRGB)
-            cvtColor(mImGray,mImGray,CV_RGB2GRAY);
+        if (mbRGB)
+            cvtColor(mImGray, mImGray, CV_RGB2GRAY);
         else
-            cvtColor(mImGray,mImGray,CV_BGR2GRAY);
+            cvtColor(mImGray, mImGray, CV_BGR2GRAY);
     }
-    else if(mImGray.channels()==4)
+    else if (mImGray.channels() == 4)
     {
-        if(mbRGB)
-            cvtColor(mImGray,mImGray,CV_RGBA2GRAY);
+        if (mbRGB)
+            cvtColor(mImGray, mImGray, CV_RGBA2GRAY);
         else
-            cvtColor(mImGray,mImGray,CV_BGRA2GRAY);
+            cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
     }
 
     if((fabs(mDepthMapFactor-1.0f)>1e-5) || imDepth.type()!=CV_32F)
@@ -255,19 +239,9 @@ cv::Mat Tracking::GrabImageMonocular(cv::Mat const& im, double timestamp)
     mImGray = im;
 
     if (mImGray.channels() == 3)
-    {
-        if (mbRGB)
-            cvtColor(mImGray, mImGray, CV_RGB2GRAY);
-        else
-            cvtColor(mImGray, mImGray, CV_BGR2GRAY);
-    }
+        cvtColor(mImGray, mImGray, mbRGB ? CV_RGB2GRAY : CV_BGR2GRAY);
     else if (mImGray.channels() == 4)
-    {
-        if (mbRGB)
-            cvtColor(mImGray, mImGray, CV_RGBA2GRAY);
-        else
-            cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
-    }
+        cvtColor(mImGray, mImGray, mbRGB ? CV_RGBA2GRAY : CV_BGRA2GRAY);
 
     mCurrentFrame = Frame(mImGray, timestamp,
         (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET) ? mpIniORBextractor : mpORBextractorLeft,
@@ -318,7 +292,7 @@ void Tracking::Track()
                 // Local Mapping might have changed some MapPoints tracked in last frame
                 CheckReplacedInLastFrame();
 
-                if(mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
+                if(mVelocity.empty() || mCurrentFrame.m_id<mnLastRelocFrameId+2)
                 {
                     bOK = TrackReferenceKeyFrame();
                 }
@@ -502,11 +476,10 @@ void Tracking::Track()
     // Store frame pose information to retrieve the complete camera trajectory afterwards.
     if (!mCurrentFrame.mTcw.empty())
     {
-        cv::Mat Tcr = mCurrentFrame.mTcw*mCurrentFrame.mpReferenceKF->GetPoseInverse();
+        cv::Mat Tcr = mCurrentFrame.mTcw * mCurrentFrame.mpReferenceKF->GetPoseInverse();
         mlRelativeFramePoses.push_back(Tcr);
         mlpReferences.push_back(mpReferenceKF);
         mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
-        mlbLost.push_back(mState==LOST);
     }
     else
     {
@@ -514,9 +487,9 @@ void Tracking::Track()
         mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
         mlpReferences.push_back(mlpReferences.back());
         mlFrameTimes.push_back(mlFrameTimes.back());
-        mlbLost.push_back(mState==LOST);
     }
 
+    mlbLost.push_back(mState == LOST);
 }
 
 
@@ -556,7 +529,7 @@ void Tracking::StereoInitialization()
         mpLocalMapper->InsertKeyFrame(pKFini);
 
         mLastFrame = Frame(mCurrentFrame);
-        mnLastKeyFrameId=mCurrentFrame.mnId;
+        mnLastKeyFrameId=mCurrentFrame.m_id;
         mpLastKeyFrame = pKFini;
 
         mvpLocalKeyFrames.push_back(pKFini);
@@ -725,7 +698,7 @@ void Tracking::CreateInitialMapMonocular()
     mpLocalMapper->InsertKeyFrame(pKFcur);
 
     mCurrentFrame.SetPose(pKFcur->GetPose());
-    mnLastKeyFrameId=mCurrentFrame.mnId;
+    mnLastKeyFrameId=mCurrentFrame.m_id;
     mpLastKeyFrame = pKFcur;
 
     mvpLocalKeyFrames.push_back(pKFcur);
@@ -796,7 +769,7 @@ bool Tracking::TrackReferenceKeyFrame()
                 mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
                 mCurrentFrame.mvbOutlier[i]=false;
                 pMP->mbTrackInView = false;
-                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                pMP->mnLastFrameSeen = mCurrentFrame.m_id;
                 nmatches--;
             }
             else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
@@ -815,7 +788,7 @@ void Tracking::UpdateLastFrame()
 
     mLastFrame.SetPose(Tlr*pRef->GetPose());
 
-    if(mnLastKeyFrameId==mLastFrame.mnId || mSensor==System::MONOCULAR || !mbOnlyTracking)
+    if(mnLastKeyFrameId==mLastFrame.m_id || mSensor==System::MONOCULAR || !mbOnlyTracking)
         return;
 
     // Create "visual odometry" MapPoints
@@ -919,7 +892,7 @@ bool Tracking::TrackWithMotionModel()
                 mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
                 mCurrentFrame.mvbOutlier[i]=false;
                 pMP->mbTrackInView = false;
-                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                pMP->mnLastFrameSeen = mCurrentFrame.m_id;
                 nmatches--;
             }
             else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
@@ -970,7 +943,7 @@ bool Tracking::TrackLocalMap()
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
-    if (mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames && mnMatchesInliers<50)
+    if (mCurrentFrame.m_id < mnLastRelocFrameId + mMaxFrames && mnMatchesInliers<50)
         return false;
 
     if (mnMatchesInliers<30)
@@ -992,7 +965,7 @@ bool Tracking::NeedNewKeyFrame()
     const int nKFs = mpMap->KeyFramesInMap();
 
     // Do not insert keyframes if not enough frames have passed from last relocalisation
-    if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && nKFs>mMaxFrames)
+    if(mCurrentFrame.m_id<mnLastRelocFrameId+mMaxFrames && nKFs>mMaxFrames)
         return false;
 
     // Tracked MapPoints in the reference keyframe
@@ -1032,9 +1005,9 @@ bool Tracking::NeedNewKeyFrame()
         thRefRatio = 0.9f;
 
     // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
-    const bool c1a = mCurrentFrame.mnId>=mnLastKeyFrameId+mMaxFrames;
+    const bool c1a = mCurrentFrame.m_id>=mnLastKeyFrameId+mMaxFrames;
     // Condition 1b: More than "MinFrames" have passed and Local Mapping is idle
-    const bool c1b = (mCurrentFrame.mnId>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
+    const bool c1b = (mCurrentFrame.m_id>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
     //Condition 1c: tracking is weak
     const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || bNeedToInsertClose) ;
     // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
@@ -1142,7 +1115,7 @@ void Tracking::CreateNewKeyFrame()
 
     mpLocalMapper->SetNotStop(false);
 
-    mnLastKeyFrameId = mCurrentFrame.mnId;
+    mnLastKeyFrameId = mCurrentFrame.m_id;
     mpLastKeyFrame = pKF;
 }
 
@@ -1161,7 +1134,7 @@ void Tracking::SearchLocalPoints()
             else
             {
                 pMP->IncreaseVisible();
-                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                pMP->mnLastFrameSeen = mCurrentFrame.m_id;
                 pMP->mbTrackInView = false;
             }
         }
@@ -1173,7 +1146,7 @@ void Tracking::SearchLocalPoints()
     for(vector<MapPoint*>::iterator vit=mvpLocalMapPoints.begin(), vend=mvpLocalMapPoints.end(); vit!=vend; vit++)
     {
         MapPoint* pMP = *vit;
-        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId)
+        if(pMP->mnLastFrameSeen == mCurrentFrame.m_id)
             continue;
         if(pMP->isBad())
             continue;
@@ -1192,7 +1165,7 @@ void Tracking::SearchLocalPoints()
         if(mSensor==System::RGBD)
             th=3;
         // If the camera has been relocalised recently, perform a coarser search
-        if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
+        if(mCurrentFrame.m_id<mnLastRelocFrameId+2)
             th=5;
         matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
     }
@@ -1212,23 +1185,17 @@ void Tracking::UpdateLocalPoints()
 {
     mvpLocalMapPoints.clear();
 
-    for(vector<KeyFrame*>::const_iterator itKF=mvpLocalKeyFrames.begin(), itEndKF=mvpLocalKeyFrames.end(); itKF!=itEndKF; itKF++)
+    for (KeyFrame* pKF : mvpLocalKeyFrames)
     {
-        KeyFrame* pKF = *itKF;
-        const vector<MapPoint*> vpMPs = pKF->GetMapPointMatches();
+        vector<MapPoint*> const vpMPs = pKF->GetMapPointMatches();
 
-        for(vector<MapPoint*>::const_iterator itMP=vpMPs.begin(), itEndMP=vpMPs.end(); itMP!=itEndMP; itMP++)
+        for (MapPoint* pMP : vpMPs)
         {
-            MapPoint* pMP = *itMP;
-            if(!pMP)
+            if (pMP == nullptr || pMP->mnTrackReferenceForFrame==mCurrentFrame.m_id || pMP->isBad())
                 continue;
-            if(pMP->mnTrackReferenceForFrame==mCurrentFrame.mnId)
-                continue;
-            if(!pMP->isBad())
-            {
-                mvpLocalMapPoints.push_back(pMP);
-                pMP->mnTrackReferenceForFrame=mCurrentFrame.mnId;
-            }
+
+            mvpLocalMapPoints.push_back(pMP);
+            pMP->mnTrackReferenceForFrame=mCurrentFrame.m_id;
         }
     }
 }
@@ -1241,23 +1208,21 @@ void Tracking::UpdateLocalKeyFrames()
 
     for (int i = 0; i < mCurrentFrame.N; ++i)
     {
-        MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+        MapPoint*& pMP = mCurrentFrame.mvpMapPoints[i];
 
         if (pMP == nullptr)
-        {
             continue;
-        }
 
         if (!pMP->isBad())
         {
-            const map<KeyFrame*, size_t> observations = pMP->GetObservations();
+            map<KeyFrame*, size_t> const observations = pMP->GetObservations();
 
-            for (auto it = observations.cbegin(), itend = observations.cend(); it != itend; ++it)
-                keyframeCounter[it->first]++;
+            for (auto const& pair : observations)
+                keyframeCounter[pair.first]++;
         }
         else
         {
-            mCurrentFrame.mvpMapPoints[i] = nullptr;
+            pMP = nullptr;
         }
     }
 
@@ -1285,7 +1250,7 @@ void Tracking::UpdateLocalKeyFrames()
         }
 
         mvpLocalKeyFrames.push_back(it->first);
-        pKF->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+        pKF->mnTrackReferenceForFrame = mCurrentFrame.m_id;
     }
 
     // Include also some not-already-included keyframes that are neighbors to already-included keyframes
@@ -1300,11 +1265,11 @@ void Tracking::UpdateLocalKeyFrames()
         {
             KeyFrame* pNeighKF = *itNeighKF;
 
-            if (!pNeighKF->isBad() && pNeighKF->mnTrackReferenceForFrame != mCurrentFrame.mnId)
+            if (!pNeighKF->isBad() && pNeighKF->mnTrackReferenceForFrame != mCurrentFrame.m_id)
             {
                 mvpLocalKeyFrames.push_back(pNeighKF);
                 ++size;
-                pNeighKF->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+                pNeighKF->mnTrackReferenceForFrame = mCurrentFrame.m_id;
                 break;
             }
         }
@@ -1315,22 +1280,22 @@ void Tracking::UpdateLocalKeyFrames()
         {
             KeyFrame* pChildKF = *sit;
 
-            if (!pChildKF->isBad() && pChildKF->mnTrackReferenceForFrame != mCurrentFrame.mnId)
+            if (!pChildKF->isBad() && pChildKF->mnTrackReferenceForFrame != mCurrentFrame.m_id)
             {
                 mvpLocalKeyFrames.push_back(pChildKF);
                 ++size;
-                pChildKF->mnTrackReferenceForFrame=mCurrentFrame.mnId;
+                pChildKF->mnTrackReferenceForFrame=mCurrentFrame.m_id;
                 break;
             }
         }
 
         KeyFrame* pParent = pKF->GetParent();
 
-        if (pParent && pParent->mnTrackReferenceForFrame != mCurrentFrame.mnId)
+        if (pParent && pParent->mnTrackReferenceForFrame != mCurrentFrame.m_id)
         {
             mvpLocalKeyFrames.push_back(pParent);
             ++size;
-            pParent->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+            pParent->mnTrackReferenceForFrame = mCurrentFrame.m_id;
             break;
         }
     }
@@ -1497,7 +1462,7 @@ bool Tracking::Relocalization()
     }
     else
     {
-        mnLastRelocFrameId = mCurrentFrame.mnId;
+        mnLastRelocFrameId = mCurrentFrame.m_id;
         return true;
     }
 
@@ -1533,13 +1498,15 @@ void Tracking::Reset()
     mpMap->clear();
 
     KeyFrame::nNextId = 0;
-    Frame::nNextId = 0;
+
+    Frame::s_next_id = 0;
+
     mState = NO_IMAGES_YET;
 
-    if(mpInitializer)
+    if (mpInitializer != nullptr)
     {
         delete mpInitializer;
-        mpInitializer = static_cast<Initializer*>(NULL);
+        mpInitializer = nullptr;
     }
 
     mlRelativeFramePoses.clear();
@@ -1551,9 +1518,10 @@ void Tracking::Reset()
         mpViewer->Release();
 }
 
-void Tracking::ChangeCalibration(const string &strSettingPath)
+void Tracking::ChangeCalibration(string const& strSettingPath)
 {
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+
     float fx = fSettings["Camera.fx"];
     float fy = fSettings["Camera.fy"];
     float cx = fSettings["Camera.cx"];

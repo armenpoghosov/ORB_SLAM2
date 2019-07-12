@@ -53,13 +53,13 @@ public:
 public:
 
     LoopClosing(Map* pMap, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale);
+    ~LoopClosing();
 
-    void SetTracker(Tracking* pTracker);
+    void SetTracker(Tracking *pTracker)
+        { mpTracker = pTracker; }
 
-    void SetLocalMapper(LocalMapping* pLocalMapper);
-
-    // Main function
-    void Run();
+    void SetLocalMapper(LocalMapping *pLocalMapper)
+        { mpLocalMapper = pLocalMapper; }
 
     void InsertKeyFrame(KeyFrame *pKF);
 
@@ -68,11 +68,14 @@ public:
     // This function will run in a separate thread
     void RunGlobalBundleAdjustment(unsigned long nLoopKF);
 
-    bool isRunningGBA(){
+    bool isRunningGBA()
+    {
         unique_lock<std::mutex> lock(mMutexGBA);
         return mbRunningGBA;
     }
-    bool isFinishedGBA(){
+
+    bool isFinishedGBA()
+    {
         unique_lock<std::mutex> lock(mMutexGBA);
         return mbFinishedGBA;
     }   
@@ -84,6 +87,9 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
+
+    // Main function
+    void Run();
 
     bool CheckNewKeyFrames();
 
@@ -143,6 +149,7 @@ protected:
     // Fix scale in the stereo/RGB-D case
     bool mbFixScale;
 
+    std::thread m_thread;
 
     bool mnFullBAIdx;
 };
