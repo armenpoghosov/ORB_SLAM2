@@ -45,83 +45,91 @@ cv::Mat FrameDrawer::DrawFrame()
     vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
     int state; // Tracking state
 
-    //Copy variables within scoped mutex
     {
         unique_lock<mutex> lock(mMutex);
-        state=mState;
-        if(mState==Tracking::SYSTEM_NOT_READY)
-            mState=Tracking::NO_IMAGES_YET;
+
+        state = mState;
+        if (mState == Tracking::SYSTEM_NOT_READY)
+            mState = Tracking::NO_IMAGES_YET;
 
         mIm.copyTo(im);
 
-        if(mState==Tracking::NOT_INITIALIZED)
+        if (mState == Tracking::NOT_INITIALIZED)
         {
             vCurrentKeys = mvCurrentKeys;
             vIniKeys = mvIniKeys;
             vMatches = mvIniMatches;
         }
-        else if(mState==Tracking::OK)
+        else if (mState == Tracking::OK)
         {
             vCurrentKeys = mvCurrentKeys;
             vbVO = mvbVO;
             vbMap = mvbMap;
         }
-        else if(mState==Tracking::LOST)
+        else if (mState == Tracking::LOST)
         {
             vCurrentKeys = mvCurrentKeys;
         }
-    } // destroy scoped mutex -> release mutex
-
-    if(im.channels()<3) //this should be always true
-        cvtColor(im,im,CV_GRAY2BGR);
-
-    //Draw
-    if(state==Tracking::NOT_INITIALIZED) //INITIALIZING
-    {
-        for(unsigned int i=0; i<vMatches.size(); i++)
-        {
-            if(vMatches[i]>=0)
-            {
-                cv::line(im,vIniKeys[i].pt,vCurrentKeys[vMatches[i]].pt,
-                        cv::Scalar(0,255,0));
-            }
-        }        
     }
-    else if(state==Tracking::OK) //TRACKING
-    {
-        mnTracked=0;
-        mnTrackedVO=0;
-        const float r = 5;
-        const int n = vCurrentKeys.size();
-        for(int i=0;i<n;i++)
-        {
-            if(vbVO[i] || vbMap[i])
-            {
-                cv::Point2f pt1,pt2;
-                pt1.x=vCurrentKeys[i].pt.x-r;
-                pt1.y=vCurrentKeys[i].pt.y-r;
-                pt2.x=vCurrentKeys[i].pt.x+r;
-                pt2.y=vCurrentKeys[i].pt.y+r;
 
-                // This is a match to a MapPoint in the map
-                if(vbMap[i])
-                {
-                    cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
-                    cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,255,0),-1);
-                    mnTracked++;
-                }
-                else // This is match to a "visual odometry" MapPoint created in the last frame
-                {
-                    cv::rectangle(im,pt1,pt2,cv::Scalar(255,0,0));
-                    cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(255,0,0),-1);
-                    mnTrackedVO++;
-                }
+    if (im.channels() < 3)
+        cvtColor(im, im, CV_GRAY2BGR);
+
+    // Draw
+    if (state == Tracking::NOT_INITIALIZED) //INITIALIZING
+    {
+        for (std::size_t i = 0; i < vMatches.size(); ++i)
+        {
+            if (vMatches[i] >= 0)
+            {
+                cv::line(im, vIniKeys[i].pt, vCurrentKeys[vMatches[i]].pt, cv::Scalar(0, 255, 0));
+            }
+            else
+            {
+                cv::circle(im, vCurrentKeys[i].pt, 1, cv::Scalar(0, 255, 0), -1);
+            }
+
+        }
+    }
+    else if (state == Tracking::OK) //TRACKING
+    {
+        mnTracked = 0;
+        mnTrackedVO = 0;
+        
+        float const r = 5;
+        std::size_t const n = vCurrentKeys.size();
+
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            if (!vbVO[i] && !vbMap[i])
+                continue;
+
+            cv::Point2f pt1;
+            pt1.x = vCurrentKeys[i].pt.x - r;
+            pt1.y = vCurrentKeys[i].pt.y - r;
+            
+            cv::Point2f pt2;
+            pt2.x = vCurrentKeys[i].pt.x + r;
+            pt2.y = vCurrentKeys[i].pt.y + r;
+
+            // This is a match to a MapPoint in the map
+            if (vbMap[i])
+            {
+                cv::rectangle(im, pt1, pt2, cv::Scalar(0, 255, 0));
+                cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 255, 0), -1);
+                ++mnTracked;
+            }
+            else // This is match to a "visual odometry" MapPoint created in the last frame
+            {
+                cv::rectangle(im, pt1, pt2, cv::Scalar(255, 0, 0));
+                cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(255, 0, 0), -1);
+                ++mnTrackedVO;
             }
         }
     }
 
     cv::Mat imWithInfo;
-    DrawTextInfo(im,state, imWithInfo);
+    DrawTextInfo(im, state, imWithInfo);
 
     return imWithInfo;
 }

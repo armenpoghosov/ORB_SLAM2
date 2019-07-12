@@ -379,7 +379,7 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
     return true;
 }
 
-vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, int minLevel, int maxLevel) const
+vector<size_t> Frame::GetFeaturesInArea(float x, float y, float r, int minLevel, int maxLevel) const
 {
     vector<size_t> vIndices;
 
@@ -387,25 +387,23 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
     if (nMinCellX >= FRAME_GRID_COLS)
         return vIndices;
 
-    const int nMaxCellX = (std::min)((int)FRAME_GRID_COLS-1,(int)ceil((x-mnMinX+r)*mfGridElementWidthInv));
+    int const nMaxCellX = (std::min)((int)FRAME_GRID_COLS-1,(int)ceil((x-mnMinX+r)*mfGridElementWidthInv));
     if (nMaxCellX < 0)
         return vIndices;
 
-    const int nMinCellY = (std::max)(0,(int)floor((y - mnMinY - r) * mfGridElementHeightInv));
+    int const nMinCellY = (std::max)(0,(int)floor((y - mnMinY - r) * mfGridElementHeightInv));
     if (nMinCellY >= FRAME_GRID_ROWS)
         return vIndices;
 
-    const int nMaxCellY = (std::min)((int)FRAME_GRID_ROWS-1,(int)ceil((y-mnMinY+r)*mfGridElementHeightInv));
+    int const nMaxCellY = (std::min)((int)FRAME_GRID_ROWS-1,(int)ceil((y-mnMinY+r)*mfGridElementHeightInv));
     if (nMaxCellY < 0)
         return vIndices;
 
     vIndices.reserve(N);
 
-    bool const bCheckLevels = minLevel > 0 || maxLevel >= 0;
-
-    for (int ix = nMinCellX; ix<=nMaxCellX; ix++)
+    for (int ix = nMinCellX; ix <= nMaxCellX; ++ix)
     {
-        for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
+        for (int iy = nMinCellY; iy <= nMaxCellY; ++iy)
         {
             vector<size_t> const& vCell = mGrid[ix][iy];
 
@@ -416,13 +414,11 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
             {
                 cv::KeyPoint const& kpUn = mvKeysUn[vCell[j]];
 
-                if (bCheckLevels && (kpUn.octave < minLevel || kpUn.octave > maxLevel))
+                if ((minLevel > 0 && kpUn.octave < minLevel) ||
+                    (maxLevel >= 0 && kpUn.octave > maxLevel))
                     continue;
 
-                float const distx = kpUn.pt.x - x;
-                float const disty = kpUn.pt.y - y;
-
-                if (fabs(distx) < r && fabs(disty) < r)
+                if (std::fabs(kpUn.pt.x - x) < r && std::fabs(kpUn.pt.y - y) < r)
                     vIndices.push_back(vCell[j]);
             }
         }

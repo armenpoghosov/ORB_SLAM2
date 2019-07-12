@@ -58,7 +58,8 @@ public:
     void ComputeBoW();
 
     // Covisibility graph functions
-    void AddConnection(KeyFrame* pKF, const int &weight);
+    void AddConnection(KeyFrame* pKF, int weight);
+
     void EraseConnection(KeyFrame* pKF);
     void UpdateConnections();
     void UpdateBestCovisibles();
@@ -87,7 +88,7 @@ public:
     void ReplaceMapPointMatch(const size_t &idx, MapPoint* pMP);
     std::set<MapPoint*> GetMapPoints();
     std::vector<MapPoint*> GetMapPointMatches();
-    int TrackedMapPoints(const int &minObs);
+    int TrackedMapPoints(int minObs);
     MapPoint* GetMapPoint(const size_t &idx);
 
     // KeyPoint functions
@@ -209,7 +210,8 @@ protected:
     // Grid over the image to speed up feature matching
     std::vector< std::vector <std::vector<size_t> > > mGrid;
 
-    std::map<KeyFrame*,int> mConnectedKeyFrameWeights;
+    std::map<KeyFrame*, int> mConnectedKeyFrameWeights;
+
     std::vector<KeyFrame*> mvpOrderedConnectedKeyFrames;
     std::vector<int> mvOrderedWeights;
 
