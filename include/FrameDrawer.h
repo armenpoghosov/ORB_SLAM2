@@ -56,7 +56,8 @@ protected:
     cv::Mat                 mIm;
     int                     N;
     vector<cv::KeyPoint>    mvCurrentKeys;
-    vector<bool> mvbMap,    mvbVO;
+    vector<bool>            mvbMap;
+    vector<bool>            mvbVO;
     bool                    mbOnlyTracking;
     int                     mnTracked;
     int                     mnTrackedVO;

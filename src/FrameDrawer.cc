@@ -130,23 +130,26 @@ cv::Mat FrameDrawer::DrawFrame()
 void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 {
     stringstream s;
-    if(nState==Tracking::NO_IMAGES_YET)
+
+    if (nState == Tracking::NO_IMAGES_YET)
         s << " WAITING FOR IMAGES";
-    else if(nState==Tracking::NOT_INITIALIZED)
+    else if (nState == Tracking::NOT_INITIALIZED)
         s << " TRYING TO INITIALIZE ";
-    else if(nState==Tracking::OK)
+    else if (nState == Tracking::OK)
     {
-        if(!mbOnlyTracking)
+        if (!mbOnlyTracking)
             s << "SLAM MODE |  ";
         else
             s << "LOCALIZATION | ";
+
         int nKFs = mpMap->KeyFramesInMap();
         int nMPs = mpMap->MapPointsInMap();
+
         s << "KFs: " << nKFs << ", MPs: " << nMPs << ", Matches: " << mnTracked;
-        if(mnTrackedVO>0)
+        if (mnTrackedVO>0)
             s << ", + VO matches: " << mnTrackedVO;
     }
-    else if(nState==Tracking::LOST)
+    else if (nState == Tracking::LOST)
     {
         s << " TRACK LOST. TRYING TO RELOCALIZE ";
     }
@@ -155,31 +158,33 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
         s << " LOADING ORB VOCABULARY. PLEASE WAIT...";
     }
 
-    int baseline=0;
-    cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);
+    int baseline = 0;
+    cv::Size textSize = cv::getTextSize(s.str(), cv::FONT_HERSHEY_PLAIN, 1, 1, &baseline);
 
-    imText = cv::Mat(im.rows+textSize.height+10,im.cols,im.type());
-    im.copyTo(imText.rowRange(0,im.rows).colRange(0,im.cols));
-    imText.rowRange(im.rows,imText.rows) = cv::Mat::zeros(textSize.height+10,im.cols,im.type());
-    cv::putText(imText,s.str(),cv::Point(5,imText.rows-5),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
-
+    imText = cv::Mat(im.rows + textSize.height + 10, im.cols, im.type());
+    im.copyTo(imText.rowRange(0, im.rows).colRange(0,im.cols));
+    imText.rowRange(im.rows,imText.rows) = cv::Mat::zeros(textSize.height + 10, im.cols, im.type());
+    cv::putText(imText, s.str(), cv::Point(5, imText.rows - 5), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255,255,255), 1, 8);
 }
 
 void FrameDrawer::Update(Tracking *pTracker)
 {
     unique_lock<mutex> lock(mMutex);
+
     pTracker->mImGray.copyTo(mIm);
-    mvCurrentKeys=pTracker->mCurrentFrame.mvKeys;
+
+    mvCurrentKeys = pTracker->mCurrentFrame.mvKeys;
     N = mvCurrentKeys.size();
-    mvbVO = vector<bool>(N,false);
-    mvbMap = vector<bool>(N,false);
+
+    mvbVO = vector<bool>(N, false);
+    mvbMap = vector<bool>(N, false);
+
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
-
-    if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
+    if (pTracker->mLastProcessedState == Tracking::NOT_INITIALIZED)
     {
-        mvIniKeys=pTracker->mInitialFrame.mvKeys;
-        mvIniMatches=pTracker->mvIniMatches;
+        mvIniKeys = pTracker->mInitialFrame.mvKeys;
+        mvIniMatches = pTracker->mvIniMatches;
     }
     else if (pTracker->mLastProcessedState == Tracking::OK)
     {
@@ -197,7 +202,7 @@ void FrameDrawer::Update(Tracking *pTracker)
         }
     }
 
-    mState=static_cast<int>(pTracker->mLastProcessedState);
+    mState = (int)pTracker->mLastProcessedState;
 }
 
 } //namespace ORB_SLAM

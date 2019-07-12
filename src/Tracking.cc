@@ -500,7 +500,7 @@ void Tracking::Track()
     }
 
     // Store frame pose information to retrieve the complete camera trajectory afterwards.
-    if(!mCurrentFrame.mTcw.empty())
+    if (!mCurrentFrame.mTcw.empty())
     {
         cv::Mat Tcr = mCurrentFrame.mTcw*mCurrentFrame.mpReferenceKF->GetPoseInverse();
         mlRelativeFramePoses.push_back(Tcr);
@@ -577,7 +577,6 @@ void Tracking::StereoInitialization()
 void Tracking::MonocularInitialization()
 {
     enum : int { MIN_KEY_COUNT_FOR_INITIALIZATOIN = 20 };
-
 
     if (mpInitializer != nullptr)
     {
