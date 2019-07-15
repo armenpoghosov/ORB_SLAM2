@@ -35,8 +35,6 @@ class ExtractorNode
 public:
 
     ExtractorNode()
-        :
-        bNoMore(false)
     {}
 
     void DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNode &n3, ExtractorNode &n4);
@@ -47,7 +45,6 @@ public:
     cv::Point2i                         BL;
     cv::Point2i                         BR;
     std::list<ExtractorNode>::iterator  lit;
-    bool                                bNoMore;
 };
 
 class ORBextractor
@@ -101,7 +98,7 @@ protected:
     void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);    
 
     std::vector<cv::KeyPoint> DistributeOctTree(std::vector<cv::KeyPoint> const& vToDistributeKeys,
-        int minX, int maxX, int minY, int maxY, int nFeatures, int level);
+        int minX, int maxX, int minY, int maxY, int nFeatures);
 
     // old code .. void ComputeKeyPointsOld(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);
 

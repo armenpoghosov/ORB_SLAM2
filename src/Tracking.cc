@@ -722,16 +722,14 @@ void Tracking::CheckReplacedInLastFrame()
 {
     for(int i =0; i<mLastFrame.N; i++)
     {
-        MapPoint* pMP = mLastFrame.mvpMapPoints[i];
+        MapPoint*& rpMP = mLastFrame.mvpMapPoints[i];
 
-        if(pMP)
-        {
-            MapPoint* pRep = pMP->GetReplaced();
-            if(pRep)
-            {
-                mLastFrame.mvpMapPoints[i] = pRep;
-            }
-        }
+        if (rpMP == nullptr)
+            continue;
+
+        MapPoint* pRep = rpMP->GetReplaced();
+        if (pRep != nullptr)
+            rpMP = pRep;
     }
 }
 
@@ -744,11 +742,9 @@ bool Tracking::TrackReferenceKeyFrame()
     // We perform first an ORB matching with the reference keyframe
     // If enough matches are found we setup a PnP solver
     ORBmatcher matcher(0.7,true);
+
     vector<MapPoint*> vpMapPointMatches;
-
-    int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
-
-    if(nmatches<15)
+    if (matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches) < 15)
         return false;
 
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
@@ -758,26 +754,27 @@ bool Tracking::TrackReferenceKeyFrame()
 
     // Discard outliers
     int nmatchesMap = 0;
-    for(int i =0; i<mCurrentFrame.N; i++)
+    for (int i = 0; i < mCurrentFrame.N; ++i)
     {
-        if(mCurrentFrame.mvpMapPoints[i])
-        {
-            if(mCurrentFrame.mvbOutlier[i])
-            {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+        MapPoint*& rpMP = mCurrentFrame.mvpMapPoints[i];
 
-                mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
-                mCurrentFrame.mvbOutlier[i]=false;
-                pMP->mbTrackInView = false;
-                pMP->mnLastFrameSeen = mCurrentFrame.m_id;
-                nmatches--;
-            }
-            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
-                nmatchesMap++;
+        if (rpMP == nullptr)
+            continue;
+
+        if (mCurrentFrame.mvbOutlier[i])
+        {
+            mCurrentFrame.mvbOutlier[i] = false;
+            rpMP->mbTrackInView = false;
+            rpMP->mnLastFrameSeen = mCurrentFrame.m_id;
+            rpMP = nullptr;
+        }
+        else if (rpMP->Observations() > 0)
+        {
+            ++nmatchesMap;
         }
     }
 
-    return nmatchesMap>=10;
+    return nmatchesMap >= 10;
 }
 
 void Tracking::UpdateLastFrame()
