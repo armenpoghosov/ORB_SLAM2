@@ -547,32 +547,34 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
 
     float const hX = (float)(maxX - minX) / nIni;
 
-    std::vector<ExtractorNode*> vpIniNodes;
-    vpIniNodes.resize(nIni);
-
     list<ExtractorNode> lNodes;
-
-    for (int i = 0; i < nIni; ++i)
     {
-        ExtractorNode ni;
+        std::vector<ExtractorNode*> vpIniNodes;
+        vpIniNodes.resize(nIni);
 
-        ni.UL = cv::Point2i(hX * i, 0);
-        ni.UR = cv::Point2i(hX * i + 1, 0);
 
-        ni.BL = cv::Point2i(ni.UL.x, maxY - minY);
-        ni.BR = cv::Point2i(ni.UR.x, maxY - minY);
+        for (int i = 0; i < nIni; ++i)
+        {
+            ExtractorNode ni;
 
-        ni.vKeys.reserve(vToDistributeKeys.size());
+            ni.UL = cv::Point2i(hX * i, 0);
+            ni.UR = cv::Point2i(hX * i + 1, 0);
 
-        lNodes.push_back(ni);
-        vpIniNodes[i] = &lNodes.back();
-    }
+            ni.BL = cv::Point2i(ni.UL.x, maxY - minY);
+            ni.BR = cv::Point2i(ni.UR.x, maxY - minY);
 
-    // Associate points to childs
-    for (size_t i = 0; i < vToDistributeKeys.size(); ++i)
-    {
-        cv::KeyPoint const& kp = vToDistributeKeys[i];
-        vpIniNodes[kp.pt.x / hX]->vKeys.push_back(kp);
+            ni.vKeys.reserve(vToDistributeKeys.size());
+
+            lNodes.push_back(ni);
+            vpIniNodes[i] = &lNodes.back();
+        }
+
+        // Associate points to childs
+        for (size_t i = 0; i < vToDistributeKeys.size(); ++i)
+        {
+            cv::KeyPoint const& kp = vToDistributeKeys[i];
+            vpIniNodes[kp.pt.x / hX]->vKeys.push_back(kp);
+        }
     }
 
     list<ExtractorNode>::iterator lit = lNodes.begin();
@@ -679,11 +681,11 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
 
                     lNodes.erase(parent_node->lit);
 
-                    if ((int)lNodes.size() >= N)
+                    if (lNodes.size() >= (std::size_t)N)
                         break;
                 }
             }
-            while ((int)lNodes.size() < N && (int)lNodes.size() != prevSize);
+            while (lNodes.size() < (std::size_t)N && lNodes.size() != prevSize);
 
             break;
         }

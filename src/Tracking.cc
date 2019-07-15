@@ -134,7 +134,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
     if (sensor == System::STEREO)
-        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpORBextractorRight = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
     if (sensor == System::MONOCULAR)
         mpIniORBextractor = new ORBextractor(2 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
@@ -152,15 +152,11 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
     }
 
-    if (sensor==System::RGBD)
+    if (sensor == System::RGBD)
     {
         mDepthMapFactor = fSettings["DepthMapFactor"];
-        if (fabs(mDepthMapFactor) < 1e-5)
-            mDepthMapFactor=1;
-        else
-            mDepthMapFactor = 1.0f / mDepthMapFactor;
+        mDepthMapFactor = std::fabs(mDepthMapFactor) < 1e-5f ? 1.f : 1.f / mDepthMapFactor;
     }
-
 }
 
 cv::Mat Tracking::GrabImageStereo(cv::Mat const& imRectLeft, cv::Mat const& imRectRight, double timestamp)

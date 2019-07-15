@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM2)
 
-add_compile_options(-bigobj -MTd)
+add_compile_options(-bigobj -MT)
 
 add_definitions(-DINITGUID)
 
@@ -38,7 +38,7 @@ add_library(${PROJECT_NAME}
     )
 set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-set(OpenCV_LIBS
+set(OpenCV_LIBS_Debug
 "C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ade.lib"
 "C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\IlmImfd.lib"
 "C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ippicvmt.lib"
@@ -80,6 +80,51 @@ set(OpenCV_LIBS
 "C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\ORB_SLAM2\\Thirdparty\\g2o\\bin\\Debug\\g2o.lib"
 "strmiids.lib"
 )
+
+set(OpenCV_LIBS_Release
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ade.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\IlmImf.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ippicvmt.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ippiw.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ittnotify.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libjasper.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libjpeg-turbo.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libpng.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libprotobuf.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libtiff.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\libwebp.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_calib3d411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_core411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_dnn411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_features2d411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_flann411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_gapi411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_highgui411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_imgcodecs411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_imgproc411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_ml411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_objdetect411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_photo411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_stitching411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_video411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\opencv_videoio411.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\quirc.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\zlib.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\pangolin.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\glew.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\libpng16_static.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\jpeg.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\Pangolin\\build\\install\\lib\\zlibstatic.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\ORB_SLAM2\\Thirdparty\\g2o\\bin\\Release\\g2o.lib"
+"C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\ORB_SLAM2\\Thirdparty\\DBoW2\\lib\\Release\\DBoW2.lib"
+"OpenGL32.Lib"
+"Mfplat.lib"
+"Mf.lib"
+"Mfreadwrite.lib"
+"strmiids.lib"
+)
+
+set(OpenCV_LIBS ${OpenCV_LIBS_Debug})
 
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 

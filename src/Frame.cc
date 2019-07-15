@@ -218,7 +218,7 @@ Frame::Frame(cv::Mat const& imGray, double timeStamp, ORBextractor* extractor,
 
     N = mvKeys.size();
 
-    if(mvKeys.empty())
+    if (mvKeys.empty())
         return;
 
     UndistortKeyPoints();
@@ -264,11 +264,11 @@ void Frame::AssignFeaturesToGrid()
 {
     int nReserve = 0.5f * N / (FRAME_GRID_COLS * FRAME_GRID_ROWS);
 
-    for (unsigned int i = 0; i < FRAME_GRID_COLS; ++i)
-        for (unsigned int j = 0; j < FRAME_GRID_ROWS; ++j)
+    for (int i = 0; i < FRAME_GRID_COLS; ++i)
+        for (int j = 0; j < FRAME_GRID_ROWS; ++j)
             mGrid[i][j].reserve(nReserve);
 
-    for (int i = 0; i < N; ++i)
+    for (std::size_t i = 0; i < (std::size_t)N; ++i)
     {
         cv::KeyPoint const& kp = mvKeysUn[i];
 
