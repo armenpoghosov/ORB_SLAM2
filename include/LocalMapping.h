@@ -54,18 +54,27 @@ public:
 
     // Thread Synch
     void RequestStop();
+
     void RequestReset();
+
     bool Stop();
+
     void Release();
+
     bool isStopped();
+
     bool stopRequested();
+
     bool AcceptKeyFrames();
+
     void SetAcceptKeyFrames(bool flag);
+
     bool SetNotStop(bool flag);
 
     void InterruptBA();
 
     void RequestFinish();
+
     bool isFinished();
 
     int KeyframesInQueue()

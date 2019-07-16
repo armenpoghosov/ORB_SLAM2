@@ -56,7 +56,7 @@ void LocalMapping::Run()
 {
     mbFinished = false;
 
-    while (true)
+    for (;;)
     {
         // Tracking will see that Local Mapping is busy
         SetAcceptKeyFrames(false);
@@ -207,7 +207,7 @@ void LocalMapping::CreateNewMapPoints()
 
     const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
-    ORBmatcher matcher(0.6,false);
+    ORBmatcher matcher(0.6, false);
 
     cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
     cv::Mat Rwc1 = Rcw1.t();
@@ -544,6 +544,7 @@ void LocalMapping::RequestStop()
 {
     unique_lock<mutex> lock(mMutexStop);
     mbStopRequested = true;
+
     unique_lock<mutex> lock2(mMutexNewKFs);
     mbAbortBA = true;
 }

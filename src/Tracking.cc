@@ -967,18 +967,19 @@ bool Tracking::NeedNewKeyFrame()
     bool bLocalMappingIdle = mpLocalMapper->AcceptKeyFrames();
 
     // Check how many "close" points are being tracked and how many could be potentially created.
+    int nTrackedClose = 0;
     int nNonTrackedClose = 0;
-    int nTrackedClose= 0;
-    if (mSensor!=System::MONOCULAR)
+
+    if (mSensor != System::MONOCULAR)
     {
-        for(int i =0; i<mCurrentFrame.N; i++)
+        for (int i = 0; i < mCurrentFrame.N; ++i)
         {
-            if(mCurrentFrame.mvDepth[i]>0 && mCurrentFrame.mvDepth[i]<mThDepth)
+            if (mCurrentFrame.mvDepth[i] > 0 && mCurrentFrame.mvDepth[i] < mThDepth)
             {
-                if(mCurrentFrame.mvpMapPoints[i] && !mCurrentFrame.mvbOutlier[i])
-                    nTrackedClose++;
+                if (mCurrentFrame.mvpMapPoints[i] && !mCurrentFrame.mvbOutlier[i])
+                    ++nTrackedClose;
                 else
-                    nNonTrackedClose++;
+                    ++nNonTrackedClose;
             }
         }
     }
@@ -992,19 +993,22 @@ bool Tracking::NeedNewKeyFrame()
         thRefRatio = 0.9f;
 
     // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
-    const bool c1a = mCurrentFrame.m_id>=mnLastKeyFrameId+mMaxFrames;
-    // Condition 1b: More than "MinFrames" have passed and Local Mapping is idle
-    const bool c1b = (mCurrentFrame.m_id>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
-    //Condition 1c: tracking is weak
-    const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || bNeedToInsertClose) ;
-    // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
-    const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| bNeedToInsertClose) && mnMatchesInliers>15);
+    bool const c1a = mCurrentFrame.m_id >= mnLastKeyFrameId + mMaxFrames;
 
-    if ((c1a || c1b|| c1c) && c2)
+    // Condition 1b: More than "MinFrames" have passed and Local Mapping is idle
+    bool const c1b = mCurrentFrame.m_id >= mnLastKeyFrameId + mMinFrames && bLocalMappingIdle;
+
+    // Condition 1c: tracking is weak
+    bool const c1c =  mSensor != System::MONOCULAR && (mnMatchesInliers < nRefMatches * 0.25 || bNeedToInsertClose);
+
+    // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
+    bool const c2 = (mnMatchesInliers < nRefMatches * thRefRatio || bNeedToInsertClose) && mnMatchesInliers > 15;
+
+    if ((c1a || c1b || c1c) && c2)
     {
         // If the mapping accepts keyframes, insert keyframe.
         // Otherwise send a signal to interrupt BA
-        if(bLocalMappingIdle)
+        if (bLocalMappingIdle)
         {
             return true;
         }
