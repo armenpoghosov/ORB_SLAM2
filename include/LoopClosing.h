@@ -40,7 +40,6 @@ class Tracking;
 class LocalMapping;
 class KeyFrameDatabase;
 
-
 class LoopClosing
 {
 public:
@@ -52,7 +51,7 @@ public:
 
 public:
 
-    LoopClosing(Map* pMap, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale);
+    LoopClosing(Map* pMap, KeyFrameDatabase* pDB, ORBVocabulary* pVoc, bool bFixScale);
     ~LoopClosing();
 
     void SetTracker(Tracking *pTracker)
@@ -63,10 +62,10 @@ public:
 
     void InsertKeyFrame(KeyFrame *pKF);
 
-    void RequestReset();
-
     // This function will run in a separate thread
     void RunGlobalBundleAdjustment(unsigned long nLoopKF);
+
+    void RequestReset();
 
     bool isRunningGBA()
     {
@@ -80,9 +79,17 @@ public:
         return mbFinishedGBA;
     }   
 
-    void RequestFinish();
+    void RequestFinish()
+    {
+        unique_lock<mutex> lock(mMutexFinish);
+        mbFinishRequested = true;
+    }
 
-    bool isFinished();
+    bool isFinished()
+    {
+        unique_lock<mutex> lock(mMutexFinish);
+        return mbFinished;
+    }
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -105,8 +112,18 @@ protected:
     bool mbResetRequested;
     std::mutex mMutexReset;
 
-    bool CheckFinish();
-    void SetFinish();
+    bool CheckFinish()
+    {
+        unique_lock<mutex> lock(mMutexFinish);
+        return mbFinishRequested;
+    }
+
+    void SetFinish()
+    {
+        unique_lock<mutex> lock(mMutexFinish);
+        mbFinished = true;
+    }
+
     bool mbFinishRequested;
     bool mbFinished;
     std::mutex mMutexFinish;

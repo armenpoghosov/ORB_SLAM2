@@ -65,19 +65,42 @@ public:
 
     bool stopRequested();
 
-    bool AcceptKeyFrames();
+    bool AcceptKeyFrames()
+    {
+        unique_lock<mutex> lock(mMutexAccept);
+        return mbAcceptKeyFrames;
+    }
 
-    void SetAcceptKeyFrames(bool flag);
+    bool SetNotStop(bool flag)
+    {
+        unique_lock<mutex> lock(mMutexStop);
 
-    bool SetNotStop(bool flag);
+        if (flag && mbStopped)
+            return false;
 
-    void InterruptBA();
+        mbNotStop = flag;
 
-    void RequestFinish();
+        return true;
+    }
 
-    bool isFinished();
+    void InterruptBA()
+    {
+        mbAbortBA = true;
+    }
 
-    int KeyframesInQueue()
+    void RequestFinish()
+    {
+        unique_lock<mutex> lock(mMutexFinish);
+        mbFinishRequested = true;
+    }
+
+    bool isFinished()
+    {
+        unique_lock<mutex> lock(mMutexFinish);
+        return mbFinished;
+    }
+
+    std::size_t KeyframesInQueue()
     {
         unique_lock<std::mutex> lock(mMutexNewKFs);
         return mlNewKeyFrames.size();
@@ -88,7 +111,18 @@ protected:
     // Main function
     void Run();
 
-    bool CheckNewKeyFrames();
+    void SetAcceptKeyFrames(bool flag)
+    {
+        unique_lock<mutex> lock(mMutexAccept);
+        mbAcceptKeyFrames = flag;
+    }
+
+    bool CheckNewKeyFrames()
+    {
+        unique_lock<mutex> lock(mMutexNewKFs);
+        return !mlNewKeyFrames.empty();
+    }
+
     void ProcessNewKeyFrame();
     void CreateNewMapPoints();
 

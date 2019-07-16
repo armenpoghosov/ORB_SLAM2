@@ -127,12 +127,6 @@ void LocalMapping::InsertKeyFrame(KeyFrame *pKF)
 }
 
 
-bool LocalMapping::CheckNewKeyFrames()
-{
-    unique_lock<mutex> lock(mMutexNewKFs);
-    return !mlNewKeyFrames.empty();
-}
-
 void LocalMapping::ProcessNewKeyFrame()
 {
     {
@@ -594,35 +588,6 @@ void LocalMapping::Release()
     cout << "Local Mapping RELEASE" << endl;
 }
 
-bool LocalMapping::AcceptKeyFrames()
-{
-    unique_lock<mutex> lock(mMutexAccept);
-    return mbAcceptKeyFrames;
-}
-
-void LocalMapping::SetAcceptKeyFrames(bool flag)
-{
-    unique_lock<mutex> lock(mMutexAccept);
-    mbAcceptKeyFrames = flag;
-}
-
-bool LocalMapping::SetNotStop(bool flag)
-{
-    unique_lock<mutex> lock(mMutexStop);
-
-    if (flag && mbStopped)
-        return false;
-
-    mbNotStop = flag;
-
-    return true;
-}
-
-void LocalMapping::InterruptBA()
-{
-    mbAbortBA = true;
-}
-
 void LocalMapping::KeyFrameCulling()
 {
     // Check redundant keyframes (only local keyframes)
@@ -727,12 +692,6 @@ void LocalMapping::ResetIfRequested()
     }
 }
 
-void LocalMapping::RequestFinish()
-{
-    unique_lock<mutex> lock(mMutexFinish);
-    mbFinishRequested = true;
-}
-
 bool LocalMapping::CheckFinish()
 {
     unique_lock<mutex> lock(mMutexFinish);
@@ -745,12 +704,6 @@ void LocalMapping::SetFinish()
     mbFinished = true;
     unique_lock<mutex> lock2(mMutexStop);
     mbStopped = true;
-}
-
-bool LocalMapping::isFinished()
-{
-    unique_lock<mutex> lock(mMutexFinish);
-    return mbFinished;
 }
 
 } //namespace ORB_SLAM

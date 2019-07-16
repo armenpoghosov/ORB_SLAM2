@@ -25,7 +25,7 @@
 #include "Optimizer.h"
 #include "ORBmatcher.h"
 
-#include<thread>
+#include <future>
 
 namespace ORB_SLAM2
 {
@@ -41,8 +41,8 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     mMaxIterations = iterations;
 }
 
-bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12, cv::Mat &R21, cv::Mat &t21,
-                             vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
+bool Initializer::Initialize(Frame const& CurrentFrame, vector<int> const& vMatches12,
+    cv::Mat& R21, cv::Mat& t21, vector<cv::Point3f>& vP3D, vector<bool>& vbTriangulated)
 {
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
@@ -50,16 +50,17 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
 
     mvMatches12.clear();
     mvMatches12.reserve(mvKeys2.size());
+
     mvbMatched1.resize(mvKeys1.size());
-    for(size_t i=0, iend=vMatches12.size();i<iend; i++)
+
+    for (size_t i = 0, iend = vMatches12.size(); i < iend; ++i)
     {
-        if(vMatches12[i]>=0)
-        {
-            mvMatches12.push_back(make_pair(i,vMatches12[i]));
-            mvbMatched1[i]=true;
-        }
-        else
-            mvbMatched1[i]=false;
+        bool const matched = vMatches12[i] >= 0;
+
+        mvbMatched1[i] = matched;
+
+        if (matched)
+            mvMatches12.emplace_back((int)i, vMatches12[i]);
     }
 
     const int N = mvMatches12.size();
@@ -67,26 +68,25 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
     // Indices for minimum set selection
     vector<size_t> vAllIndices;
     vAllIndices.reserve(N);
+
     vector<size_t> vAvailableIndices;
 
-    for(int i=0; i<N; i++)
-    {
+    for (int i = 0; i < N; ++i)
         vAllIndices.push_back(i);
-    }
 
     // Generate sets of 8 points for each RANSAC iteration
-    mvSets = vector< vector<size_t> >(mMaxIterations,vector<size_t>(8,0));
+    mvSets = vector< vector<size_t> >(mMaxIterations, vector<size_t>(8, 0));
 
     DUtils::Random::SeedRandOnce(0);
 
-    for(int it=0; it<mMaxIterations; it++)
+    for (int it = 0; it < mMaxIterations; ++it)
     {
         vAvailableIndices = vAllIndices;
 
         // Select a minimum set
-        for(size_t j=0; j<8; j++)
+        for (size_t j = 0; j < 8; ++j)
         {
-            int randi = DUtils::Random::RandomInt(0,vAvailableIndices.size()-1);
+            int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size() - 1);
             int idx = vAvailableIndices[randi];
 
             mvSets[it][j] = idx;
@@ -97,29 +97,30 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
     }
 
     // Launch threads to compute in parallel a fundamental matrix and a homography
-    vector<bool> vbMatchesInliersH, vbMatchesInliersF;
-    float SH, SF;
-    cv::Mat H, F;
+    vector<bool> vbMatchesInliersH;
+    vector<bool> vbMatchesInliersF;
 
-    thread threadH(&Initializer::FindHomography,this,ref(vbMatchesInliersH), ref(SH), ref(H));
-    thread threadF(&Initializer::FindFundamental,this,ref(vbMatchesInliersF), ref(SF), ref(F));
+    float SH;
+    float SF;
 
-    // Wait until both threads have finished
-    threadH.join();
-    threadF.join();
+    cv::Mat H;
+    cv::Mat F;
+
+    auto future = std::async(launch::async, &Initializer::FindHomography, this, ref(vbMatchesInliersH), ref(SH), ref(H));
+    FindFundamental(vbMatchesInliersF, SF, F);
+    future.wait(); // Wait until both have finished
 
     // Compute ratio of scores
-    float RH = SH/(SH+SF);
+    float RH = SH / (SH + SF);
 
     // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
-    if(RH>0.40)
+    if (RH > 0.40)
         return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
-    else //if(pF_HF>0.6)
+    else //if (pF_HF>0.6)
         return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
 
-    return false;
+    // return false;
 }
-
 
 void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21)
 {
@@ -127,28 +128,36 @@ void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, c
     const int N = mvMatches12.size();
 
     // Normalize coordinates
-    vector<cv::Point2f> vPn1, vPn2;
-    cv::Mat T1, T2;
-    Normalize(mvKeys1,vPn1, T1);
-    Normalize(mvKeys2,vPn2, T2);
+    vector<cv::Point2f> vPn1;
+    vector<cv::Point2f> vPn2;
+
+    cv::Mat T1;
+    cv::Mat T2;
+
+    Normalize(mvKeys1, vPn1, T1);
+    Normalize(mvKeys2, vPn2, T2);
+
     cv::Mat T2inv = T2.inv();
 
     // Best Results variables
     score = 0.0;
-    vbMatchesInliers = vector<bool>(N,false);
+    vbMatchesInliers = vector<bool>(N);
 
     // Iteration variables
     vector<cv::Point2f> vPn1i(8);
     vector<cv::Point2f> vPn2i(8);
-    cv::Mat H21i, H12i;
-    vector<bool> vbCurrentInliers(N,false);
+
+    cv::Mat H21i;
+    cv::Mat H12i;
+
+    vector<bool> vbCurrentInliers(N);
     float currentScore;
 
     // Perform all RANSAC iterations and save the solution with highest score
-    for(int it=0; it<mMaxIterations; it++)
+    for (int it = 0; it < mMaxIterations; ++it)
     {
         // Select a minimum set
-        for(size_t j=0; j<8; j++)
+        for(size_t j = 0; j < 8; ++j)
         {
             int idx = mvSets[it][j];
 
@@ -157,12 +166,12 @@ void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, c
         }
 
         cv::Mat Hn = ComputeH21(vPn1i,vPn2i);
-        H21i = T2inv*Hn*T1;
+        H21i = T2inv * Hn * T1;
         H12i = H21i.inv();
 
         currentScore = CheckHomography(H21i, H12i, vbCurrentInliers, mSigma);
 
-        if(currentScore>score)
+        if (currentScore > score)
         {
             H21 = H21i.clone();
             vbMatchesInliers = vbCurrentInliers;
@@ -186,20 +195,21 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
 
     // Best Results variables
     score = 0.0;
-    vbMatchesInliers = vector<bool>(N,false);
+    vbMatchesInliers = vector<bool>(N);
 
     // Iteration variables
     vector<cv::Point2f> vPn1i(8);
     vector<cv::Point2f> vPn2i(8);
+    
     cv::Mat F21i;
-    vector<bool> vbCurrentInliers(N,false);
     float currentScore;
+    vector<bool> vbCurrentInliers(N);
 
     // Perform all RANSAC iterations and save the solution with highest score
-    for(int it=0; it<mMaxIterations; it++)
+    for (int it = 0; it < mMaxIterations; ++it)
     {
         // Select a minimum set
-        for(int j=0; j<8; j++)
+        for (int j = 0; j < 8; ++j)
         {
             int idx = mvSets[it][j];
 
@@ -306,15 +316,15 @@ float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vecto
 {   
     const int N = mvMatches12.size();
 
-    const float h11 = H21.at<float>(0,0);
-    const float h12 = H21.at<float>(0,1);
-    const float h13 = H21.at<float>(0,2);
-    const float h21 = H21.at<float>(1,0);
-    const float h22 = H21.at<float>(1,1);
-    const float h23 = H21.at<float>(1,2);
-    const float h31 = H21.at<float>(2,0);
-    const float h32 = H21.at<float>(2,1);
-    const float h33 = H21.at<float>(2,2);
+    const float h11 = H21.at<float>(0, 0);
+    const float h12 = H21.at<float>(0, 1);
+    const float h13 = H21.at<float>(0, 2);
+    const float h21 = H21.at<float>(1, 0);
+    const float h22 = H21.at<float>(1, 1);
+    const float h23 = H21.at<float>(1, 2);
+    const float h31 = H21.at<float>(2, 0);
+    const float h32 = H21.at<float>(2, 1);
+    const float h33 = H21.at<float>(2, 2);
 
     const float h11inv = H12.at<float>(0,0);
     const float h12inv = H12.at<float>(0,1);
@@ -357,7 +367,7 @@ float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vecto
 
         const float chiSquare1 = squareDist1*invSigmaSquare;
 
-        if(chiSquare1>th)
+        if (chiSquare1 > th)
             bIn = false;
         else
             score += th - chiSquare1;
@@ -378,10 +388,7 @@ float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vecto
         else
             score += th - chiSquare2;
 
-        if(bIn)
-            vbMatchesInliers[i]=true;
-        else
-            vbMatchesInliers[i]=false;
+        vbMatchesInliers[i] = bIn;
     }
 
     return score;
@@ -458,10 +465,7 @@ float Initializer::CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesI
         else
             score += thScore - chiSquare2;
 
-        if(bIn)
-            vbMatchesInliers[i]=true;
-        else
-            vbMatchesInliers[i]=false;
+        vbMatchesInliers[i] = bIn;
     }
 
     return score;
@@ -501,28 +505,28 @@ bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv:
     R21 = cv::Mat();
     t21 = cv::Mat();
 
-    int nMinGood = max(static_cast<int>(0.9*N),minTriangulated);
+    int nMinGood = max(static_cast<int>(0.9 * N), minTriangulated);
 
     int nsimilar = 0;
-    if(nGood1>0.7*maxGood)
-        nsimilar++;
-    if(nGood2>0.7*maxGood)
-        nsimilar++;
-    if(nGood3>0.7*maxGood)
-        nsimilar++;
-    if(nGood4>0.7*maxGood)
-        nsimilar++;
+    if (nGood1 > 0.7 * maxGood)
+        ++nsimilar;
+    if (nGood2 > 0.7 * maxGood)
+        ++nsimilar;
+    if (nGood3 > 0.7 * maxGood)
+        ++nsimilar;
+    if (nGood4 > 0.7 * maxGood)
+        ++nsimilar;
 
     // If there is not a clear winner or not enough triangulated points reject initialization
-    if(maxGood<nMinGood || nsimilar>1)
+    if (maxGood < nMinGood || nsimilar > 1)
     {
         return false;
     }
 
     // If best reconstruction has enough parallax initialize
-    if(maxGood==nGood1)
+    if (maxGood == nGood1)
     {
-        if(parallax1>minParallax)
+        if (parallax1 >minParallax)
         {
             vP3D = vP3D1;
             vbTriangulated = vbTriangulated1;
@@ -531,9 +535,11 @@ bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv:
             t1.copyTo(t21);
             return true;
         }
-    }else if(maxGood==nGood2)
+
+    }
+    else if (maxGood == nGood2)
     {
-        if(parallax2>minParallax)
+        if (parallax2 > minParallax)
         {
             vP3D = vP3D2;
             vbTriangulated = vbTriangulated2;
@@ -542,9 +548,10 @@ bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv:
             t1.copyTo(t21);
             return true;
         }
-    }else if(maxGood==nGood3)
+    }
+    else if (maxGood == nGood3)
     {
-        if(parallax3>minParallax)
+        if (parallax3 > minParallax)
         {
             vP3D = vP3D3;
             vbTriangulated = vbTriangulated3;
@@ -553,9 +560,10 @@ bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv:
             t2.copyTo(t21);
             return true;
         }
-    }else if(maxGood==nGood4)
+    }
+    else if (maxGood == nGood4)
     {
-        if(parallax4>minParallax)
+        if (parallax4 > minParallax)
         {
             vP3D = vP3D4;
             vbTriangulated = vbTriangulated4;

@@ -35,7 +35,8 @@
 namespace ORB_SLAM2
 {
 
-LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale):
+LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, bool bFixScale)
+    :
     mbResetRequested(false),
     mbFinishRequested(false),
     mbFinished(true),
@@ -206,7 +207,7 @@ bool LoopClosing::DetectLoop()
         }
 
         // If the group is not consistent with any previous group insert with consistency counter set to zero
-        if(!bConsistentForSomeGroup)
+        if (!bConsistentForSomeGroup)
         {
             ConsistentGroup cg = make_pair(spCandidateGroup,0);
             vCurrentConsistentGroups.push_back(cg);
@@ -216,20 +217,18 @@ bool LoopClosing::DetectLoop()
     // Update Covisibility Consistent Groups
     mvConsistentGroups = vCurrentConsistentGroups;
 
-
     // Add Current Keyframe to database
     mpKeyFrameDB->add(mpCurrentKF);
 
-    if(mvpEnoughConsistentCandidates.empty())
+    if (mvpEnoughConsistentCandidates.empty())
     {
         mpCurrentKF->SetErase();
         return false;
     }
-    else
-    {
-        return true;
-    }
 
+    return true;
+
+    // TODO: PAE: what is this crap!?
     mpCurrentKF->SetErase();
     return false;
 }
@@ -359,18 +358,18 @@ bool LoopClosing::ComputeSim3()
     for(vector<KeyFrame*>::iterator vit=vpLoopConnectedKFs.begin(); vit!=vpLoopConnectedKFs.end(); vit++)
     {
         KeyFrame* pKF = *vit;
+
         vector<MapPoint*> vpMapPoints = pKF->GetMapPointMatches();
-        for(size_t i=0, iend=vpMapPoints.size(); i<iend; i++)
+
+        for (size_t i = 0, iend = vpMapPoints.size(); i < iend; ++i)
         {
             MapPoint* pMP = vpMapPoints[i];
-            if(pMP)
-            {
-                if(!pMP->isBad() && pMP->mnLoopPointForKF!=mpCurrentKF->mnId)
-                {
-                    mvpLoopMapPoints.push_back(pMP);
-                    pMP->mnLoopPointForKF=mpCurrentKF->mnId;
-                }
-            }
+
+            if (pMP == nullptr || pMP->isBad() || pMP->mnLoopPointForKF == mpCurrentKF->mnId)
+                continue;
+
+            mvpLoopMapPoints.push_back(pMP);
+            pMP->mnLoopPointForKF=mpCurrentKF->mnId;
         }
     }
 
@@ -385,21 +384,18 @@ bool LoopClosing::ComputeSim3()
             nTotalMatches++;
     }
 
-    if(nTotalMatches>=40)
+    if (nTotalMatches >= 40)
     {
         for(int i=0; i<nInitialCandidates; i++)
             if(mvpEnoughConsistentCandidates[i]!=mpMatchedKF)
                 mvpEnoughConsistentCandidates[i]->SetErase();
         return true;
     }
-    else
-    {
-        for(int i=0; i<nInitialCandidates; i++)
-            mvpEnoughConsistentCandidates[i]->SetErase();
-        mpCurrentKF->SetErase();
-        return false;
-    }
 
+    for (int i = 0; i < nInitialCandidates; ++i)
+        mvpEnoughConsistentCandidates[i]->SetErase();
+    mpCurrentKF->SetErase();
+    return false;
 }
 
 void LoopClosing::CorrectLoop()
@@ -481,14 +477,12 @@ void LoopClosing::CorrectLoop()
             g2o::Sim3 g2oSiw =NonCorrectedSim3[pKFi];
 
             vector<MapPoint*> vpMPsi = pKFi->GetMapPointMatches();
-            for(size_t iMP=0, endMPi = vpMPsi.size(); iMP<endMPi; iMP++)
+
+            for (size_t iMP = 0, endMPi = vpMPsi.size(); iMP < endMPi; ++iMP)
             {
                 MapPoint* pMPi = vpMPsi[iMP];
-                if(!pMPi)
-                    continue;
-                if(pMPi->isBad())
-                    continue;
-                if(pMPi->mnCorrectedByKF==mpCurrentKF->mnId)
+
+                if (pMPi == nullptr || pMPi->isBad() || pMPi->mnCorrectedByKF == mpCurrentKF->mnId)
                     continue;
 
                 // Project with non-corrected pose and project back with corrected pose
@@ -520,23 +514,23 @@ void LoopClosing::CorrectLoop()
 
         // Start Loop Fusion
         // Update matched map points and replace if duplicated
-        for(size_t i=0; i<mvpCurrentMatchedPoints.size(); i++)
+        for(size_t i = 0; i < mvpCurrentMatchedPoints.size(); ++i)
         {
-            if(mvpCurrentMatchedPoints[i])
+            MapPoint* pLoopMP = mvpCurrentMatchedPoints[i];
+
+            if (pLoopMP == nullptr)
+                continue;
+
+            MapPoint* pCurMP = mpCurrentKF->GetMapPoint(i);
+            if (pCurMP != nullptr)
+                pCurMP->Replace(pLoopMP);
+            else
             {
-                MapPoint* pLoopMP = mvpCurrentMatchedPoints[i];
-                MapPoint* pCurMP = mpCurrentKF->GetMapPoint(i);
-                if(pCurMP)
-                    pCurMP->Replace(pLoopMP);
-                else
-                {
-                    mpCurrentKF->AddMapPoint(pLoopMP,i);
-                    pLoopMP->AddObservation(mpCurrentKF,i);
-                    pLoopMP->ComputeDistinctiveDescriptors();
-                }
+                mpCurrentKF->AddMapPoint(pLoopMP, i);
+                pLoopMP->AddObservation(mpCurrentKF, i);
+                pLoopMP->ComputeDistinctiveDescriptors();
             }
         }
-
     }
 
     // Project MapPoints observed in the neighborhood of the loop keyframe
@@ -544,26 +538,22 @@ void LoopClosing::CorrectLoop()
     // Fuse duplications.
     SearchAndFuse(CorrectedSim3);
 
-
     // After the MapPoint fusion, new links in the covisibility graph will appear attaching both sides of the loop
-    map<KeyFrame*, set<KeyFrame*> > LoopConnections;
+    std::map<KeyFrame*, std::set<KeyFrame*> > LoopConnections;
 
-    for(vector<KeyFrame*>::iterator vit=mvpCurrentConnectedKFs.begin(), vend=mvpCurrentConnectedKFs.end(); vit!=vend; vit++)
+    for (KeyFrame* pKFi : mvpCurrentConnectedKFs)
     {
-        KeyFrame* pKFi = *vit;
         vector<KeyFrame*> vpPreviousNeighbors = pKFi->GetVectorCovisibleKeyFrames();
 
         // Update connections. Detect new links.
         pKFi->UpdateConnections();
-        LoopConnections[pKFi]=pKFi->GetConnectedKeyFrames();
-        for(vector<KeyFrame*>::iterator vit_prev=vpPreviousNeighbors.begin(), vend_prev=vpPreviousNeighbors.end(); vit_prev!=vend_prev; vit_prev++)
-        {
-            LoopConnections[pKFi].erase(*vit_prev);
-        }
-        for(vector<KeyFrame*>::iterator vit2=mvpCurrentConnectedKFs.begin(), vend2=mvpCurrentConnectedKFs.end(); vit2!=vend2; vit2++)
-        {
-            LoopConnections[pKFi].erase(*vit2);
-        }
+        LoopConnections[pKFi] = pKFi->GetConnectedKeyFrames();
+
+        for (KeyFrame* pKFN : vpPreviousNeighbors)
+            LoopConnections[pKFi].erase(pKFN);
+
+        for (KeyFrame* pCCKF : mvpCurrentConnectedKFs)
+            LoopConnections[pKFi].erase(pCCKF);
     }
 
     // Optimize graph
@@ -665,14 +655,15 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
         if (idx != mnFullBAIdx)
             return;
 
-        if(!mbStopGBA)
+        if (!mbStopGBA)
         {
             cout << "Global Bundle Adjustment finished" << endl;
             cout << "Updating map ..." << endl;
-            mpLocalMapper->RequestStop();
-            // Wait until Local Mapping has effectively stopped
 
-            while(!mpLocalMapper->isStopped() && !mpLocalMapper->isFinished())
+            mpLocalMapper->RequestStop();
+
+            // Wait until Local Mapping has effectively stopped
+            while (!mpLocalMapper->isStopped() && !mpLocalMapper->isFinished())
             {
                 std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
@@ -681,23 +672,27 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
             unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
 
             // Correct keyframes starting at map first keyframe
-            list<KeyFrame*> lpKFtoCheck(mpMap->mvpKeyFrameOrigins.begin(),mpMap->mvpKeyFrameOrigins.end());
+            list<KeyFrame*> lpKFtoCheck(mpMap->mvpKeyFrameOrigins.begin(), mpMap->mvpKeyFrameOrigins.end());
 
-            while(!lpKFtoCheck.empty())
+            while (!lpKFtoCheck.empty())
             {
                 KeyFrame* pKF = lpKFtoCheck.front();
+
                 const set<KeyFrame*> sChilds = pKF->GetChilds();
                 cv::Mat Twc = pKF->GetPoseInverse();
-                for(set<KeyFrame*>::const_iterator sit=sChilds.begin();sit!=sChilds.end();sit++)
+
+                for (auto sit = sChilds.cbegin(); sit != sChilds.cend(); ++sit)
                 {
                     KeyFrame* pChild = *sit;
-                    if(pChild->mnBAGlobalForKF!=nLoopKF)
+
+                    if (pChild->mnBAGlobalForKF != nLoopKF)
                     {
                         cv::Mat Tchildc = pChild->GetPose()*Twc;
                         pChild->mTcwGBA = Tchildc*pKF->mTcwGBA;//*Tcorc*pKF->mTcwGBA;
-                        pChild->mnBAGlobalForKF=nLoopKF;
+                        pChild->mnBAGlobalForKF = nLoopKF;
 
                     }
+
                     lpKFtoCheck.push_back(pChild);
                 }
 
@@ -709,14 +704,14 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
             // Correct MapPoints
             const vector<MapPoint*> vpMPs = mpMap->GetAllMapPoints();
 
-            for(size_t i=0; i<vpMPs.size(); i++)
+            for (size_t i=0; i<vpMPs.size(); i++)
             {
                 MapPoint* pMP = vpMPs[i];
 
-                if(pMP->isBad())
+                if (pMP->isBad())
                     continue;
 
-                if(pMP->mnBAGlobalForKF==nLoopKF)
+                if (pMP->mnBAGlobalForKF == nLoopKF)
                 {
                     // If optimized by Global BA, just update
                     pMP->SetWorldPos(pMP->mPosGBA);
@@ -726,7 +721,7 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
                     // Update according to the correction of its reference keyframe
                     KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
-                    if(pRefKF->mnBAGlobalForKF!=nLoopKF)
+                    if (pRefKF->mnBAGlobalForKF != nLoopKF)
                         continue;
 
                     // Map to non-corrected camera
@@ -741,7 +736,7 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 
                     pMP->SetWorldPos(Rwc*Xc+twc);
                 }
-            }            
+            }
 
             mpMap->InformNewBigChange();
 
@@ -755,29 +750,6 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
     }
 }
 
-void LoopClosing::RequestFinish()
-{
-    unique_lock<mutex> lock(mMutexFinish);
-    mbFinishRequested = true;
-}
-
-bool LoopClosing::CheckFinish()
-{
-    unique_lock<mutex> lock(mMutexFinish);
-    return mbFinishRequested;
-}
-
-void LoopClosing::SetFinish()
-{
-    unique_lock<mutex> lock(mMutexFinish);
-    mbFinished = true;
-}
-
-bool LoopClosing::isFinished()
-{
-    unique_lock<mutex> lock(mMutexFinish);
-    return mbFinished;
-}
 
 
 } //namespace ORB_SLAM

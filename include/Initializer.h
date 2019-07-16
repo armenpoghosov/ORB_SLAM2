@@ -45,15 +45,14 @@ public:
 
 private:
 
-    void FindHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21);
-    void FindFundamental(vector<bool> &vbInliers, float &score, cv::Mat &F21);
+    void FindHomography(vector<bool>& vbMatchesInliers, float& score, cv::Mat& H21);
+    void FindFundamental(vector<bool>& vbInliers, float& score, cv::Mat& F21);
 
-    cv::Mat ComputeH21(const vector<cv::Point2f> &vP1, const vector<cv::Point2f> &vP2);
-    cv::Mat ComputeF21(const vector<cv::Point2f> &vP1, const vector<cv::Point2f> &vP2);
+    cv::Mat ComputeH21(vector<cv::Point2f> const& vP1, vector<cv::Point2f> const& vP2);
+    cv::Mat ComputeF21(vector<cv::Point2f> const& vP1, vector<cv::Point2f> const& vP2);
 
-    float CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vector<bool> &vbMatchesInliers, float sigma);
-
-    float CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesInliers, float sigma);
+    float CheckHomography(cv::Mat const& H21, cv::Mat const& H12, vector<bool>& vbMatchesInliers, float sigma);
+    float CheckFundamental(cv::Mat const& F21, vector<bool>& vbMatchesInliers, float sigma);
 
     bool ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv::Mat &K,
                       cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated);
@@ -73,26 +72,27 @@ private:
 
 
     // Keypoints from Reference Frame (Frame 1)
-    vector<cv::KeyPoint> mvKeys1;
+    vector<cv::KeyPoint>    mvKeys1;
 
     // Keypoints from Current Frame (Frame 2)
-    vector<cv::KeyPoint> mvKeys2;
+    vector<cv::KeyPoint>    mvKeys2;
 
     // Current Matches from Reference to Current
-    vector<Match> mvMatches12;
-    vector<bool> mvbMatched1;
+    vector<Match>           mvMatches12;
+    vector<bool>            mvbMatched1;
 
     // Calibration
-    cv::Mat mK;
+    cv::Mat                 mK;
 
     // Standard Deviation and Variance
-    float mSigma, mSigma2;
+    float                   mSigma;
+    float                   mSigma2;
 
     // Ransac max iterations
-    int mMaxIterations;
+    int                     mMaxIterations;
 
     // Ransac sets
-    vector<vector<size_t> > mvSets;   
+    vector<vector<size_t> > mvSets;
 
 };
 

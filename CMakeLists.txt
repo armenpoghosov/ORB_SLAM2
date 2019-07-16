@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM2)
 
-add_compile_options(-bigobj -MT)
+add_compile_options(-bigobj -MTd)
 
 add_definitions(-DINITGUID)
 
@@ -148,6 +148,9 @@ target_link_libraries(mono_tum ${PROJECT_NAME})
 
 add_executable(mono_kitti Examples/Monocular/mono_kitti.cc)
 target_link_libraries(mono_kitti ${PROJECT_NAME})
+
+add_executable(mono_kitti_segmented Examples/Monocular/mono_kitti_segmented.cc)
+target_link_libraries(mono_kitti_segmented ${PROJECT_NAME})
 
 add_executable(mono_euroc Examples/Monocular/mono_euroc.cc)
 target_link_libraries(mono_euroc ${PROJECT_NAME})

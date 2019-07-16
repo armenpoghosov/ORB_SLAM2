@@ -278,110 +278,84 @@ void Tracking::Track()
         bool bOK;
 
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
-        if(!mbOnlyTracking)
+        if (!mbOnlyTracking)
         {
             // Local Mapping is activated. This is the normal behaviour, unless
             // you explicitly activate the "only tracking" mode.
-
-            if(mState==OK)
+            if (mState == OK)
             {
                 // Local Mapping might have changed some MapPoints tracked in last frame
                 CheckReplacedInLastFrame();
 
-                if(mVelocity.empty() || mCurrentFrame.m_id<mnLastRelocFrameId+2)
-                {
+                if (mVelocity.empty() || mCurrentFrame.m_id < mnLastRelocFrameId + 2)
                     bOK = TrackReferenceKeyFrame();
-                }
-                else
-                {
-                    bOK = TrackWithMotionModel();
-                    if(!bOK)
-                        bOK = TrackReferenceKeyFrame();
-                }
+                else if (!(bOK = TrackWithMotionModel()))
+                    bOK = TrackReferenceKeyFrame();
             }
             else
-            {
                 bOK = Relocalization();
-            }
         }
+        // Localization Mode: Local Mapping is deactivated
+        else if (mState == LOST)
+            bOK = Relocalization();
+        else if (!mbVO) // In last frame we tracked enough MapPoints in the map
+            bOK =  mVelocity.empty() ?  TrackReferenceKeyFrame() : TrackWithMotionModel();
         else
         {
-            // Localization Mode: Local Mapping is deactivated
+            // In last frame we tracked mainly "visual odometry" points.
 
-            if(mState==LOST)
+            // We compute two camera poses, one from motion model and one doing relocalization.
+            // If relocalization is sucessfull we choose that solution, otherwise we retain
+            // the "visual odometry" solution.
+
+            bool bOKMM = false;
+            bool bOKReloc = false;
+
+            cv::Mat TcwMM;
+
+            vector<bool> vbOutMM;
+            vector<MapPoint*> vpMPsMM;
+
+            if (!mVelocity.empty())
             {
-                bOK = Relocalization();
+                bOKMM = TrackWithMotionModel();
+                vpMPsMM = mCurrentFrame.mvpMapPoints;
+                vbOutMM = mCurrentFrame.mvbOutlier;
+                TcwMM = mCurrentFrame.mTcw.clone();
             }
-            else
-            {
-                if(!mbVO)
-                {
-                    // In last frame we tracked enough MapPoints in the map
 
-                    if(!mVelocity.empty())
+            bOKReloc = Relocalization();
+
+            if (bOKMM && !bOKReloc)
+            {
+                mCurrentFrame.SetPose(TcwMM);
+                mCurrentFrame.mvpMapPoints = vpMPsMM;
+                mCurrentFrame.mvbOutlier = vbOutMM;
+
+                if (mbVO)
+                {
+                    for (int i = 0; i<mCurrentFrame.N; ++i)
                     {
-                        bOK = TrackWithMotionModel();
-                    }
-                    else
-                    {
-                        bOK = TrackReferenceKeyFrame();
+                        MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+                        if (pMP != nullptr && !mCurrentFrame.mvbOutlier[i])
+                            pMP->IncreaseFound();
                     }
                 }
-                else
-                {
-                    // In last frame we tracked mainly "visual odometry" points.
-
-                    // We compute two camera poses, one from motion model and one doing relocalization.
-                    // If relocalization is sucessfull we choose that solution, otherwise we retain
-                    // the "visual odometry" solution.
-
-                    bool bOKMM = false;
-                    bool bOKReloc = false;
-                    vector<MapPoint*> vpMPsMM;
-                    vector<bool> vbOutMM;
-                    cv::Mat TcwMM;
-                    if(!mVelocity.empty())
-                    {
-                        bOKMM = TrackWithMotionModel();
-                        vpMPsMM = mCurrentFrame.mvpMapPoints;
-                        vbOutMM = mCurrentFrame.mvbOutlier;
-                        TcwMM = mCurrentFrame.mTcw.clone();
-                    }
-                    bOKReloc = Relocalization();
-
-                    if(bOKMM && !bOKReloc)
-                    {
-                        mCurrentFrame.SetPose(TcwMM);
-                        mCurrentFrame.mvpMapPoints = vpMPsMM;
-                        mCurrentFrame.mvbOutlier = vbOutMM;
-
-                        if(mbVO)
-                        {
-                            for(int i =0; i<mCurrentFrame.N; i++)
-                            {
-                                if(mCurrentFrame.mvpMapPoints[i] && !mCurrentFrame.mvbOutlier[i])
-                                {
-                                    mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
-                                }
-                            }
-                        }
-                    }
-                    else if(bOKReloc)
-                    {
-                        mbVO = false;
-                    }
-
-                    bOK = bOKReloc || bOKMM;
-                }
             }
+            else if (bOKReloc)
+            {
+                mbVO = false;
+            }
+
+            bOK = bOKReloc || bOKMM;
         }
 
         mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
         // If we have an initial estimation of the camera pose and matching. Track the local map.
-        if(!mbOnlyTracking)
+        if (!mbOnlyTracking)
         {
-            if(bOK)
+            if (bOK)
                 bOK = TrackLocalMap();
         }
         else
@@ -389,23 +363,20 @@ void Tracking::Track()
             // mbVO true means that there are few matches to MapPoints in the map. We cannot retrieve
             // a local map and therefore we do not perform TrackLocalMap(). Once the system relocalizes
             // the camera we will use the local map again.
-            if(bOK && !mbVO)
+            if (bOK && !mbVO)
                 bOK = TrackLocalMap();
         }
 
-        if(bOK)
-            mState = OK;
-        else
-            mState=LOST;
+        mState = bOK ? OK : LOST;
 
         // Update drawer
         mpFrameDrawer->Update(this);
 
         // If tracking were good, check if we insert a keyframe
-        if(bOK)
+        if (bOK)
         {
             // Update motion model
-            if(!mLastFrame.mTcw.empty())
+            if (!mLastFrame.mTcw.empty())
             {
                 cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
                 mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0,3).colRange(0,3));
@@ -418,52 +389,47 @@ void Tracking::Track()
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
             // Clean VO matches
-            for(int i=0; i<mCurrentFrame.N; i++)
+            for (int i = 0; i < mCurrentFrame.N; ++i)
             {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-                if(pMP)
-                    if(pMP->Observations()<1)
-                    {
-                        mCurrentFrame.mvbOutlier[i] = false;
-                        mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
-                    }
+                MapPoint*& rpMP = mCurrentFrame.mvpMapPoints[i];
+
+                if (rpMP != nullptr && rpMP->Observations() < 1)
+                {
+                    mCurrentFrame.mvbOutlier[i] = false;
+                    rpMP = nullptr;
+                }
             }
 
             // Delete temporal MapPoints
-            for(list<MapPoint*>::iterator lit = mlpTemporalPoints.begin(), lend =  mlpTemporalPoints.end(); lit!=lend; lit++)
-            {
-                MapPoint* pMP = *lit;
+            for (MapPoint* pMP : mlpTemporalPoints)
                 delete pMP;
-            }
             mlpTemporalPoints.clear();
 
             // Check if we need to insert a new keyframe
-            if(NeedNewKeyFrame())
+            if (NeedNewKeyFrame())
                 CreateNewKeyFrame();
 
             // We allow points with high innovation (considererd outliers by the Huber Function)
             // pass to the new keyframe, so that bundle adjustment will finally decide
             // if they are outliers or not. We don't want next frame to estimate its position
             // with those points so we discard them in the frame.
-            for(int i=0; i<mCurrentFrame.N;i++)
+            for (int i = 0; i < mCurrentFrame.N; ++i)
             {
-                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
-                    mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
+                MapPoint*& rpMP = mCurrentFrame.mvpMapPoints[i];
+                if (rpMP != nullptr && mCurrentFrame.mvbOutlier[i])
+                    rpMP = nullptr;
             }
         }
 
         // Reset if the camera get lost soon after initialization
-        if(mState==LOST)
+        if (mState == LOST && mpMap->KeyFramesInMap() <= 5)
         {
-            if(mpMap->KeyFramesInMap()<=5)
-            {
-                cout << "Track lost soon after initialisation, reseting..." << endl;
-                mpSystem->Reset();
-                return;
-            }
+            cout << "Track lost soon after initialisation, reseting..." << endl;
+            mpSystem->Reset();
+            return;
         }
 
-        if(!mCurrentFrame.mpReferenceKF)
+        if (!mCurrentFrame.mpReferenceKF)
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
         mLastFrame = Frame(mCurrentFrame);
@@ -786,15 +752,14 @@ void Tracking::UpdateLastFrame()
 
     // Create "visual odometry" MapPoints
     // We sort points according to their measured depth by the stereo/RGB-D sensor
-    vector<pair<float,int> > vDepthIdx;
+    vector<pair<float, int> > vDepthIdx;
     vDepthIdx.reserve(mLastFrame.N);
-    for(int i=0; i<mLastFrame.N;i++)
+
+    for (int i = 0; i < mLastFrame.N; ++i)
     {
         float z = mLastFrame.mvDepth[i];
-        if(z>0)
-        {
-            vDepthIdx.push_back(make_pair(z,i));
-        }
+        if (z > 0)
+            vDepthIdx.emplace_back(z, i);
     }
 
     if(vDepthIdx.empty())
@@ -805,36 +770,24 @@ void Tracking::UpdateLastFrame()
     // We insert all close points (depth<mThDepth)
     // If less than 100 close points, we insert the 100 closest ones.
     int nPoints = 0;
-    for(size_t j=0; j<vDepthIdx.size();j++)
+    for (size_t j = 0; j < vDepthIdx.size(); ++j)
     {
         int i = vDepthIdx[j].second;
 
-        bool bCreateNew = false;
+        MapPoint*& rpMP = mLastFrame.mvpMapPoints[i];
 
-        MapPoint* pMP = mLastFrame.mvpMapPoints[i];
-        if(!pMP)
-            bCreateNew = true;
-        else if(pMP->Observations()<1)
-        {
-            bCreateNew = true;
-        }
-
-        if(bCreateNew)
+        if (rpMP == nullptr || rpMP->Observations() < 1)
         {
             cv::Mat x3D = mLastFrame.UnprojectStereo(i);
-            MapPoint* pNewMP = new MapPoint(x3D,mpMap,&mLastFrame,i);
 
-            mLastFrame.mvpMapPoints[i]=pNewMP;
+            rpMP = new MapPoint(x3D, mpMap, &mLastFrame, i);
 
-            mlpTemporalPoints.push_back(pNewMP);
-            nPoints++;
-        }
-        else
-        {
-            nPoints++;
+            mlpTemporalPoints.push_back(rpMP);
         }
 
-        if(vDepthIdx[j].first>mThDepth && nPoints>100)
+        ++nPoints;
+
+        if (vDepthIdx[j].first > mThDepth && nPoints > 100)
             break;
     }
 }
@@ -852,21 +805,17 @@ bool Tracking::TrackWithMotionModel()
     std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), nullptr);
 
     // Project points seen in previous frame
-    int th;
-    if(mSensor!=System::STEREO)
-        th=15;
-    else
-        th=7;
-    int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
+    int th = mSensor != System::STEREO ? 15 : 7;
 
     // If few matches, uses a wider window search
-    if(nmatches<20)
+    int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
+    if (nmatches < 20)
     {
-        fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
-        nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,2*th,mSensor==System::MONOCULAR);
+        std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), nullptr);
+        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th, mSensor == System::MONOCULAR);
     }
 
-    if(nmatches<20)
+    if (nmatches < 20)
         return false;
 
     // Optimize frame pose with all matches
@@ -876,30 +825,30 @@ bool Tracking::TrackWithMotionModel()
     int nmatchesMap = 0;
     for (int i = 0; i < mCurrentFrame.N; ++i)
     {
-        if (mCurrentFrame.mvpMapPoints[i] != nullptr)
+        MapPoint*& rpMP = mCurrentFrame.mvpMapPoints[i];
+
+        if (rpMP == nullptr)
+            continue;
+
+        if (mCurrentFrame.mvbOutlier[i])
         {
-            if(mCurrentFrame.mvbOutlier[i])
-            {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-
-                mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
-                mCurrentFrame.mvbOutlier[i]=false;
-                pMP->mbTrackInView = false;
-                pMP->mnLastFrameSeen = mCurrentFrame.m_id;
-                nmatches--;
-            }
-            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
-                nmatchesMap++;
+            mCurrentFrame.mvbOutlier[i] = false;
+            rpMP->mbTrackInView = false;
+            rpMP->mnLastFrameSeen = mCurrentFrame.m_id;
+            rpMP = nullptr;
+            --nmatches;
         }
-    }    
-
-    if(mbOnlyTracking)
-    {
-        mbVO = nmatchesMap<10;
-        return nmatches>20;
+        else if (rpMP->Observations() > 0)
+            ++nmatchesMap;
     }
 
-    return nmatchesMap>=10;
+    if (mbOnlyTracking)
+    {
+        mbVO = nmatchesMap < 10;
+        return nmatches > 20;
+    }
+
+    return nmatchesMap >= 10;
 }
 
 bool Tracking::TrackLocalMap()

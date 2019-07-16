@@ -406,9 +406,8 @@ int ORBmatcher::SearchForInitialization(Frame& F1, Frame& F2,
         if (level1 > 0)
             continue;
 
-        vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[i1].x,vbPrevMatched[i1].y, windowSize,level1,level1);
-
-        if(vIndices2.empty())
+        vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[i1].x, vbPrevMatched[i1].y, windowSize, level1, level1);
+        if (vIndices2.empty())
             continue;
 
         cv::Mat d1 = F1.mDescriptors.row(i1);

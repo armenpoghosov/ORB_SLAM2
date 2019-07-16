@@ -599,23 +599,24 @@ void KeyFrame::EraseConnection(KeyFrame* pKF)
 vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const float &r) const
 {
     vector<size_t> vIndices;
+
+    int const nMinCellX = (std::max)(0, (int)floor((x - mnMinX - r) * mfGridElementWidthInv));
+    if (nMinCellX >= mnGridCols)
+        return vIndices;
+
+    int const nMaxCellX = (std::min)((int)mnGridCols - 1, (int)ceil((x - mnMinX + r) * mfGridElementWidthInv));
+    if (nMaxCellX < 0)
+        return vIndices;
+
+    int const nMinCellY = (std::max)(0, (int)floor((y - mnMinY - r) * mfGridElementHeightInv));
+    if (nMinCellY >= mnGridRows)
+        return vIndices;
+
+    int const nMaxCellY = (std::min)((int)mnGridRows - 1,(int)ceil((y - mnMinY + r) * mfGridElementHeightInv));
+    if (nMaxCellY < 0)
+        return vIndices;
+
     vIndices.reserve(N);
-
-    const int nMinCellX = max(0,(int)floor((x-mnMinX-r)*mfGridElementWidthInv));
-    if(nMinCellX>=mnGridCols)
-        return vIndices;
-
-    const int nMaxCellX = min((int)mnGridCols-1,(int)ceil((x-mnMinX+r)*mfGridElementWidthInv));
-    if(nMaxCellX<0)
-        return vIndices;
-
-    const int nMinCellY = max(0,(int)floor((y-mnMinY-r)*mfGridElementHeightInv));
-    if(nMinCellY>=mnGridRows)
-        return vIndices;
-
-    const int nMaxCellY = min((int)mnGridRows-1,(int)ceil((y-mnMinY+r)*mfGridElementHeightInv));
-    if(nMaxCellY<0)
-        return vIndices;
 
     for (int ix = nMinCellX; ix <= nMaxCellX; ++ix)
     {
@@ -669,18 +670,20 @@ float KeyFrame::ComputeSceneMedianDepth(int q)
 
     vector<float> vDepths;
     vDepths.reserve(N);
-    cv::Mat Rcw2 = Tcw_.row(2).colRange(0,3);
+
+    cv::Mat Rcw2 = Tcw_.row(2).colRange(0, 3);
     Rcw2 = Rcw2.t();
     float zcw = Tcw_.at<float>(2, 3);
-    for(int i=0; i<N; i++)
+
+    for (int i = 0; i < N; ++i)
     {
-        if(mvpMapPoints[i])
-    {
-            MapPoint* pMP = mvpMapPoints[i];
-        cv::Mat x3Dw = pMP->GetWorldPos();
-        float z = Rcw2.dot(x3Dw) + zcw;
-        vDepths.push_back(z);
-    }
+        MapPoint* pMP = mvpMapPoints[i];
+        if (pMP != nullptr)
+        {
+            cv::Mat x3Dw = pMP->GetWorldPos();
+            float z = Rcw2.dot(x3Dw) + zcw;
+            vDepths.push_back(z);
+        }
     }
 
     // TODO: PAE: get rid of this crap with sorting!
