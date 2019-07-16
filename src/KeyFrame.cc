@@ -26,9 +26,9 @@
 namespace ORB_SLAM2
 {
 
-long unsigned int KeyFrame::nNextId = 0;
+uint64_t KeyFrame::s_next_id = 0;
 
-KeyFrame::KeyFrame(Frame&F, Map* pMap, KeyFrameDatabase* pKFDB)
+KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     :
     mnFrameId(F.m_id),
     mTimeStamp(F.mTimeStamp),
@@ -84,7 +84,7 @@ KeyFrame::KeyFrame(Frame&F, Map* pMap, KeyFrameDatabase* pKFDB)
     mHalfBaseline(F.mb / 2),
     mpMap(pMap)
 {
-    mnId = nNextId++;
+    mnId = s_next_id++;
 
     mGrid.resize(mnGridCols);
 
@@ -110,18 +110,19 @@ void KeyFrame::ComputeBoW()
     }
 }
 
-void KeyFrame::SetPose(const cv::Mat &Tcw_)
+void KeyFrame::SetPose(cv::Mat const& Tcw_)
 {
     unique_lock<mutex> lock(mMutexPose);
+
     Tcw_.copyTo(Tcw);
     cv::Mat Rcw = Tcw.rowRange(0,3).colRange(0,3);
     cv::Mat tcw = Tcw.rowRange(0,3).col(3);
     cv::Mat Rwc = Rcw.t();
-    Ow = -Rwc*tcw;
+    Ow = -Rwc * tcw;
 
-    Twc = cv::Mat::eye(4,4,Tcw.type());
-    Rwc.copyTo(Twc.rowRange(0,3).colRange(0,3));
-    Ow.copyTo(Twc.rowRange(0,3).col(3));
+    Twc = cv::Mat::eye(4, 4, Tcw.type());
+    Rwc.copyTo(Twc.rowRange(0, 3).colRange(0, 3));
+    Ow.copyTo(Twc.rowRange(0, 3).col(3));
     cv::Mat center = (cv::Mat_<float>(4,1) << mHalfBaseline, 0 , 0, 1);
     Cw = Twc*center;
 }
@@ -275,12 +276,6 @@ void KeyFrame::EraseMapPointMatch(MapPoint* pMP)
     int idx = pMP->GetIndexInKeyFrame(this);
     if (idx >= 0)
         mvpMapPoints[idx] = nullptr;
-}
-
-
-void KeyFrame::ReplaceMapPointMatch(const size_t &idx, MapPoint* pMP)
-{
-    mvpMapPoints[idx]=pMP;
 }
 
 std::set<MapPoint*> KeyFrame::GetMapPoints()
@@ -490,9 +485,7 @@ void KeyFrame::SetErase()
     }
 
     if (mbToBeErased)
-    {
         SetBadFlag();
-    }
 }
 
 void KeyFrame::SetBadFlag()
@@ -510,13 +503,12 @@ void KeyFrame::SetBadFlag()
         }
     }
 
-    for (map<KeyFrame*, int>::iterator mit = mConnectedKeyFrameWeights.begin(), mend=mConnectedKeyFrameWeights.end();
-        mit != mend; ++mit)
-        mit->first->EraseConnection(this);
+    for (auto const& pair : mConnectedKeyFrameWeights)
+        pair.first->EraseConnection(this);
 
-    for (size_t i = 0; i < mvpMapPoints.size(); ++i)
-        if (mvpMapPoints[i])
-            mvpMapPoints[i]->EraseObservation(this);
+    for (MapPoint* pMP : mvpMapPoints)
+        if (pMP != nullptr)
+            pMP->EraseObservation(this);
 
     {
         unique_lock<mutex> lock(mMutexConnections);
@@ -531,7 +523,7 @@ void KeyFrame::SetBadFlag()
 
         // Assign at each iteration one children with a parent (the pair with highest covisibility weight)
         // Include that children as new parent candidate for the rest
-        while(!mspChildrens.empty())
+        while (!mspChildrens.empty())
         {
             bool bContinue = false;
 
@@ -539,23 +531,21 @@ void KeyFrame::SetBadFlag()
             KeyFrame* pC;
             KeyFrame* pP;
 
-            for(set<KeyFrame*>::iterator sit=mspChildrens.begin(), send=mspChildrens.end(); sit!=send; sit++)
+            for (KeyFrame* pKF : mspChildrens)
             {
-                KeyFrame* pKF = *sit;
-
-                if(pKF->isBad())
+                if (pKF->isBad())
                     continue;
 
                 // Check if a parent candidate is connected to the keyframe
                 vector<KeyFrame*> vpConnected = pKF->GetVectorCovisibleKeyFrames();
-                for(size_t i=0, iend=vpConnected.size(); i<iend; i++)
+                for (size_t i = 0, iend = vpConnected.size(); i<iend; i++)
                 {
-                    for(set<KeyFrame*>::iterator spcit=sParentCandidates.begin(), spcend=sParentCandidates.end(); spcit!=spcend; spcit++)
+                    for (KeyFrame* pcKF : sParentCandidates)
                     {
-                        if(vpConnected[i]->mnId == (*spcit)->mnId)
+                        if (vpConnected[i]->mnId == pcKF->mnId)
                         {
                             int w = pKF->GetWeight(vpConnected[i]);
-                            if(w>max)
+                            if (w > max)
                             {
                                 pC = pKF;
                                 pP = vpConnected[i];
@@ -646,21 +636,18 @@ vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const
     return vIndices;
 }
 
-bool KeyFrame::IsInImage(float x, float y) const
-{
-    return x >= mnMinX && x < mnMaxX && y >= mnMinY && y < mnMaxY;
-}
-
 cv::Mat KeyFrame::UnprojectStereo(int i)
 {
     float const z = mvDepth[i];
+
     if (z <= 0)
         return cv::Mat();
 
-    const float u = mvKeys[i].pt.x;
-    const float v = mvKeys[i].pt.y;
-    const float x = (u - cx) * z * invfx;
-    const float y = (v - cy) * z * invfy;
+    float const u = mvKeys[i].pt.x;
+    float const v = mvKeys[i].pt.y;
+
+    float const x = (u - cx) * z * invfx;
+    float const y = (v - cy) * z * invfy;
 
     cv::Mat x3Dc = (cv::Mat_<float>(3, 1) << x, y, z);
 
@@ -668,9 +655,10 @@ cv::Mat KeyFrame::UnprojectStereo(int i)
     return Twc.rowRange(0, 3).colRange(0, 3) * x3Dc + Twc.rowRange(0, 3).col(3);
 }
 
-float KeyFrame::ComputeSceneMedianDepth(const int q)
+float KeyFrame::ComputeSceneMedianDepth(int q)
 {
     vector<MapPoint*> vpMapPoints;
+
     cv::Mat Tcw_;
     {
         unique_lock<mutex> lock(mMutexFeatures);
@@ -683,21 +671,22 @@ float KeyFrame::ComputeSceneMedianDepth(const int q)
     vDepths.reserve(N);
     cv::Mat Rcw2 = Tcw_.row(2).colRange(0,3);
     Rcw2 = Rcw2.t();
-    float zcw = Tcw_.at<float>(2,3);
+    float zcw = Tcw_.at<float>(2, 3);
     for(int i=0; i<N; i++)
     {
         if(mvpMapPoints[i])
-        {
+    {
             MapPoint* pMP = mvpMapPoints[i];
-            cv::Mat x3Dw = pMP->GetWorldPos();
-            float z = Rcw2.dot(x3Dw)+zcw;
-            vDepths.push_back(z);
-        }
+        cv::Mat x3Dw = pMP->GetWorldPos();
+        float z = Rcw2.dot(x3Dw) + zcw;
+        vDepths.push_back(z);
+    }
     }
 
-    sort(vDepths.begin(),vDepths.end());
+    // TODO: PAE: get rid of this crap with sorting!
+    std::sort(vDepths.begin(), vDepths.end());
 
-    return vDepths[(vDepths.size()-1)/q];
+    return vDepths[(vDepths.size() - 1) / q];
 }
 
 } //namespace ORB_SLAM

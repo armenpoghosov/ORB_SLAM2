@@ -948,23 +948,19 @@ bool Tracking::TrackLocalMap()
 
 bool Tracking::NeedNewKeyFrame()
 {
-    if(mbOnlyTracking)
-        return false;
-
     // If Local Mapping is freezed by a Loop Closure do not insert keyframes
-    if(mpLocalMapper->isStopped() || mpLocalMapper->stopRequested())
+    if (mbOnlyTracking || mpLocalMapper->isStopped() || mpLocalMapper->stopRequested())
         return false;
 
-    const int nKFs = mpMap->KeyFramesInMap();
+    int const nKFs = mpMap->KeyFramesInMap();
 
     // Do not insert keyframes if not enough frames have passed from last relocalisation
-    if(mCurrentFrame.m_id<mnLastRelocFrameId+mMaxFrames && nKFs>mMaxFrames)
+    if (mCurrentFrame.m_id < mnLastRelocFrameId + mMaxFrames && nKFs > mMaxFrames)
         return false;
 
     // Tracked MapPoints in the reference keyframe
-    int nMinObs = 3;
-    if(nKFs<=2)
-        nMinObs=2;
+    int nMinObs = nKFs <= 2 ? 2 : 3;
+
     int nRefMatches = mpReferenceKF->TrackedMapPoints(nMinObs);
 
     // Local Mapping accept keyframes?
@@ -973,7 +969,7 @@ bool Tracking::NeedNewKeyFrame()
     // Check how many "close" points are being tracked and how many could be potentially created.
     int nNonTrackedClose = 0;
     int nTrackedClose= 0;
-    if(mSensor!=System::MONOCULAR)
+    if (mSensor!=System::MONOCULAR)
     {
         for(int i =0; i<mCurrentFrame.N; i++)
         {
@@ -987,14 +983,12 @@ bool Tracking::NeedNewKeyFrame()
         }
     }
 
-    bool bNeedToInsertClose = (nTrackedClose<100) && (nNonTrackedClose>70);
+    bool bNeedToInsertClose = nTrackedClose < 100 && nNonTrackedClose > 70;
 
     // Thresholds
-    float thRefRatio = 0.75f;
-    if(nKFs<2)
-        thRefRatio = 0.4f;
+    float thRefRatio = nKFs < 2 ? 0.4f : 0.75f;
 
-    if(mSensor==System::MONOCULAR)
+    if (mSensor==System::MONOCULAR)
         thRefRatio = 0.9f;
 
     // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
@@ -1006,7 +1000,7 @@ bool Tracking::NeedNewKeyFrame()
     // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
     const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| bNeedToInsertClose) && mnMatchesInliers>15);
 
-    if((c1a||c1b||c1c)&&c2)
+    if ((c1a || c1b|| c1c) && c2)
     {
         // If the mapping accepts keyframes, insert keyframe.
         // Otherwise send a signal to interrupt BA
@@ -1014,30 +1008,20 @@ bool Tracking::NeedNewKeyFrame()
         {
             return true;
         }
-        else
-        {
-            mpLocalMapper->InterruptBA();
-            if(mSensor!=System::MONOCULAR)
-            {
-                if(mpLocalMapper->KeyframesInQueue()<3)
-                    return true;
-                else
-                    return false;
-            }
-            else
-                return false;
-        }
+
+        mpLocalMapper->InterruptBA();
+        return mSensor == System::MONOCULAR && mpLocalMapper->KeyframesInQueue() < 3;
     }
-    else
-        return false;
+
+    return false;
 }
 
 void Tracking::CreateNewKeyFrame()
 {
-    if(!mpLocalMapper->SetNotStop(true))
+    if (!mpLocalMapper->SetNotStop(true))
         return;
 
-    KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
+    KeyFrame* pKF = new KeyFrame(mCurrentFrame, mpMap, mpKeyFrameDB);
 
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
@@ -1309,10 +1293,10 @@ bool Tracking::Relocalization()
     // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
     vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame);
 
-    if(vpCandidateKFs.empty())
+    if (vpCandidateKFs.empty())
         return false;
 
-    const int nKFs = vpCandidateKFs.size();
+    int const nKFs = vpCandidateKFs.size();
 
     // We perform first an ORB matching with each candidate
     // If enough matches are found we setup a PnP solver
@@ -1327,27 +1311,29 @@ bool Tracking::Relocalization()
     vector<bool> vbDiscarded;
     vbDiscarded.resize(nKFs);
 
-    int nCandidates=0;
+    int nCandidates = 0;
 
-    for(int i=0; i<nKFs; i++)
+    for (int i = 0; i < nKFs; ++i)
     {
         KeyFrame* pKF = vpCandidateKFs[i];
-        if(pKF->isBad())
-            vbDiscarded[i] = true;
-        else
-        {
-            int nmatches = matcher.SearchByBoW(pKF,mCurrentFrame,vvpMapPointMatches[i]);
-            if(nmatches<15)
-            {
-                vbDiscarded[i] = true;
-                continue;
-            }
 
-            PnPsolver* pSolver = new PnPsolver(mCurrentFrame,vvpMapPointMatches[i]);
-            pSolver->SetRansacParameters(0.99,10,300,4,0.5,5.991);
-            vpPnPsolvers[i] = pSolver;
-            nCandidates++;
+        if (pKF->isBad())
+        {
+            vbDiscarded[i] = true;
+            continue;
         }
+
+        int nmatches = matcher.SearchByBoW(pKF,mCurrentFrame,vvpMapPointMatches[i]);
+        if (nmatches < 15)
+        {
+            vbDiscarded[i] = true;
+            continue;
+        }
+
+        PnPsolver* pSolver = new PnPsolver(mCurrentFrame, vvpMapPointMatches[i]);
+        pSolver->SetRansacParameters(0.99, 10, 300, 4, 0.5, 5.991);
+        vpPnPsolvers[i] = pSolver;
+        ++nCandidates;
     }
 
     // Alternatively perform some iterations of P4P RANSAC
@@ -1355,7 +1341,7 @@ bool Tracking::Relocalization()
     bool bMatch = false;
     ORBmatcher matcher2(0.9,true);
 
-    while(nCandidates>0 && !bMatch)
+    while (nCandidates > 0 && !bMatch)
     {
         for(int i=0; i<nKFs; i++)
         {
@@ -1449,15 +1435,11 @@ bool Tracking::Relocalization()
         }
     }
 
-    if(!bMatch)
-    {
+    if (!bMatch)
         return false;
-    }
-    else
-    {
-        mnLastRelocFrameId = mCurrentFrame.m_id;
-        return true;
-    }
+
+    mnLastRelocFrameId = mCurrentFrame.m_id;
+    return true;
 
 }
 
@@ -1490,7 +1472,7 @@ void Tracking::Reset()
     // Clear Map (this erase MapPoints and KeyFrames)
     mpMap->clear();
 
-    KeyFrame::nNextId = 0;
+    KeyFrame::s_next_id = 0;
 
     Frame::s_next_id = 0;
 

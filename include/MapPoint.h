@@ -29,6 +29,7 @@
 #include<mutex>
 
 #include <cstdint>
+#include <atomic>
 
 namespace ORB_SLAM2
 {
@@ -42,7 +43,7 @@ class MapPoint
 public:
 
     MapPoint(cv::Mat const& Pos, KeyFrame* pRefKF, Map* pMap);
-    MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int const& idxF);
+    MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF);
 
     void SetWorldPos(const cv::Mat &Pos);
     cv::Mat GetWorldPos();
@@ -56,7 +57,7 @@ public:
     void AddObservation(KeyFrame* pKF,size_t idx);
     void EraseObservation(KeyFrame* pKF);
 
-    int GetIndexInKeyFrame(KeyFrame* pKF);
+    std::size_t GetIndexInKeyFrame(KeyFrame* pKF);
     bool IsInKeyFrame(KeyFrame* pKF);
 
     void SetBadFlag();
@@ -86,13 +87,12 @@ public:
 
 public:
 
+    static std::atomic<uint64_t>    s_next_id;
 
     uint64_t        mnId;
-    
-    static uint64_t nNextId;
-    
-    long int mnFirstKFid;
-    long int mnFirstFrame;
+    uint64_t        mnFirstKFid;
+    uint64_t        mnFirstFrame;
+
     int nObs;
 
     // Variables used by the tracking
@@ -112,43 +112,43 @@ public:
     // Variables used by loop closing
     long unsigned int mnLoopPointForKF;
     long unsigned int mnCorrectedByKF;
-    long unsigned int mnCorrectedReference;    
+    long unsigned int mnCorrectedReference;
     cv::Mat mPosGBA;
-    long unsigned int mnBAGlobalForKF;
 
+    long unsigned int mnBAGlobalForKF;
 
     static std::mutex mGlobalMutex;
 
-protected:    
+protected:
 
      // Position in absolute coordinates
-     cv::Mat mWorldPos;
+     cv::Mat                        mWorldPos;
 
      // Keyframes observing the point and associated index in keyframe
-     std::map<KeyFrame*,size_t> mObservations;
+     std::map<KeyFrame*, size_t>    mObservations;
 
      // Mean viewing direction
-     cv::Mat mNormalVector;
+     cv::Mat                        mNormalVector;
 
      // Best descriptor to fast matching
-     cv::Mat mDescriptor;
+     cv::Mat                        mDescriptor;
 
      // Reference KeyFrame
-     KeyFrame* mpRefKF;
+     KeyFrame*                      mpRefKF;
 
      // Tracking counters
-     int mnVisible;
-     int mnFound;
+     int                            mnVisible;
+     int                            mnFound;
 
      // Bad flag (we do not currently erase MapPoint from memory)
-     bool mbBad;
-     MapPoint* mpReplaced;
+     bool                           mbBad;
+     MapPoint*                      mpReplaced;
 
      // Scale invariance distances
-     float mfMinDistance;
-     float mfMaxDistance;
+     float                          mfMinDistance;
+     float                          mfMaxDistance;
 
-     Map* mpMap;
+     Map*                           mpMap;
 
      std::mutex mMutexPos;
      std::mutex mMutexFeatures;

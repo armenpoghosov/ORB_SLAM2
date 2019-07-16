@@ -145,26 +145,24 @@ void LocalMapping::ProcessNewKeyFrame()
     mpCurrentKeyFrame->ComputeBoW();
 
     // Associate MapPoints to the new keyframe and update normal and descriptor
-    const vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+    vector<MapPoint*> const vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
-    for(size_t i=0; i<vpMapPointMatches.size(); i++)
+    for (size_t i = 0; i < vpMapPointMatches.size(); ++i)
     {
         MapPoint* pMP = vpMapPointMatches[i];
-        if(pMP)
+
+        if (pMP == nullptr || pMP->isBad())
+            continue;
+
+        if (!pMP->IsInKeyFrame(mpCurrentKeyFrame))
         {
-            if(!pMP->isBad())
-            {
-                if(!pMP->IsInKeyFrame(mpCurrentKeyFrame))
-                {
-                    pMP->AddObservation(mpCurrentKeyFrame, i);
-                    pMP->UpdateNormalAndDepth();
-                    pMP->ComputeDistinctiveDescriptors();
-                }
-                else // this can only happen for new stereo points inserted by the Tracking
-                {
-                    mlpRecentAddedMapPoints.push_back(pMP);
-                }
-            }
+            pMP->AddObservation(mpCurrentKeyFrame, i);
+            pMP->UpdateNormalAndDepth();
+            pMP->ComputeDistinctiveDescriptors();
+        }
+        else // this can only happen for new stereo points inserted by the Tracking
+        {
+            mlpRecentAddedMapPoints.push_back(pMP);
         }
     }    
 
@@ -178,30 +176,24 @@ void LocalMapping::ProcessNewKeyFrame()
 void LocalMapping::MapPointCulling()
 {
     // Check Recent Added MapPoints
-    list<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
 
-    const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
+    uint64_t const nCurrentKFid = mpCurrentKeyFrame->mnId;
 
-    const int cnThObs = mbMonocular ? 2 : 3;
+    int const cnThObs = mbMonocular ? 2 : 3;
 
-    while (lit!=mlpRecentAddedMapPoints.end())
+    for (auto lit = mlpRecentAddedMapPoints.begin(); lit != mlpRecentAddedMapPoints.end();)
     {
         MapPoint* pMP = *lit;
+
         if (pMP->isBad())
-        {
             lit = mlpRecentAddedMapPoints.erase(lit);
-        }
-        else if(pMP->GetFoundRatio()<0.25f )
-        {
-            pMP->SetBadFlag();
-            lit = mlpRecentAddedMapPoints.erase(lit);
-        }
-        else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=2 && pMP->Observations()<=cnThObs)
+        else if (pMP->GetFoundRatio() < 0.25f ||
+            (((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 2 && pMP->Observations() <= cnThObs))
         {
             pMP->SetBadFlag();
             lit = mlpRecentAddedMapPoints.erase(lit);
         }
-        else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=3)
+        else if (((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 3)
             lit = mlpRecentAddedMapPoints.erase(lit);
         else
             lit++;
@@ -457,58 +449,55 @@ void LocalMapping::CreateNewMapPoints()
 void LocalMapping::SearchInNeighbors()
 {
     // Retrieve neighbor keyframes
-    int nn = 10;
-    if(mbMonocular)
-        nn=20;
+    int nn = mbMonocular ? 20 : 10;
+
+    std::vector<KeyFrame*> vpTargetKFs;
+
     const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
-    vector<KeyFrame*> vpTargetKFs;
-    for(vector<KeyFrame*>::const_iterator vit=vpNeighKFs.begin(), vend=vpNeighKFs.end(); vit!=vend; vit++)
+ 
+    for (KeyFrame* pKFi : vpNeighKFs)
     {
-        KeyFrame* pKFi = *vit;
-        if(pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
+        if (pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
             continue;
+
         vpTargetKFs.push_back(pKFi);
+
         pKFi->mnFuseTargetForKF = mpCurrentKeyFrame->mnId;
 
         // Extend to some second neighbors
         const vector<KeyFrame*> vpSecondNeighKFs = pKFi->GetBestCovisibilityKeyFrames(5);
-        for(vector<KeyFrame*>::const_iterator vit2=vpSecondNeighKFs.begin(), vend2=vpSecondNeighKFs.end(); vit2!=vend2; vit2++)
+
+        for (KeyFrame* pKFi2 : vpSecondNeighKFs)
         {
-            KeyFrame* pKFi2 = *vit2;
-            if(pKFi2->isBad() || pKFi2->mnFuseTargetForKF==mpCurrentKeyFrame->mnId || pKFi2->mnId==mpCurrentKeyFrame->mnId)
+            if (pKFi2->isBad() ||
+                pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->mnId || pKFi2->mnId == mpCurrentKeyFrame->mnId)
                 continue;
+
             vpTargetKFs.push_back(pKFi2);
         }
     }
 
-
     // Search matches by projection from current KF in target KFs
     ORBmatcher matcher;
-    vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-    for(vector<KeyFrame*>::iterator vit=vpTargetKFs.begin(), vend=vpTargetKFs.end(); vit!=vend; vit++)
-    {
-        KeyFrame* pKFi = *vit;
 
-        matcher.Fuse(pKFi,vpMapPointMatches);
-    }
+    vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+
+    for (KeyFrame* pKFi : vpTargetKFs)
+        matcher.Fuse(pKFi, vpMapPointMatches);
 
     // Search matches by projection from target KFs in current KF
     vector<MapPoint*> vpFuseCandidates;
     vpFuseCandidates.reserve(vpTargetKFs.size()*vpMapPointMatches.size());
 
-    for(vector<KeyFrame*>::iterator vitKF=vpTargetKFs.begin(), vendKF=vpTargetKFs.end(); vitKF!=vendKF; vitKF++)
+    for (KeyFrame* pKFi : vpTargetKFs)
     {
-        KeyFrame* pKFi = *vitKF;
-
         vector<MapPoint*> vpMapPointsKFi = pKFi->GetMapPointMatches();
 
-        for(vector<MapPoint*>::iterator vitMP=vpMapPointsKFi.begin(), vendMP=vpMapPointsKFi.end(); vitMP!=vendMP; vitMP++)
+        for (MapPoint* pMP : vpMapPointsKFi)
         {
-            MapPoint* pMP = *vitMP;
-            if(!pMP)
+            if (pMP == nullptr || pMP->isBad() || pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->mnId)
                 continue;
-            if(pMP->isBad() || pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->mnId)
-                continue;
+
             pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->mnId;
             vpFuseCandidates.push_back(pMP);
         }
@@ -516,20 +505,16 @@ void LocalMapping::SearchInNeighbors()
 
     matcher.Fuse(mpCurrentKeyFrame,vpFuseCandidates);
 
-
     // Update points
     vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-    for(size_t i=0, iend=vpMapPointMatches.size(); i<iend; i++)
+
+    for (MapPoint* pMP : vpMapPointMatches)
     {
-        MapPoint* pMP=vpMapPointMatches[i];
-        if(pMP)
-        {
-            if(!pMP->isBad())
-            {
-                pMP->ComputeDistinctiveDescriptors();
-                pMP->UpdateNormalAndDepth();
-            }
-        }
+        if (pMP == nullptr || pMP->isBad())
+            continue;
+
+        pMP->ComputeDistinctiveDescriptors();
+        pMP->UpdateNormalAndDepth();
     }
 
     // Update connections in covisibility graph
@@ -617,7 +602,7 @@ bool LocalMapping::AcceptKeyFrames()
 void LocalMapping::SetAcceptKeyFrames(bool flag)
 {
     unique_lock<mutex> lock(mMutexAccept);
-    mbAcceptKeyFrames=flag;
+    mbAcceptKeyFrames = flag;
 }
 
 bool LocalMapping::SetNotStop(bool flag)
@@ -671,7 +656,7 @@ void LocalMapping::KeyFrameCulling()
 
             nMPs++;
 
-            if(pMP->Observations()>thObs)
+            if (pMP->Observations() > thObs)
             {
                 int const scaleLevel = pKF->mvKeysUn[i].octave;
 
@@ -689,15 +674,11 @@ void LocalMapping::KeyFrameCulling()
                     int const scaleLeveli = pKFi->mvKeysUn[mit->second].octave;
 
                     if (scaleLeveli <= scaleLevel + 1 && ++nObs >= thObs)
-                    {
                         break;
-                    }
                 }
 
                 if (nObs >= thObs)
-                {
-                    nRedundantObservations++;
-                }
+                    ++nRedundantObservations;
             }
         }  
 

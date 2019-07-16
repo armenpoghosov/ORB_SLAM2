@@ -35,8 +35,11 @@ namespace ORB_SLAM2
 {
 
 
-Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> &vpMatched12, const bool bFixScale):
-    mnIterations(0), mnBestInliers(0), mbFixScale(bFixScale)
+Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> &vpMatched12, bool bFixScale)
+    :
+    mnIterations(0),
+    mnBestInliers(0),
+    mbFixScale(bFixScale)
 {
     mpKF1 = pKF1;
     mpKF2 = pKF2;
@@ -362,22 +365,6 @@ void Sim3Solver::CheckInliers()
         else
             mvbInliersi[i]=false;
     }
-}
-
-
-cv::Mat Sim3Solver::GetEstimatedRotation()
-{
-    return mBestRotation.clone();
-}
-
-cv::Mat Sim3Solver::GetEstimatedTranslation()
-{
-    return mBestTranslation.clone();
-}
-
-float Sim3Solver::GetEstimatedScale()
-{
-    return mBestScale;
 }
 
 void Sim3Solver::Project(const vector<cv::Mat> &vP3Dw, vector<cv::Mat> &vP2D, cv::Mat Tcw, cv::Mat K)
