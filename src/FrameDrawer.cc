@@ -88,7 +88,6 @@ cv::Mat FrameDrawer::DrawFrame()
             {
                 cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
             }
-
         }
     }
     else if (state == Tracking::OK) //TRACKING
@@ -102,7 +101,10 @@ cv::Mat FrameDrawer::DrawFrame()
         for (std::size_t i = 0; i < n; ++i)
         {
             if (!vbVO[i] && !vbMap[i])
+            {
+                cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
                 continue;
+            }
 
             cv::Point2f pt1;
             pt1.x = vCurrentKeys[i].pt.x - r;

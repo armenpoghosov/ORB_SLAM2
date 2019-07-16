@@ -32,8 +32,8 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     :
     mnFrameId(F.m_id),
     mTimeStamp(F.mTimeStamp),
-    mnGridCols(FRAME_GRID_COLS),
-    mnGridRows(FRAME_GRID_ROWS),
+    mnGridCols(Frame::FRAME_GRID_COLS),
+    mnGridRows(Frame::FRAME_GRID_ROWS),
     mfGridElementWidthInv(F.mfGridElementWidthInv),
     mfGridElementHeightInv(F.mfGridElementHeightInv),
     mnTrackReferenceForFrame(0),

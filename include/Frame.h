@@ -37,15 +37,18 @@
 namespace ORB_SLAM2
 {
 
-#define FRAME_GRID_ROWS 48
-#define FRAME_GRID_COLS 64
-
 class MapPoint;
 class KeyFrame;
 
 class Frame
 {
 public:
+
+    enum : int
+    {
+        FRAME_GRID_ROWS = 48,
+        FRAME_GRID_COLS = 64
+    };
 
     Frame();
 

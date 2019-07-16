@@ -552,7 +552,6 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
         std::vector<ExtractorNode*> vpIniNodes;
         vpIniNodes.resize(nIni);
 
-
         for (int i = 0; i < nIni; ++i)
         {
             ExtractorNode ni;
@@ -693,7 +692,7 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
 
     // Retain the best point in each node
     vector<cv::KeyPoint> vResultKeys;
-    vResultKeys.reserve(nfeatures);
+    vResultKeys.reserve(N);
 
     for (ExtractorNode& node : lNodes)
     {
