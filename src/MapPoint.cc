@@ -144,16 +144,15 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
     {
         unique_lock<mutex> lock(mMutexFeatures);
 
-        if (mObservations.count(pKF))
+        auto it = mObservations.find(pKF);
+        if (it != mObservations.end())
         {
-            std::size_t idx = mObservations[pKF];
-
-            if (pKF->mvuRight[idx] >= 0)
+            if (pKF->mvuRight[it->second] >= 0)
                 nObs -= 2;
             else
-                ++nObs;
+                --nObs;
 
-            mObservations.erase(pKF);
+            mObservations.erase(it);
 
             if (mpRefKF == pKF)
                 mpRefKF = mObservations.begin()->first;

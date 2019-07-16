@@ -101,7 +101,7 @@ public:
     cv::Mat UnprojectStereo(int i);
 
     // Image
-    bool IsInImage(int x, int y) const
+    bool IsInImage(float x, float y) const
     {
         return x >= mnMinX && x < mnMaxX && y >= mnMinY && y < mnMaxY;
     }

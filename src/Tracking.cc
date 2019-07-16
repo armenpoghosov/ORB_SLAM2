@@ -155,7 +155,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     if (sensor == System::RGBD)
     {
         mDepthMapFactor = fSettings["DepthMapFactor"];
-        mDepthMapFactor = std::fabs(mDepthMapFactor) < 1e-5f ? 1.f : 1.f / mDepthMapFactor;
+        mDepthMapFactor = std::fabs(mDepthMapFactor) < 1e-5f ? 1.f : (1.f / mDepthMapFactor);
     }
 }
 
@@ -939,10 +939,7 @@ bool Tracking::TrackLocalMap()
     if (mCurrentFrame.m_id < mnLastRelocFrameId + mMaxFrames && mnMatchesInliers<50)
         return false;
 
-    if (mnMatchesInliers<30)
-        return false;
-    else
-        return true;
+    return mnMatchesInliers >= 30;
 }
 
 
@@ -1014,7 +1011,7 @@ bool Tracking::NeedNewKeyFrame()
         }
 
         mpLocalMapper->InterruptBA();
-        return mSensor == System::MONOCULAR && mpLocalMapper->KeyframesInQueue() < 3;
+        return mSensor != System::MONOCULAR && mpLocalMapper->KeyframesInQueue() < 3;
     }
 
     return false;
