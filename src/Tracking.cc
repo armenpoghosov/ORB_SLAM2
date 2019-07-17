@@ -513,10 +513,12 @@ void Tracking::MonocularInitialization()
 {
     enum : int { MIN_KEY_COUNT_FOR_INITIALIZATOIN = 20 };
 
+    std::size_t const size_vKeys = mCurrentFrame.mvKeys.size();
+
     if (mpInitializer != nullptr)
     {
         // Try to initialize
-        if (mCurrentFrame.mvKeys.size() <= MIN_KEY_COUNT_FOR_INITIALIZATOIN)
+        if (size_vKeys <= MIN_KEY_COUNT_FOR_INITIALIZATOIN)
         {
             delete mpInitializer;
             mpInitializer = nullptr;
@@ -541,14 +543,14 @@ void Tracking::MonocularInitialization()
         cv::Mat tcw; // Current Camera Translation
         vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
 
-        if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
+        if (mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
         {
-            for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
+            for (size_t i = 0, iend = mvIniMatches.size(); i < iend; ++i)
             {
-                if(mvIniMatches[i]>=0 && !vbTriangulated[i])
+                if (mvIniMatches[i] >= 0 && !vbTriangulated[i])
                 {
-                    mvIniMatches[i]=-1;
-                    nmatches--;
+                    mvIniMatches[i] = -1;
+                    --nmatches;
                 }
             }
 
@@ -563,17 +565,19 @@ void Tracking::MonocularInitialization()
         }
     }
     // Set Reference Frame
-    else if (mCurrentFrame.mvKeys.size() > MIN_KEY_COUNT_FOR_INITIALIZATOIN)
+    else if (size_vKeys > MIN_KEY_COUNT_FOR_INITIALIZATOIN)
     {
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
 
-        mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
+        std::size_t const size_vKeysUn = mCurrentFrame.mvKeysUn.size();
 
-        for (size_t i = 0; i < mCurrentFrame.mvKeysUn.size(); ++i)
+        mvbPrevMatched.resize(size_vKeysUn);
+
+        for (size_t i = 0; i < size_vKeysUn; ++i)
             mvbPrevMatched[i] = mCurrentFrame.mvKeysUn[i].pt;
 
-        mpInitializer =  new Initializer(mCurrentFrame, 1.0, 200);
+        mpInitializer = new Initializer(mCurrentFrame, 1.0, 200);
 
         std::fill(mvIniMatches.begin(), mvIniMatches.end(), -1);
     }
@@ -593,28 +597,30 @@ void Tracking::CreateInitialMapMonocular()
     mpMap->AddKeyFrame(pKFcur);
 
     // Create MapPoints and asscoiate to keyframes
-    for(size_t i=0; i<mvIniMatches.size();i++)
+    for (size_t i = 0; i < mvIniMatches.size(); ++i)
     {
-        if(mvIniMatches[i]<0)
+        int const ini_index = mvIniMatches[i];
+
+        if (ini_index < 0)
             continue;
 
         //Create MapPoint.
         cv::Mat worldPos(mvIniP3D[i]);
 
-        MapPoint* pMP = new MapPoint(worldPos,pKFcur,mpMap);
+        MapPoint* pMP = new MapPoint(worldPos, pKFcur, mpMap);
 
-        pKFini->AddMapPoint(pMP,i);
-        pKFcur->AddMapPoint(pMP,mvIniMatches[i]);
+        pKFini->AddMapPoint(pMP, i);
+        pKFcur->AddMapPoint(pMP, ini_index);
 
-        pMP->AddObservation(pKFini,i);
-        pMP->AddObservation(pKFcur,mvIniMatches[i]);
+        pMP->AddObservation(pKFini, i);
+        pMP->AddObservation(pKFcur, ini_index);
 
         pMP->ComputeDistinctiveDescriptors();
         pMP->UpdateNormalAndDepth();
 
         //Fill Current Frame structure
-        mCurrentFrame.mvpMapPoints[mvIniMatches[i]] = pMP;
-        mCurrentFrame.mvbOutlier[mvIniMatches[i]] = false;
+        mCurrentFrame.mvpMapPoints[ini_index] = pMP;
+        mCurrentFrame.mvbOutlier[ini_index] = false;
 
         //Add to Map
         mpMap->AddMapPoint(pMP);

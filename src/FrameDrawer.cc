@@ -185,8 +185,8 @@ void FrameDrawer::Update(Tracking *pTracker)
     mvCurrentKeys = pTracker->mCurrentFrame.mvKeys;
     N = mvCurrentKeys.size();
 
-    mvbVO = vector<bool>(N, false);
-    mvbMap = vector<bool>(N, false);
+    mvbVO = vector<bool>(N);
+    mvbMap = vector<bool>(N);
 
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
@@ -201,13 +201,13 @@ void FrameDrawer::Update(Tracking *pTracker)
         {
             MapPoint* pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
 
-            if (pMP != nullptr && !pTracker->mCurrentFrame.mvbOutlier[i])
-            {
-                if (pMP->Observations() > 0)
-                    mvbMap[i] = true;
-                else
-                    mvbVO[i] = true;
-            }
+            if (pMP == nullptr || pTracker->mCurrentFrame.mvbOutlier[i])
+                continue;
+
+            if (pMP->Observations() > 0)
+                mvbMap[i] = true;
+            else
+                mvbVO[i] = true;
         }
     }
 

@@ -30,7 +30,7 @@
 namespace ORB_SLAM2
 {
 
-Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iterations)
+Initializer::Initializer(Frame const& ReferenceFrame, float sigma, int iterations)
 {
     mK = ReferenceFrame.mK.clone();
 

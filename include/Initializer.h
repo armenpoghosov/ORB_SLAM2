@@ -37,9 +37,8 @@ public:
 
     // Computes in parallel a fundamental matrix and a homography
     // Selects a model and tries to recover the motion and the structure from motion
-    bool Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12,
-                    cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated);
-
+    bool Initialize(Frame const& CurrentFrame, vector<int> const& vMatches12,
+        cv::Mat& R21, cv::Mat& t21, vector<cv::Point3f>& vP3D, vector<bool>& vbTriangulated);
 
 private:
 
@@ -70,28 +69,27 @@ private:
 
 
     // Keypoints from Reference Frame (Frame 1)
-    vector<cv::KeyPoint>    mvKeys1;
+    std::vector<cv::KeyPoint>       mvKeys1;
 
     // Keypoints from Current Frame (Frame 2)
-    vector<cv::KeyPoint>    mvKeys2;
+    std::vector<cv::KeyPoint>       mvKeys2;
 
     // Current Matches from Reference to Current
-    vector<pair<int, int> > mvMatches12;
-    vector<bool>            mvbMatched1;
+    std::vector<pair<int, int> >    mvMatches12;
+    std::vector<bool>               mvbMatched1;
 
     // Calibration
-    cv::Mat                 mK;
+    cv::Mat                         mK;
 
     // Standard Deviation and Variance
-    float                   mSigma;
-    float                   mSigma2;
+    float                           mSigma;
+    float                           mSigma2;
 
     // Ransac max iterations
-    int                     mMaxIterations;
+    int                             mMaxIterations;
 
     // Ransac sets
-    vector<vector<size_t> > mvSets;
-
+    vector<vector<size_t> >         mvSets;
 };
 
 } //namespace ORB_SLAM

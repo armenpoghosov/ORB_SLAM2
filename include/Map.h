@@ -48,14 +48,41 @@ public:
     void InformNewBigChange();
     int GetLastBigChangeIdx();
 
-    std::vector<KeyFrame*> GetAllKeyFrames();
-    std::vector<MapPoint*> GetAllMapPoints();
-    std::vector<MapPoint*> GetReferenceMapPoints();
+    std::vector<KeyFrame*> GetAllKeyFrames()
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        return std::vector<KeyFrame*>(mspKeyFrames.begin(), mspKeyFrames.end());
+    }
 
-    long unsigned int MapPointsInMap();
-    long unsigned  KeyFramesInMap();
+    std::vector<MapPoint*> GetAllMapPoints()
+    {
+        unique_lock<mutex> lock(mMutexMap);
+        return vector<MapPoint*>(mspMapPoints.begin(), mspMapPoints.end());
+    }
 
-    long unsigned int GetMaxKFid();
+    std::vector<MapPoint*> GetReferenceMapPoints()
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        return mvpReferenceMapPoints;
+    }
+
+    std::size_t MapPointsInMap()
+    {
+        unique_lock<mutex> lock(mMutexMap);
+        return mspMapPoints.size();
+    }
+
+    std::size_t Map::KeyFramesInMap()
+    {
+        unique_lock<mutex> lock(mMutexMap);
+        return mspKeyFrames.size();
+    }
+
+    long unsigned int Map::GetMaxKFid()
+    {
+        unique_lock<mutex> lock(mMutexMap);
+        return mnMaxKFid;
+    }
 
     void clear();
 

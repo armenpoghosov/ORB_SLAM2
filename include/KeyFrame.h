@@ -49,12 +49,41 @@ public:
     // Pose functions
     void SetPose(cv::Mat const& Tcw);
 
-    cv::Mat GetPose();
-    cv::Mat GetPoseInverse();
-    cv::Mat GetCameraCenter();
-    cv::Mat GetStereoCenter();
-    cv::Mat GetRotation();
-    cv::Mat GetTranslation();
+    cv::Mat GetPose()
+    {
+        unique_lock<mutex> lock(mMutexPose);
+        return Tcw.clone();
+    }
+
+    cv::Mat GetPoseInverse()
+    {
+        unique_lock<mutex> lock(mMutexPose);
+        return Twc.clone();
+    }
+
+    cv::Mat GetCameraCenter()
+    {
+        unique_lock<mutex> lock(mMutexPose);
+        return Ow.clone();
+    }
+
+    cv::Mat GetStereoCenter()
+    {
+        unique_lock<mutex> lock(mMutexPose);
+        return Cw.clone();
+    }
+
+    cv::Mat GetRotation()
+    {
+        unique_lock<mutex> lock(mMutexPose);
+        return Tcw.rowRange(0, 3).colRange(0, 3).clone();
+    }
+
+    cv::Mat GetTranslation()
+    {
+        unique_lock<mutex> lock(mMutexPose);
+        return Tcw.rowRange(0, 3).col(3).clone();
+    }
 
     // Bag of Words Representation
     void ComputeBoW();
@@ -65,36 +94,98 @@ public:
     void EraseConnection(KeyFrame* pKF);
     void UpdateConnections();
     void UpdateBestCovisibles();
-    std::set<KeyFrame *> GetConnectedKeyFrames();
-    std::vector<KeyFrame* > GetVectorCovisibleKeyFrames();
-    std::vector<KeyFrame*> GetBestCovisibilityKeyFrames(const int &N);
+    std::set<KeyFrame*> GetConnectedKeyFrames();
+    std::vector<KeyFrame*> GetBestCovisibilityKeyFrames(int N);
     std::vector<KeyFrame*> GetCovisiblesByWeight(int w);
-    int GetWeight(KeyFrame* pKF);
+
+    std::vector<KeyFrame*> KeyFrame::GetVectorCovisibleKeyFrames()
+    {
+        unique_lock<mutex> lock(mMutexConnections);
+        return mvpOrderedConnectedKeyFrames;
+    }
+
+    int GetWeight(KeyFrame* pKF)
+    {
+        unique_lock<mutex> lock(mMutexConnections);
+        auto it = mConnectedKeyFrameWeights.find(pKF);
+        return it != mConnectedKeyFrameWeights.end() ? it->second : 0;
+    }
 
     // Spanning tree functions
-    void AddChild(KeyFrame* pKF);
-    void EraseChild(KeyFrame* pKF);
+    void AddChild(KeyFrame *pKF)
+    {
+        unique_lock<mutex> lockCon(mMutexConnections);
+        mspChildrens.insert(pKF);
+    }
+
+    void EraseChild(KeyFrame *pKF)
+    {
+        unique_lock<mutex> lockCon(mMutexConnections);
+        mspChildrens.erase(pKF);
+    }
+
     void ChangeParent(KeyFrame* pKF);
-    std::set<KeyFrame*> GetChilds();
-    KeyFrame* GetParent();
-    bool hasChild(KeyFrame* pKF);
+
+    std::set<KeyFrame*> GetChilds()
+    {
+        unique_lock<mutex> lockCon(mMutexConnections);
+        return mspChildrens;
+    }
+
+    KeyFrame* GetParent()
+    {
+        unique_lock<mutex> lockCon(mMutexConnections);
+        return mpParent;
+    }
+
+    bool hasChild(KeyFrame *pKF)
+    {
+        unique_lock<mutex> lockCon(mMutexConnections);
+        return mspChildrens.count(pKF);
+    }
 
     // Loop Edges
     void AddLoopEdge(KeyFrame* pKF);
-    std::set<KeyFrame*> GetLoopEdges();
+
+    std::set<KeyFrame*> GetLoopEdges()
+    {
+        unique_lock<mutex> lockCon(mMutexConnections);
+        return mspLoopEdges;
+    }
 
     // MapPoint observation functions
-    void AddMapPoint(MapPoint* pMP, const size_t &idx);
-    void EraseMapPointMatch(const size_t &idx);
+    void AddMapPoint(MapPoint* pMP, size_t idx)
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        mvpMapPoints[idx] = pMP;
+    }
+
+    void EraseMapPointMatch(size_t idx)
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        mvpMapPoints[idx] = nullptr;
+    }
+
     void EraseMapPointMatch(MapPoint* pMP);
 
     void ReplaceMapPointMatch(size_t idx, MapPoint* pMP)
         { mvpMapPoints[idx] = pMP; }
 
     std::set<MapPoint*> GetMapPoints();
-    std::vector<MapPoint*> GetMapPointMatches();
+
+    std::vector<MapPoint*> GetMapPointMatches()
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        return mvpMapPoints;
+    }
+
+    MapPoint* GetMapPoint(std::size_t idx)
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        return mvpMapPoints[idx];
+    }
+
     int TrackedMapPoints(int minObs);
-    MapPoint* GetMapPoint(const size_t &idx);
 
     // KeyPoint functions
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r) const;
@@ -107,12 +198,22 @@ public:
     }
 
     // Enable/Disable bad flag changes
-    void SetNotErase();
     void SetErase();
+
+    void SetNotErase()
+    {
+        unique_lock<mutex> lock(mMutexConnections);
+        mbNotErase = true;
+    }
 
     // Set/check bad flag
     void SetBadFlag();
-    bool isBad();
+
+    bool isBad()
+    {
+        unique_lock<mutex> lock(mMutexConnections);
+        return mbBad;
+    }
 
     // Compute Scene Depth (q=2 median). Used in monocular.
     float ComputeSceneMedianDepth(int q);

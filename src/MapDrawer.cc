@@ -22,7 +22,9 @@
 #include "MapPoint.h"
 #include "KeyFrame.h"
 #include <pangolin/pangolin.h>
+
 #include <mutex>
+#include <unordered_set>
 
 namespace ORB_SLAM2
 {
@@ -43,38 +45,43 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
 
 void MapDrawer::DrawMapPoints()
 {
-    const vector<MapPoint*> &vpMPs = mpMap->GetAllMapPoints();
-    const vector<MapPoint*> &vpRefMPs = mpMap->GetReferenceMapPoints();
+    std::vector<MapPoint*> const& vpMPs = mpMap->GetAllMapPoints();
 
-    set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
-
-    if(vpMPs.empty())
+    if (vpMPs.empty())
         return;
+
+    std::vector<MapPoint*> const& vpRefMPs = mpMap->GetReferenceMapPoints();
+
+    std::unordered_set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
 
     glPointSize(mPointSize);
     glBegin(GL_POINTS);
-    glColor3f(0.0,0.0,0.0);
+    
+    glColor3f(0.0, 0.0, 0.0);
 
-    for(size_t i=0, iend=vpMPs.size(); i<iend;i++)
+    for (MapPoint* pMP : vpMPs)
     {
-        if(vpMPs[i]->isBad() || spRefMPs.count(vpMPs[i]))
+        if (pMP->isBad() || spRefMPs.count(pMP) != 0)
             continue;
-        cv::Mat pos = vpMPs[i]->GetWorldPos();
-        glVertex3f(pos.at<float>(0),pos.at<float>(1),pos.at<float>(2));
+
+        cv::Mat pos = pMP->GetWorldPos();
+        glVertex3f(pos.at<float>(0), pos.at<float>(1), pos.at<float>(2));
     }
+
     glEnd();
 
     glPointSize(mPointSize);
     glBegin(GL_POINTS);
-    glColor3f(1.0,0.0,0.0);
 
-    for(set<MapPoint*>::iterator sit=spRefMPs.begin(), send=spRefMPs.end(); sit!=send; sit++)
+    glColor3f(1.0, 0.0, 0.0);
+
+    for (MapPoint* pMP : spRefMPs)
     {
-        if((*sit)->isBad())
+        if (pMP->isBad())
             continue;
-        cv::Mat pos = (*sit)->GetWorldPos();
-        glVertex3f(pos.at<float>(0),pos.at<float>(1),pos.at<float>(2));
 
+        cv::Mat pos = pMP->GetWorldPos();
+        glVertex3f(pos.at<float>(0), pos.at<float>(1), pos.at<float>(2));
     }
 
     glEnd();

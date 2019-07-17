@@ -42,7 +42,7 @@ public:
     {
         TH_HIGH         = 100,
         TH_LOW          = 50,
-        HISTO_LENGTH    = 30
+        HISTO_LENGTH    = 18 // PAE: originaly was 30
     };
 
     ORBmatcher(float nnratio = 0.6, bool checkOri = true);
@@ -98,7 +98,7 @@ protected:
         return viewCos > 0.998 ? 2.5f : 4.0f;
     }
 
-    void ComputeThreeMaxima(std::vector<int>* histo, const int L, int &ind1, int &ind2, int &ind3);
+    void ComputeThreeMaxima(std::vector<int> const* histo, int L, int &ind1, int &ind2, int &ind3);
 
     float   mfNNratio;
     bool    mbCheckOrientation;

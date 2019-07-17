@@ -80,16 +80,29 @@ public:
     cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp);
 
     // This stops local mapping thread (map building) and performs only camera tracking.
-    void ActivateLocalizationMode();
+    void ActivateLocalizationMode()
+    {
+        unique_lock<mutex> lock(mMutexMode);
+        mbActivateLocalizationMode = true;
+    }
+
     // This resumes local mapping thread and performs SLAM again.
-    void DeactivateLocalizationMode();
+    void DeactivateLocalizationMode()
+    {
+        unique_lock<mutex> lock(mMutexMode);
+        mbDeactivateLocalizationMode = true;
+    }
 
     // Returns true if there have been a big map change (loop closure, global BA)
     // since last call to this function
     bool MapChanged();
 
     // Reset the system (clear map)
-    void Reset();
+    void Reset()
+    {
+        unique_lock<mutex> lock(mMutexReset);
+        mbReset = true;
+    }
 
     // All threads will be requested to finish.
     // It waits until all threads have finished.
@@ -120,58 +133,72 @@ public:
 
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
-    int GetTrackingState();
-    std::vector<MapPoint*> GetTrackedMapPoints();
-    std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
+    int GetTrackingState()
+    {
+        unique_lock<mutex> lock(mMutexState);
+        return mTrackingState;
+    }
+
+    std::vector<MapPoint*> GetTrackedMapPoints()
+    {
+        unique_lock<mutex> lock(mMutexState);
+        return mTrackedMapPoints;
+    }
+
+    std::vector<cv::KeyPoint> GetTrackedKeyPointsUn()
+    {
+        unique_lock<mutex> lock(mMutexState);
+        return mTrackedKeyPointsUn;
+    }
 
 private:
 
     // Input sensor
-    eSensor mSensor;
+    eSensor                     mSensor;
 
     // ORB vocabulary used for place recognition and feature matching.
-    ORBVocabulary* mpVocabulary;
+    ORBVocabulary*              mpVocabulary;
 
     // KeyFrame database for place recognition (relocalization and loop detection).
-    KeyFrameDatabase* mpKeyFrameDatabase;
+    KeyFrameDatabase*           mpKeyFrameDatabase;
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
-    Map* mpMap;
+    Map*                        mpMap;
 
     // Tracker. It receives a frame and computes the associated camera pose.
     // It also decides when to insert a new keyframe, create some new MapPoints and
     // performs relocalization if tracking fails.
-    Tracking* mpTracker;
+    Tracking*                   mpTracker;
 
     // Local Mapper. It manages the local map and performs local bundle adjustment.
-    LocalMapping* mpLocalMapper;
+    LocalMapping*               mpLocalMapper;
 
     // Loop Closer. It searches loops with every new keyframe. If there is a loop it performs
     // a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
-    LoopClosing* mpLoopCloser;
+    LoopClosing*                mpLoopCloser;
 
     // The viewer draws the map and the current camera pose. It uses Pangolin.
-    Viewer* mpViewer;
+    Viewer*                     mpViewer;
 
-    FrameDrawer* mpFrameDrawer;
-    MapDrawer* mpMapDrawer;
+    FrameDrawer*                mpFrameDrawer;
+    MapDrawer*                  mpMapDrawer;
 
     // The Tracking thread "lives" in the main execution thread that creates the System object.
 
     // Reset flag
-    std::mutex mMutexReset;
-    bool mbReset;
+    std::mutex                  mMutexReset;
+    bool                        mbReset;
 
     // Change mode flags
-    std::mutex mMutexMode;
-    bool mbActivateLocalizationMode;
-    bool mbDeactivateLocalizationMode;
+    std::mutex                  mMutexMode;
+    bool                        mbActivateLocalizationMode;
+    bool                        mbDeactivateLocalizationMode;
 
     // Tracking state
-    int mTrackingState;
-    std::vector<MapPoint*> mTrackedMapPoints;
-    std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
-    std::mutex mMutexState;
+    int                         mTrackingState;
+    std::vector<MapPoint*>      mTrackedMapPoints;
+    std::vector<cv::KeyPoint>   mTrackedKeyPointsUn;
+    std::mutex                  mMutexState;
 };
 
 }// namespace ORB_SLAM

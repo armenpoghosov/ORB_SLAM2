@@ -23,7 +23,8 @@
 #include "KeyFrame.h"
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 
-#include<mutex>
+#include <mutex>
+#include <unordered_set>
 
 using namespace std;
 
@@ -146,7 +147,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
     float bestAccScore = minScore;
 
     // Lets now accumulate score by covisibility
-    for(list<pair<float,KeyFrame*> >::iterator it=lScoreAndMatch.begin(), itend=lScoreAndMatch.end(); it!=itend; it++)
+    for (auto it = lScoreAndMatch.begin(), itend = lScoreAndMatch.end(); it != itend; ++it)
     {
         KeyFrame* pKFi = it->second;
         vector<KeyFrame*> vpNeighs = pKFi->GetBestCovisibilityKeyFrames(10);
@@ -154,10 +155,11 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
         float bestScore = it->first;
         float accScore = it->first;
         KeyFrame* pBestKF = pKFi;
-        for(vector<KeyFrame*>::iterator vit=vpNeighs.begin(), vend=vpNeighs.end(); vit!=vend; vit++)
+        
+        for (auto vit = vpNeighs.begin(), vend = vpNeighs.end(); vit != vend; ++vit)
         {
             KeyFrame* pKF2 = *vit;
-            if(pKF2->mnLoopQuery==pKF->mnId && pKF2->mnLoopWords>minCommonWords)
+            if (pKF2->mnLoopQuery==pKF->mnId && pKF2->mnLoopWords>minCommonWords)
             {
                 accScore+=pKF2->mLoopScore;
                 if(pKF2->mLoopScore>bestScore)
@@ -168,31 +170,30 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
             }
         }
 
-        lAccScoreAndMatch.push_back(make_pair(accScore,pBestKF));
-        if(accScore>bestAccScore)
+        lAccScoreAndMatch.emplace_back(accScore, pBestKF);
+
+        if (accScore > bestAccScore)
             bestAccScore=accScore;
     }
 
     // Return all those keyframes with a score higher than 0.75*bestScore
-    float minScoreToRetain = 0.75f*bestAccScore;
+    float minScoreToRetain = 0.75f * bestAccScore;
 
-    set<KeyFrame*> spAlreadyAddedKF;
+    std::unordered_set<KeyFrame*> spAlreadyAddedKF;
+    spAlreadyAddedKF.reserve(lAccScoreAndMatch.size());
+
     vector<KeyFrame*> vpLoopCandidates;
     vpLoopCandidates.reserve(lAccScoreAndMatch.size());
 
-    for(list<pair<float,KeyFrame*> >::iterator it=lAccScoreAndMatch.begin(), itend=lAccScoreAndMatch.end(); it!=itend; it++)
+    for (auto const& score_pair : lAccScoreAndMatch)
     {
-        if(it->first>minScoreToRetain)
-        {
-            KeyFrame* pKFi = it->second;
-            if(!spAlreadyAddedKF.count(pKFi))
-            {
-                vpLoopCandidates.push_back(pKFi);
-                spAlreadyAddedKF.insert(pKFi);
-            }
-        }
-    }
+        if (score_pair.first <= minScoreToRetain)
+            continue;
 
+        auto const& pair = spAlreadyAddedKF.insert(score_pair.second);
+        if (pair.second)
+            vpLoopCandidates.push_back(score_pair.second);
+    }
 
     return vpLoopCandidates;
 }
