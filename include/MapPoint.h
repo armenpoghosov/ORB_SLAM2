@@ -46,13 +46,37 @@ public:
     MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF);
 
     void SetWorldPos(const cv::Mat &Pos);
-    cv::Mat GetWorldPos();
 
-    cv::Mat GetNormal();
-    KeyFrame* GetReferenceKeyFrame();
+    cv::Mat GetWorldPos()
+    {
+        unique_lock<mutex> lock(mMutexPos);
+        return mWorldPos.clone();
+    }
 
-    std::map<KeyFrame*,size_t> GetObservations();
-    int Observations();
+    cv::Mat GetNormal()
+    {
+        unique_lock<mutex> lock(mMutexPos);
+        return mNormalVector.clone();
+    }
+
+    KeyFrame* GetReferenceKeyFrame()
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        return mpRefKF;
+    }
+
+    std::map<KeyFrame*, size_t> GetObservations()
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        return mObservations;
+    }
+
+    int Observations()
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        return nObs;
+    }
+
 
     void AddObservation(KeyFrame* pKF,size_t idx);
     void EraseObservation(KeyFrame* pKF);

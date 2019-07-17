@@ -106,23 +106,6 @@ void MapPoint::SetWorldPos(cv::Mat const& Pos)
     Pos.copyTo(mWorldPos);
 }
 
-cv::Mat MapPoint::GetWorldPos()
-{
-    unique_lock<mutex> lock(mMutexPos);
-    return mWorldPos.clone();
-}
-
-cv::Mat MapPoint::GetNormal()
-{
-    unique_lock<mutex> lock(mMutexPos);
-    return mNormalVector.clone();
-}
-
-KeyFrame* MapPoint::GetReferenceKeyFrame()
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    return mpRefKF;
-}
 
 void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
 {
@@ -165,18 +148,6 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 
     if (bBad)
         SetBadFlag();
-}
-
-map<KeyFrame*, size_t> MapPoint::GetObservations()
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    return mObservations;
-}
-
-int MapPoint::Observations()
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    return nObs;
 }
 
 void MapPoint::SetBadFlag()

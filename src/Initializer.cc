@@ -115,14 +115,14 @@ bool Initializer::Initialize(Frame const& CurrentFrame, vector<int> const& vMatc
 
     // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
     if (RH > 0.40)
-        return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
+        return ReconstructH(vbMatchesInliersH, H, mK, R21, t21, vP3D, vbTriangulated, 1.f, 10);
     else //if (pF_HF>0.6)
-        return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
+        return ReconstructF(vbMatchesInliersF, F, mK, R21, t21, vP3D, vbTriangulated, 1.f, 10);
 
     // return false;
 }
 
-void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21)
+void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float& score, cv::Mat &H21)
 {
     // Number of putative matches
     const int N = mvMatches12.size();
@@ -157,7 +157,7 @@ void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, c
     for (int it = 0; it < mMaxIterations; ++it)
     {
         // Select a minimum set
-        for(size_t j = 0; j < 8; ++j)
+        for (size_t j = 0; j < 8; ++j)
         {
             int idx = mvSets[it][j];
 
@@ -170,7 +170,6 @@ void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, c
         H12i = H21i.inv();
 
         currentScore = CheckHomography(H21i, H12i, vbCurrentInliers, mSigma);
-
         if (currentScore > score)
         {
             H21 = H21i.clone();
@@ -312,7 +311,7 @@ cv::Mat Initializer::ComputeF21(const vector<cv::Point2f> &vP1,const vector<cv::
     return  u*cv::Mat::diag(w)*vt;
 }
 
-float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vector<bool> &vbMatchesInliers, float sigma)
+float Initializer::CheckHomography(cv::Mat const& H21, cv::Mat const& H12, vector<bool>& vbMatchesInliers, float sigma)
 {   
     const int N = mvMatches12.size();
 
@@ -326,25 +325,25 @@ float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vecto
     const float h32 = H21.at<float>(2, 1);
     const float h33 = H21.at<float>(2, 2);
 
-    const float h11inv = H12.at<float>(0,0);
-    const float h12inv = H12.at<float>(0,1);
-    const float h13inv = H12.at<float>(0,2);
-    const float h21inv = H12.at<float>(1,0);
-    const float h22inv = H12.at<float>(1,1);
-    const float h23inv = H12.at<float>(1,2);
-    const float h31inv = H12.at<float>(2,0);
-    const float h32inv = H12.at<float>(2,1);
-    const float h33inv = H12.at<float>(2,2);
+    const float h11inv = H12.at<float>(0, 0);
+    const float h12inv = H12.at<float>(0, 1);
+    const float h13inv = H12.at<float>(0, 2);
+    const float h21inv = H12.at<float>(1, 0);
+    const float h22inv = H12.at<float>(1, 1);
+    const float h23inv = H12.at<float>(1, 2);
+    const float h31inv = H12.at<float>(2, 0);
+    const float h32inv = H12.at<float>(2, 1);
+    const float h33inv = H12.at<float>(2, 2);
 
     vbMatchesInliers.resize(N);
 
     float score = 0;
 
-    const float th = 5.991;
+    float const th = 5.991;
 
-    const float invSigmaSquare = 1.0/(sigma*sigma);
+    float const invSigmaSquare = 1.0 / (sigma * sigma);
 
-    for(int i=0; i<N; i++)
+    for(int i = 0; i < N; ++i)
     {
         bool bIn = true;
 
@@ -353,15 +352,16 @@ float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vecto
 
         const float u1 = kp1.pt.x;
         const float v1 = kp1.pt.y;
+
         const float u2 = kp2.pt.x;
         const float v2 = kp2.pt.y;
 
         // Reprojection error in first image
         // x2in1 = H12*x2
 
-        const float w2in1inv = 1.0/(h31inv*u2+h32inv*v2+h33inv);
-        const float u2in1 = (h11inv*u2+h12inv*v2+h13inv)*w2in1inv;
-        const float v2in1 = (h21inv*u2+h22inv*v2+h23inv)*w2in1inv;
+        const float w2in1inv = 1.0 / (h31inv * u2 + h32inv * v2 + h33inv);
+        const float u2in1 = (h11inv * u2 + h12inv * v2 + h13inv) * w2in1inv;
+        const float v2in1 = (h21inv * u2 + h22inv * v2 + h23inv) * w2in1inv;
 
         const float squareDist1 = (u1-u2in1)*(u1-u2in1)+(v1-v2in1)*(v1-v2in1);
 
@@ -383,7 +383,7 @@ float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vecto
 
         const float chiSquare2 = squareDist2*invSigmaSquare;
 
-        if(chiSquare2>th)
+        if (chiSquare2 > th)
             bIn = false;
         else
             score += th - chiSquare2;

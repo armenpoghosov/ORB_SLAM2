@@ -141,17 +141,16 @@ bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoin
 
 int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpMapPointMatches)
 {
-    vector<MapPoint*> const vpMapPointsKF = pKF->GetMapPointMatches();
-
-    vpMapPointMatches = vector<MapPoint*>(F.N);
-
-    DBoW2::FeatureVector const& vFeatVecKF = pKF->mFeatVec;
-
     int nmatches = 0;
 
     std::vector<int> rotHist[HISTO_LENGTH];
     for (int i = 0; i < HISTO_LENGTH; ++i)
         rotHist[i].reserve(500);
+
+    vpMapPointMatches = vector<MapPoint*>(F.N);
+
+    vector<MapPoint*> const vpMapPointsKF = pKF->GetMapPointMatches();
+    DBoW2::FeatureVector const& vFeatVecKF = pKF->mFeatVec;
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
     DBoW2::FeatureVector::const_iterator KFit = vFeatVecKF.begin();
@@ -449,7 +448,7 @@ int ORBmatcher::SearchForInitialization(Frame& F1, Frame& F2,
             float rot = F1.mvKeysUn[i1].angle - F2.mvKeysUn[bestIdx2].angle;
 
             if (rot < 0.f)
-                rot += 360.0f;
+                rot += 360.f;
 
             int bin = (int)(rot * (HISTO_LENGTH / 360.f));
             if (bin == HISTO_LENGTH)
@@ -1298,29 +1297,27 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
     return nFound;
 }
 
-int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, const float th, const bool bMono)
+int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, float th, bool bMono)
 {
     int nmatches = 0;
 
     // Rotation Histogram (to check rotation consistency)
-    vector<int> rotHist[HISTO_LENGTH];
-    for(int i=0;i<HISTO_LENGTH;i++)
+    std::vector<int> rotHist[HISTO_LENGTH];
+    for (int i = 0; i < HISTO_LENGTH; ++i)
         rotHist[i].reserve(500);
 
-    const cv::Mat Rcw = CurrentFrame.mTcw.rowRange(0,3).colRange(0,3);
-    const cv::Mat tcw = CurrentFrame.mTcw.rowRange(0,3).col(3);
+    cv::Mat const Rcw = CurrentFrame.mTcw.rowRange(0, 3).colRange(0, 3);
+    cv::Mat const tcw = CurrentFrame.mTcw.rowRange(0, 3).col(3);
+    cv::Mat const twc = -Rcw.t() * tcw;
 
-    const cv::Mat twc = -Rcw.t()*tcw;
+    cv::Mat const Rlw = LastFrame.mTcw.rowRange(0, 3).colRange(0, 3);
+    cv::Mat const tlw = LastFrame.mTcw.rowRange(0, 3).col(3);
+    cv::Mat const tlc = Rlw * twc + tlw;
 
-    const cv::Mat Rlw = LastFrame.mTcw.rowRange(0,3).colRange(0,3);
-    const cv::Mat tlw = LastFrame.mTcw.rowRange(0,3).col(3);
+    bool const bForward = !bMono && tlc.at<float>(2) > CurrentFrame.mb;
+    bool const bBackward = !bMono && -tlc.at<float>(2) > CurrentFrame.mb;
 
-    const cv::Mat tlc = Rlw*twc+tlw;
-
-    const bool bForward = tlc.at<float>(2)>CurrentFrame.mb && !bMono;
-    const bool bBackward = -tlc.at<float>(2)>CurrentFrame.mb && !bMono;
-
-    for(int i=0; i<LastFrame.N; i++)
+    for (int i = 0; i < LastFrame.N; ++i)
     {
         MapPoint* pMP = LastFrame.mvpMapPoints[i];
 
@@ -1331,118 +1328,116 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
         cv::Mat x3Dw = pMP->GetWorldPos();
         cv::Mat x3Dc = Rcw * x3Dw + tcw;
 
-        const float invzc = 1.0 / x3Dc.at<float>(2);
+        float const invzc = 1.0 / x3Dc.at<float>(2);
         if (invzc < 0)
             continue;
 
-        const float xc = x3Dc.at<float>(0);
-        const float yc = x3Dc.at<float>(1);
+        float const xc = x3Dc.at<float>(0);
+        float const yc = x3Dc.at<float>(1);
 
-        float u = CurrentFrame.fx*xc*invzc+CurrentFrame.cx;
-        float v = CurrentFrame.fy*yc*invzc+CurrentFrame.cy;
+        float u = CurrentFrame.fx * xc * invzc + CurrentFrame.cx;
+        float v = CurrentFrame.fy * yc * invzc + CurrentFrame.cy;
 
-        if(u<CurrentFrame.mnMinX || u>CurrentFrame.mnMaxX)
-            continue;
-        if(v<CurrentFrame.mnMinY || v>CurrentFrame.mnMaxY)
+        if (u < CurrentFrame.mnMinX || u > CurrentFrame.mnMaxX ||
+            v < CurrentFrame.mnMinY || v > CurrentFrame.mnMaxY)
             continue;
 
         int nLastOctave = LastFrame.mvKeys[i].octave;
 
         // Search in a window. Size depends on scale
-        float radius = th*CurrentFrame.mvScaleFactors[nLastOctave];
+        float radius = th * CurrentFrame.mvScaleFactors[nLastOctave];
 
         vector<size_t> vIndices2;
 
-        if(bForward)
-            vIndices2 = CurrentFrame.GetFeaturesInArea(u,v, radius, nLastOctave);
-        else if(bBackward)
-            vIndices2 = CurrentFrame.GetFeaturesInArea(u,v, radius, 0, nLastOctave);
+        if (bForward)
+            vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, nLastOctave);
+        else if (bBackward)
+            vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, 0, nLastOctave);
         else
-            vIndices2 = CurrentFrame.GetFeaturesInArea(u,v, radius, nLastOctave-1, nLastOctave+1);
+            vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, nLastOctave - 1, nLastOctave + 1);
 
-        if(vIndices2.empty())
+        if (vIndices2.empty())
             continue;
 
-        const cv::Mat dMP = pMP->GetDescriptor();
+        cv::Mat const dMP = pMP->GetDescriptor();
 
         int bestDist = 256;
         int bestIdx2 = -1;
 
-        for(vector<size_t>::const_iterator vit=vIndices2.begin(), vend=vIndices2.end(); vit!=vend; vit++)
+        for (size_t const i2 : vIndices2)
         {
-            const size_t i2 = *vit;
-
             MapPoint* pMP_i2 = CurrentFrame.mvpMapPoints[i2];
+
             if (pMP_i2 != nullptr && pMP_i2->Observations() > 0)
                 continue;
 
-            if(CurrentFrame.mvuRight[i2]>0)
+            if (CurrentFrame.mvuRight[i2] > 0)
             {
-                const float ur = u - CurrentFrame.mbf*invzc;
-                const float er = fabs(ur - CurrentFrame.mvuRight[i2]);
-                if(er>radius)
+                float const ur = u - CurrentFrame.mbf * invzc;
+                float const er = fabs(ur - CurrentFrame.mvuRight[i2]);
+                if (er > radius)
                     continue;
             }
 
-            const cv::Mat &d = CurrentFrame.mDescriptors.row(i2);
+            cv::Mat const& d = CurrentFrame.mDescriptors.row(i2);
 
-            const int dist = DescriptorDistance(dMP,d);
-
-            if(dist<bestDist)
+            int const dist = DescriptorDistance(dMP, d);
+            if (dist < bestDist)
             {
-                bestDist=dist;
-                bestIdx2=i2;
+                bestDist = dist;
+                bestIdx2 = i2;
             }
         }
 
-        if(bestDist<=TH_HIGH)
+        if (bestDist > TH_HIGH)
+            continue;
+
+        CurrentFrame.mvpMapPoints[bestIdx2] = pMP;
+        ++nmatches;
+
+        if (mbCheckOrientation)
         {
-            CurrentFrame.mvpMapPoints[bestIdx2]=pMP;
-            nmatches++;
+            float rot = LastFrame.mvKeysUn[i].angle - CurrentFrame.mvKeysUn[bestIdx2].angle;
+            if (rot < 0.f)
+                rot += 360.f;
 
-            if(mbCheckOrientation)
-            {
-                float rot = LastFrame.mvKeysUn[i].angle-CurrentFrame.mvKeysUn[bestIdx2].angle;
-                if (rot < 0.f)
-                    rot += 360.0f;
+            int bin = (int)(rot * (HISTO_LENGTH / 360.f));
 
-                int bin = (int)(rot * (HISTO_LENGTH / 360.f));
+            if (bin == HISTO_LENGTH)
+                bin = 0;
 
-                if (bin == HISTO_LENGTH)
-                    bin = 0;
-
-                assert(bin >= 0 && bin < HISTO_LENGTH);
-                rotHist[bin].push_back(bestIdx2);
-            }
+            assert(bin >= 0 && bin < HISTO_LENGTH);
+            rotHist[bin].push_back(bestIdx2);
         }
     }
 
     //Apply rotation consistency
-    if(mbCheckOrientation)
+    if (mbCheckOrientation)
     {
-        int ind1=-1;
-        int ind2=-1;
-        int ind3=-1;
+        int ind1 = -1;
+        int ind2 = -1;
+        int ind3 = -1;
 
-        ComputeThreeMaxima(rotHist,HISTO_LENGTH,ind1,ind2,ind3);
+        ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3);
 
-        for(int i=0; i<HISTO_LENGTH; i++)
+        for (int i = 0; i < HISTO_LENGTH; ++i)
         {
-            if(i!=ind1 && i!=ind2 && i!=ind3)
-            {
-                for(size_t j=0, jend=rotHist[i].size(); j<jend; j++)
-                {
-                    CurrentFrame.mvpMapPoints[rotHist[i][j]]=static_cast<MapPoint*>(NULL);
-                    nmatches--;
-                }
-            }
+            if (i == ind1 || i == ind2 || i == ind3)
+                continue;
+
+            std::vector<int>& histo_entry = rotHist[i];
+
+            for (int index : histo_entry)
+                CurrentFrame.mvpMapPoints[index] = nullptr;
+
+            nmatches -= (int)histo_entry.size();
         }
     }
 
     return nmatches;
 }
 
-int ORBmatcher::SearchByProjection(Frame &CurrentFrame, KeyFrame *pKF, const set<MapPoint*> &sAlreadyFound, const float th , const int ORBdist)
+int ORBmatcher::SearchByProjection(Frame& CurrentFrame, KeyFrame* pKF, set<MapPoint*> const& sAlreadyFound, float th , int ORBdist)
 {
     int nmatches = 0;
 

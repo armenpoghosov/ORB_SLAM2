@@ -352,20 +352,12 @@ void Tracking::Track()
 
         mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
-        // If we have an initial estimation of the camera pose and matching. Track the local map.
-        if (!mbOnlyTracking)
-        {
-            if (bOK)
-                bOK = TrackLocalMap();
-        }
-        else
-        {
-            // mbVO true means that there are few matches to MapPoints in the map. We cannot retrieve
-            // a local map and therefore we do not perform TrackLocalMap(). Once the system relocalizes
-            // the camera we will use the local map again.
-            if (bOK && !mbVO)
-                bOK = TrackLocalMap();
-        }
+        // 1) If we have an initial estimation of the camera pose and matching. Track the local map.
+        // 2) mbVO true means that there are few matches to MapPoints in the map. We cannot retrieve
+        //      a local map and therefore we do not perform TrackLocalMap(). Once the system relocalizes
+        //      the camera we will use the local map again.
+        if (bOK && (!mbOnlyTracking || !mbVO))
+            bOK = TrackLocalMap();
 
         mState = bOK ? OK : LOST;
 
@@ -378,10 +370,10 @@ void Tracking::Track()
             // Update motion model
             if (!mLastFrame.mTcw.empty())
             {
-                cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
-                mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0,3).colRange(0,3));
-                mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0,3).col(3));
-                mVelocity = mCurrentFrame.mTcw*LastTwc;
+                cv::Mat LastTwc = cv::Mat::eye(4, 4, CV_32F);
+                mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0, 3).colRange(0, 3));
+                mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0, 3).col(3));
+                mVelocity = mCurrentFrame.mTcw * LastTwc;
             }
             else
                 mVelocity = cv::Mat();
@@ -688,7 +680,7 @@ void Tracking::CreateInitialMapMonocular()
 
 void Tracking::CheckReplacedInLastFrame()
 {
-    for(int i =0; i<mLastFrame.N; i++)
+    for(int i = 0; i < mLastFrame.N; ++i)
     {
         MapPoint*& rpMP = mLastFrame.mvpMapPoints[i];
 
@@ -750,15 +742,14 @@ void Tracking::UpdateLastFrame()
     // Update pose according to reference keyframe
     KeyFrame* pRef = mLastFrame.mpReferenceKF;
     cv::Mat Tlr = mlRelativeFramePoses.back();
+    mLastFrame.SetPose(Tlr * pRef->GetPose());
 
-    mLastFrame.SetPose(Tlr*pRef->GetPose());
-
-    if(mnLastKeyFrameId==mLastFrame.m_id || mSensor==System::MONOCULAR || !mbOnlyTracking)
+    if (mSensor == System::MONOCULAR || mnLastKeyFrameId == mLastFrame.m_id || !mbOnlyTracking)
         return;
 
     // Create "visual odometry" MapPoints
     // We sort points according to their measured depth by the stereo/RGB-D sensor
-    vector<pair<float, int> > vDepthIdx;
+    std::vector<std::pair<float, int> > vDepthIdx;
     vDepthIdx.reserve(mLastFrame.N);
 
     for (int i = 0; i < mLastFrame.N; ++i)
