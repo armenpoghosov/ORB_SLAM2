@@ -81,14 +81,11 @@ cv::Mat FrameDrawer::DrawFrame()
         for (std::size_t i = 0; i < vMatches.size(); ++i)
         {
             if (vMatches[i] >= 0)
-            {
                 cv::line(im, vIniKeys[i].pt, vCurrentKeys[vMatches[i]].pt, cv::Scalar(0, 255, 0));
-            }
-            else if (vCurrentKeys.size() > i)
-            {
-                cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
-            }
         }
+
+        for (cv::KeyPoint const& kp : vCurrentKeys)
+            cv::circle(im, kp.pt, 2, cv::Scalar(255, 0, 0), -1);
     }
     else if (state == Tracking::OK) //TRACKING
     {

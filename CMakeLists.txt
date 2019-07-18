@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM2)
 
-add_compile_options(-bigobj -MTd)
+add_compile_options(-bigobj)
+add_compile_options($<IF:$<CONFIG:Debug>,/MTd,/MT>)
 
 add_definitions(-DINITGUID)
 
@@ -21,7 +22,7 @@ add_library(${PROJECT_NAME}
     src/LocalMapping.cc
     src/LoopClosing.cc
     src/ORBextractor.cc
-    src/ORBmatcher.cc
+    src/ORBmatcher.cc 
     src/FrameDrawer.cc
     src/Converter.cc
     src/MapPoint.cc
@@ -36,7 +37,6 @@ add_library(${PROJECT_NAME}
     src/Initializer.cc
     src/Viewer.cc
     )
-set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(OpenCV_LIBS_Debug
 "C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\opencv\\build\\install\\x64\\vc15\\staticlib\\ade.lib"
@@ -124,9 +124,7 @@ set(OpenCV_LIBS_Release
 "strmiids.lib"
 )
 
-set(OpenCV_LIBS ${OpenCV_LIBS_Debug})
-
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} "$<IF:$<CONFIG:Debug>,${OpenCV_LIBS_Debug},${OpenCV_LIBS_Release}>")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
 

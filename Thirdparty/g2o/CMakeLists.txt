@@ -54,7 +54,7 @@ SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
 SET(g2o_C_FLAGS "${g2o_C_FLAGS} -W3")
 SET(g2o_CXX_FLAGS "${g2o_CXX_FLAGS} -W3")
 
-add_compile_options("-MTd")
+add_compile_options($<IF:$<CONFIG:Debug>,/MTd,/MT>)
 
 # specifying compiler flags
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${g2o_CXX_FLAGS}")

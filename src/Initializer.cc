@@ -30,23 +30,24 @@
 namespace ORB_SLAM2
 {
 
-Initializer::Initializer(Frame const& ReferenceFrame, float sigma, int iterations)
+Initializer::Initializer(Frame const& rRF, float sigma, int iterations)
 {
-    mK = ReferenceFrame.mK.clone();
+    mK = rRF.mK.clone();
 
-    mvKeys1 = ReferenceFrame.mvKeysUn;
+    mvKeys1 = rRF.mvKeysUn;
 
     mSigma = sigma;
-    mSigma2 = sigma*sigma;
+    mSigma2 = sigma * sigma;
+
     mMaxIterations = iterations;
 }
 
-bool Initializer::Initialize(Frame const& CurrentFrame, vector<int> const& vMatches12,
-    cv::Mat& R21, cv::Mat& t21, vector<cv::Point3f>& vP3D, vector<bool>& vbTriangulated)
+bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches12,
+    cv::Mat& R21, cv::Mat& t21, std::vector<cv::Point3f>& vP3D, std::vector<bool>& vbTriangulated)
 {
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
-    mvKeys2 = CurrentFrame.mvKeysUn;
+    mvKeys2 = rCF.mvKeysUn;
 
     mvMatches12.clear();
     mvMatches12.reserve(mvKeys2.size());
@@ -63,36 +64,30 @@ bool Initializer::Initialize(Frame const& CurrentFrame, vector<int> const& vMatc
             mvMatches12.emplace_back((int)i, vMatches12[i]);
     }
 
-    const int N = mvMatches12.size();
-
-    // Indices for minimum set selection
-    vector<size_t> vAllIndices;
-    vAllIndices.reserve(N);
-
-    vector<size_t> vAvailableIndices;
-
-    for (int i = 0; i < N; ++i)
-        vAllIndices.push_back(i);
+    std::size_t const N = mvMatches12.size();
 
     // Generate sets of 8 points for each RANSAC iteration
-    mvSets = vector< vector<size_t> >(mMaxIterations, vector<size_t>(8, 0));
+    mvSets = std::vector<std::size_t[8]>(mMaxIterations);
 
     DUtils::Random::SeedRandOnce(0);
 
     for (int it = 0; it < mMaxIterations; ++it)
     {
-        vAvailableIndices = vAllIndices;
+        std::size_t(&index_set)[8] = mvSets[it];
 
-        // Select a minimum set
-        for (size_t j = 0; j < 8; ++j)
+        std::size_t* const it_s = &index_set[0];
+        std::size_t* const it_e = it_s + 8;
+
+        for (std::size_t* it = it_s; it != it_e; ++it)
         {
-            int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size() - 1);
-            int idx = vAvailableIndices[randi];
+            std::size_t index;
 
-            mvSets[it][j] = idx;
+            for (index = DUtils::Random::RandomInt(0, N - 1);
+                std::find(it_s, it, index) != it;
+                index = DUtils::Random::RandomInt(0, N - 1))
+            {}
 
-            vAvailableIndices[randi] = vAvailableIndices.back();
-            vAvailableIndices.pop_back();
+            *it = index;
         }
     }
 
@@ -122,54 +117,53 @@ bool Initializer::Initialize(Frame const& CurrentFrame, vector<int> const& vMatc
     // return false;
 }
 
-void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float& score, cv::Mat &H21)
+void Initializer::FindHomography(vector<bool>& vbMatchesInliers, float& score, cv::Mat& H21)
 {
-    // Number of putative matches
-    const int N = mvMatches12.size();
-
     // Normalize coordinates
-    vector<cv::Point2f> vPn1;
-    vector<cv::Point2f> vPn2;
-
     cv::Mat T1;
-    cv::Mat T2;
-
+    std::vector<cv::Point2f> vPn1;
     Normalize(mvKeys1, vPn1, T1);
+
+    cv::Mat T2;
+    std::vector<cv::Point2f> vPn2;
     Normalize(mvKeys2, vPn2, T2);
 
     cv::Mat T2inv = T2.inv();
 
-    // Best Results variables
-    score = 0.0;
-    vbMatchesInliers = vector<bool>(N);
-
     // Iteration variables
-    vector<cv::Point2f> vPn1i(8);
-    vector<cv::Point2f> vPn2i(8);
+    cv::Point2f vPn1i[8];
+    cv::Point2f vPn2i[8];
 
     cv::Mat H21i;
     cv::Mat H12i;
 
+    // Number of putative matches
+    std::size_t const N = mvMatches12.size();
+
     vector<bool> vbCurrentInliers(N);
-    float currentScore;
+
+    // Best Results variables
+    score = 0.f;
+    vbMatchesInliers = vector<bool>(N);
 
     // Perform all RANSAC iterations and save the solution with highest score
     for (int it = 0; it < mMaxIterations; ++it)
     {
+        std::size_t const (&index_set)[8] = mvSets[it];
+
         // Select a minimum set
         for (size_t j = 0; j < 8; ++j)
         {
-            int idx = mvSets[it][j];
-
-            vPn1i[j] = vPn1[mvMatches12[idx].first];
-            vPn2i[j] = vPn2[mvMatches12[idx].second];
+            std::pair<int, int> const& match = mvMatches12[index_set[j]];
+            vPn1i[j] = vPn1[match.first];
+            vPn2i[j] = vPn2[match.second];
         }
 
-        cv::Mat Hn = ComputeH21(vPn1i,vPn2i);
+        cv::Mat Hn = ComputeH21(vPn1i, vPn2i);
         H21i = T2inv * Hn * T1;
         H12i = H21i.inv();
 
-        currentScore = CheckHomography(H21i, H12i, vbCurrentInliers, mSigma);
+        float const currentScore = CheckHomography(H21i, H12i, vbCurrentInliers, mSigma);
         if (currentScore > score)
         {
             H21 = H21i.clone();
@@ -186,10 +180,14 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
     const int N = vbMatchesInliers.size();
 
     // Normalize coordinates
-    vector<cv::Point2f> vPn1, vPn2;
-    cv::Mat T1, T2;
-    Normalize(mvKeys1,vPn1, T1);
-    Normalize(mvKeys2,vPn2, T2);
+    cv::Mat T1;
+    vector<cv::Point2f> vPn1;
+    Normalize(mvKeys1, vPn1, T1);
+
+    cv::Mat T2;
+    vector<cv::Point2f> vPn2;
+    Normalize(mvKeys2, vPn2, T2);
+
     cv::Mat T2t = T2.t();
 
     // Best Results variables
@@ -197,11 +195,10 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
     vbMatchesInliers = vector<bool>(N);
 
     // Iteration variables
-    vector<cv::Point2f> vPn1i(8);
-    vector<cv::Point2f> vPn2i(8);
+    cv::Point2f vPn1i[8];
+    cv::Point2f vPn2i[8];
     
     cv::Mat F21i;
-    float currentScore;
     vector<bool> vbCurrentInliers(N);
 
     // Perform all RANSAC iterations and save the solution with highest score
@@ -220,9 +217,8 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
 
         F21i = T2t*Fn*T1;
 
-        currentScore = CheckFundamental(F21i, vbCurrentInliers, mSigma);
-
-        if(currentScore>score)
+        float const currentScore = CheckFundamental(F21i, vbCurrentInliers, mSigma);
+        if (currentScore > score)
         {
             F21 = F21i.clone();
             vbMatchesInliers = vbCurrentInliers;
@@ -232,83 +228,84 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
 }
 
 
-cv::Mat Initializer::ComputeH21(const vector<cv::Point2f> &vP1, const vector<cv::Point2f> &vP2)
+cv::Mat Initializer::ComputeH21(cv::Point2f const (&vP1)[8], cv::Point2f const (&vP2)[8])
 {
-    const int N = vP1.size();
+    cv::Mat A(18, 9, CV_32F);
 
-    cv::Mat A(2*N,9,CV_32F);
-
-    for(int i=0; i<N; i++)
+    for (int i = 0; i < 8; ++i)
     {
-        const float u1 = vP1[i].x;
-        const float v1 = vP1[i].y;
-        const float u2 = vP2[i].x;
-        const float v2 = vP2[i].y;
+        float const u1 = vP1[i].x;
+        float const v1 = vP1[i].y;
 
-        A.at<float>(2*i,0) = 0.0;
-        A.at<float>(2*i,1) = 0.0;
-        A.at<float>(2*i,2) = 0.0;
-        A.at<float>(2*i,3) = -u1;
-        A.at<float>(2*i,4) = -v1;
-        A.at<float>(2*i,5) = -1;
-        A.at<float>(2*i,6) = v2*u1;
-        A.at<float>(2*i,7) = v2*v1;
-        A.at<float>(2*i,8) = v2;
+        float const u2 = vP2[i].x;
+        float const v2 = vP2[i].y;
 
-        A.at<float>(2*i+1,0) = u1;
-        A.at<float>(2*i+1,1) = v1;
-        A.at<float>(2*i+1,2) = 1;
-        A.at<float>(2*i+1,3) = 0.0;
-        A.at<float>(2*i+1,4) = 0.0;
-        A.at<float>(2*i+1,5) = 0.0;
-        A.at<float>(2*i+1,6) = -u2*u1;
-        A.at<float>(2*i+1,7) = -u2*v1;
-        A.at<float>(2*i+1,8) = -u2;
+        A.at<float>(2 * i, 0) = 0.f;
+        A.at<float>(2 * i, 1) = 0.f;
+        A.at<float>(2 * i, 2) = 0.f;
+        A.at<float>(2 * i, 3) = - u1;
+        A.at<float>(2 * i, 4) = - v1;
+        A.at<float>(2 * i, 5) = - 1.f;
+        A.at<float>(2 * i, 6) = v2 * u1;
+        A.at<float>(2 * i, 7) = v2 * v1;
+        A.at<float>(2 * i, 8) = v2;
 
+        A.at<float>(2 * i + 1,0) = u1;
+        A.at<float>(2 * i + 1,1) = v1;
+        A.at<float>(2 * i + 1,2) = 1.f;
+        A.at<float>(2 * i + 1,3) = 0.f;
+        A.at<float>(2 * i + 1,4) = 0.f;
+        A.at<float>(2 * i + 1,5) = 0.f;
+        A.at<float>(2 * i + 1,6) = -u2 * u1;
+        A.at<float>(2 * i + 1,7) = -u2 * v1;
+        A.at<float>(2 * i + 1,8) = -u2;
     }
 
-    cv::Mat u,w,vt;
+    cv::Mat u;
+    cv::Mat w;
+    cv::Mat vt;
 
-    cv::SVDecomp(A,w,u,vt,cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
+    cv::SVDecomp(A, w, u, vt, cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
 
     return vt.row(8).reshape(0, 3);
 }
 
-cv::Mat Initializer::ComputeF21(const vector<cv::Point2f> &vP1,const vector<cv::Point2f> &vP2)
+cv::Mat Initializer::ComputeF21(cv::Point2f const (&vP1)[8], cv::Point2f const (&vP2)[8])
 {
-    const int N = vP1.size();
+    cv::Mat A(8, 9, CV_32F);
 
-    cv::Mat A(N,9,CV_32F);
-
-    for(int i=0; i<N; i++)
+    for (int i = 0; i < 8; ++i)
     {
         const float u1 = vP1[i].x;
         const float v1 = vP1[i].y;
+
         const float u2 = vP2[i].x;
         const float v2 = vP2[i].y;
 
-        A.at<float>(i,0) = u2*u1;
-        A.at<float>(i,1) = u2*v1;
-        A.at<float>(i,2) = u2;
-        A.at<float>(i,3) = v2*u1;
-        A.at<float>(i,4) = v2*v1;
-        A.at<float>(i,5) = v2;
-        A.at<float>(i,6) = u1;
-        A.at<float>(i,7) = v1;
-        A.at<float>(i,8) = 1;
+        A.at<float>(i, 0) = u2 * u1;
+        A.at<float>(i, 1) = u2 * v1;
+        A.at<float>(i, 2) = u2;
+        A.at<float>(i, 3) = v2 * u1;
+        A.at<float>(i, 4) = v2 * v1;
+        A.at<float>(i, 5) = v2;
+        A.at<float>(i, 6) = u1;
+        A.at<float>(i, 7) = v1;
+        A.at<float>(i, 8) = 1;
     }
 
-    cv::Mat u,w,vt;
+    cv::Mat u;
+    cv::Mat w;
+    cv::Mat vt;
 
-    cv::SVDecomp(A,w,u,vt,cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
+    cv::SVDecomp(A, w, u, vt, cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
 
     cv::Mat Fpre = vt.row(8).reshape(0, 3);
 
-    cv::SVDecomp(Fpre,w,u,vt,cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
+    cv::SVDecomp(Fpre, w, u, vt, cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
 
-    w.at<float>(2)=0;
+    w.at<float>(2) = 0;
 
-    return  u*cv::Mat::diag(w)*vt;
+    return  u * cv::Mat::diag(w) * vt;
 }
 
 float Initializer::CheckHomography(cv::Mat const& H21, cv::Mat const& H12, vector<bool>& vbMatchesInliers, float sigma)
@@ -754,52 +751,53 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
     x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
 }
 
-void Initializer::Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2f> &vNormalizedPoints, cv::Mat &T)
+void Initializer::Normalize(std::vector<cv::KeyPoint> const& vKeys,
+    std::vector<cv::Point2f>& vNormalizedPoints, cv::Mat& transform)
 {
-    float meanX = 0;
-    float meanY = 0;
-    const int N = vKeys.size();
+    float meanX = 0.f;
+    float meanY = 0.f;
 
-    vNormalizedPoints.resize(N);
-
-    for(int i=0; i<N; i++)
+    for (cv::KeyPoint const& kp : vKeys)
     {
-        meanX += vKeys[i].pt.x;
-        meanY += vKeys[i].pt.y;
+        meanX += kp.pt.x;
+        meanY += kp.pt.y;
     }
 
-    meanX = meanX/N;
-    meanY = meanY/N;
+    std::size_t const keys_count = vKeys.size();
 
-    float meanDevX = 0;
-    float meanDevY = 0;
+    meanX /= keys_count;
+    meanY /= keys_count;
 
-    for(int i=0; i<N; i++)
+    float meanDevX = 0.f;
+    float meanDevY = 0.f;
+
+    vNormalizedPoints.reserve(keys_count);
+
+    for (cv::KeyPoint const& kp : vKeys)
     {
-        vNormalizedPoints[i].x = vKeys[i].pt.x - meanX;
-        vNormalizedPoints[i].y = vKeys[i].pt.y - meanY;
-
-        meanDevX += fabs(vNormalizedPoints[i].x);
-        meanDevY += fabs(vNormalizedPoints[i].y);
+        vNormalizedPoints.emplace_back(kp.pt.x - meanX, kp.pt.y - meanY);
+        cv::Point2f& np = vNormalizedPoints.back();
+        meanDevX += std::fabs(np.x);
+        meanDevY += std::fabs(np.y);
     }
 
-    meanDevX = meanDevX/N;
-    meanDevY = meanDevY/N;
+    meanDevX /= keys_count;
+    meanDevY /= keys_count;
 
-    float sX = 1.0/meanDevX;
-    float sY = 1.0/meanDevY;
+    float const sX = 1.f / meanDevX;
+    float const sY = 1.f / meanDevY;
 
-    for(int i=0; i<N; i++)
+    for (cv::Point2f& np : vNormalizedPoints)
     {
-        vNormalizedPoints[i].x = vNormalizedPoints[i].x * sX;
-        vNormalizedPoints[i].y = vNormalizedPoints[i].y * sY;
+        np.x *= sX;
+        np.y *= sY;
     }
 
-    T = cv::Mat::eye(3,3,CV_32F);
-    T.at<float>(0,0) = sX;
-    T.at<float>(1,1) = sY;
-    T.at<float>(0,2) = -meanX*sX;
-    T.at<float>(1,2) = -meanY*sY;
+    transform = cv::Mat::eye(3, 3, CV_32F);
+    transform.at<float>(0, 0) = sX;
+    transform.at<float>(1, 1) = sY;
+    transform.at<float>(0, 2) = - meanX * sX;
+    transform.at<float>(1, 2) = - meanY * sY;
 }
 
 

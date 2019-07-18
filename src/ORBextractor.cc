@@ -69,13 +69,13 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-static int init_umax(int(&u_max)[ORBextractor::HALF_PATCH_SIZE + 1])
+static int init_umax(int (&u_max)[ORBextractor::HALF_PATCH_SIZE + 1])
 {
     // This is for orientation
     // pre-compute the end of a row in a circular patch
 
-    int vmin = cvCeil(ORBextractor::HALF_PATCH_SIZE * std::sqrt(2.f) / 2);
-    int vmax = cvFloor(ORBextractor::HALF_PATCH_SIZE * std::sqrt(2.f) / 2 + 1);
+    int const vmin = cvCeil(ORBextractor::HALF_PATCH_SIZE * std::sqrt(2.f) / 2);
+    int const vmax = cvFloor(ORBextractor::HALF_PATCH_SIZE * std::sqrt(2.f) / 2 + 1);
 
     double const hp2 = ORBextractor::HALF_PATCH_SIZE * ORBextractor::HALF_PATCH_SIZE;
     for (int v = 0; v <= vmax; ++v)
@@ -87,14 +87,13 @@ static int init_umax(int(&u_max)[ORBextractor::HALF_PATCH_SIZE + 1])
         while (u_max[v0] == u_max[v0 + 1])
             ++v0;
 
-        u_max[v] = v0;
-        ++v0;
+        u_max[v] = v0++;
     }
 
     return 0;
 }
 
-static float IC_Angle(Mat const& image, Point2f pt)
+static float IC_Angle(Mat const& image, Point2f const& pt)
 {
     static int u_max[ORBextractor::HALF_PATCH_SIZE + 1];
     static int const init = init_umax(u_max);
@@ -129,6 +128,12 @@ static float IC_Angle(Mat const& image, Point2f pt)
     }
 
     return fastAtan2((float)m_01, (float)m_10);
+}
+
+static void computeOrientation(Mat const& image, std::vector<KeyPoint>& keypoints)
+{
+    for (KeyPoint& keypoint : keypoints)
+        keypoint.angle = IC_Angle(image, keypoint.pt);
 }
 
 static void computeOrbDescriptor(KeyPoint const& kpt, Mat const& img, uchar* desc)
@@ -393,7 +398,7 @@ static void computeOrbDescriptor(KeyPoint const& kpt, Mat const& img, uchar* des
         Point(-1,-6), Point(0,-11)// mean (0.127148), correlation (0.547401)
     };
 
-    float const angle = kpt.angle * (float)(CV_PI / 180.f);
+    float const angle = kpt.angle * (float)(CV_PI / 180.);
 
     float const a = std::cos(angle);
     float const b = std::sin(angle);
@@ -499,12 +504,6 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int
     }
 
     mnFeaturesPerLevel[nlevels - 1] = std::max(nfeatures - sumFeatures, 0);
-}
-
-static void computeOrientation(const Mat& image, vector<KeyPoint>& keypoints)
-{
-    for (KeyPoint& keypoint : keypoints)
-        keypoint.angle = IC_Angle(image, keypoint.pt);
 }
 
 void ExtractorNode::DivideNode(ExtractorNode& n1, ExtractorNode& n2, ExtractorNode& n3, ExtractorNode& n4)

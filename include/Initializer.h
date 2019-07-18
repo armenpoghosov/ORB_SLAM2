@@ -21,8 +21,8 @@
 #define INITIALIZER_H
 
 #include<opencv2/opencv.hpp>
-#include "Frame.h"
 
+#include "Frame.h"
 
 namespace ORB_SLAM2
 {
@@ -45,8 +45,8 @@ private:
     void FindHomography(vector<bool>& vbMatchesInliers, float& score, cv::Mat& H21);
     void FindFundamental(vector<bool>& vbInliers, float& score, cv::Mat& F21);
 
-    cv::Mat ComputeH21(vector<cv::Point2f> const& vP1, vector<cv::Point2f> const& vP2);
-    cv::Mat ComputeF21(vector<cv::Point2f> const& vP1, vector<cv::Point2f> const& vP2);
+    static cv::Mat ComputeH21(cv::Point2f const (&vP1)[8], cv::Point2f const (&vP2)[8]);
+    static cv::Mat ComputeF21(cv::Point2f const (&vP1)[8], cv::Point2f const (&vP2)[8]);
 
     float CheckHomography(cv::Mat const& H21, cv::Mat const& H12, vector<bool>& vbMatchesInliers, float sigma);
     float CheckFundamental(cv::Mat const& F21, vector<bool>& vbMatchesInliers, float sigma);
@@ -89,7 +89,7 @@ private:
     int                             mMaxIterations;
 
     // Ransac sets
-    vector<vector<size_t> >         mvSets;
+    vector<size_t[8]>               mvSets;
 };
 
 } //namespace ORB_SLAM
