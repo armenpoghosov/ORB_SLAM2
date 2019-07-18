@@ -101,14 +101,12 @@ protected:
         std::vector<cv::KeyPoint> const& vToDistributeKeys,
         int minX, int maxX, int minY, int maxY, int nFeatures);
 
-    std::vector<cv::Point>  pattern;
     int                     nfeatures;
     double                  scaleFactor;
     int                     nlevels;
     int                     iniThFAST;
     int                     minThFAST;
     std::vector<int>        mnFeaturesPerLevel;
-    std::vector<int>        umax;
     std::vector<float>      mvScaleFactor;
     std::vector<float>      mvInvScaleFactor;
     std::vector<float>      mvLevelSigma2;
