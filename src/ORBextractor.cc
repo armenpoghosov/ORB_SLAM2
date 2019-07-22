@@ -419,7 +419,7 @@ static void computeOrbDescriptor(KeyPoint const& kpt, Mat const& img, uchar* des
         int val;
 
         t0 = GET_VALUE(0); t1 = GET_VALUE(1);
-        val = t0 < t1;
+        val = (int)(t0 < t1);
 
         t0 = GET_VALUE(2); t1 = GET_VALUE(3);
         val |= (int)(t0 < t1) << 1;
