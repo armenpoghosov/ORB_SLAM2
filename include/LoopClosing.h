@@ -63,7 +63,7 @@ public:
     void InsertKeyFrame(KeyFrame *pKF);
 
     // This function will run in a separate thread
-    void RunGlobalBundleAdjustment(unsigned long nLoopKF);
+    void RunGlobalBundleAdjustment(uint64_t nLoopKF);
 
     void RequestReset();
 

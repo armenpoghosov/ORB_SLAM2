@@ -569,7 +569,7 @@ void LoopClosing::CorrectLoop()
     mbRunningGBA = true;
     mbFinishedGBA = false;
     mbStopGBA = false;
-    mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this,mpCurrentKF->mnId);
+    mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->mnId);
 
     // Loop closed. Release Local Mapping.
     mpLocalMapper->Release();    
@@ -638,7 +638,7 @@ void LoopClosing::ResetIfRequested()
     }
 }
 
-void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
+void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
 {
     cout << "Starting Global Bundle Adjustment" << endl;
 
@@ -669,16 +669,16 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
             }
 
             // Get Map Mutex
-            unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
+            std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
 
             // Correct keyframes starting at map first keyframe
-            list<KeyFrame*> lpKFtoCheck(mpMap->mvpKeyFrameOrigins.begin(), mpMap->mvpKeyFrameOrigins.end());
+            std::list<KeyFrame*> lpKFtoCheck(mpMap->mvpKeyFrameOrigins.begin(), mpMap->mvpKeyFrameOrigins.end());
 
             while (!lpKFtoCheck.empty())
             {
                 KeyFrame* pKF = lpKFtoCheck.front();
 
-                const set<KeyFrame*> sChilds = pKF->GetChilds();
+                std::set<KeyFrame*> const sChilds = pKF->GetChilds();
                 cv::Mat Twc = pKF->GetPoseInverse();
 
                 for (auto sit = sChilds.cbegin(); sit != sChilds.cend(); ++sit)
@@ -702,9 +702,9 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
             }
 
             // Correct MapPoints
-            const vector<MapPoint*> vpMPs = mpMap->GetAllMapPoints();
+            std::vector<MapPoint*> const vpMPs = mpMap->GetAllMapPoints();
 
-            for (size_t i=0; i<vpMPs.size(); i++)
+            for (size_t i = 0; i < vpMPs.size(); ++i)
             {
                 MapPoint* pMP = vpMPs[i];
 

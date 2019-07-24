@@ -30,23 +30,6 @@
 namespace ORB_SLAM2
 {
 
-class ExtractorNode
-{
-public:
-
-    ExtractorNode()
-    {}
-
-    void DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNode &n3, ExtractorNode &n4);
-
-    std::vector<cv::KeyPoint>           vKeys;
-    cv::Point2i                         UL;
-    cv::Point2i                         UR;
-    cv::Point2i                         BL;
-    cv::Point2i                         BR;
-    std::list<ExtractorNode>::iterator  lit;
-};
-
 class ORBextractor
 {
 public:
@@ -76,19 +59,42 @@ public:
         { return nlevels; }
 
     float GetScaleFactor() const
-        { return (float)scaleFactor; } // PAE: what the hack!?
+        { return m_scaleFactor; }
 
-    std::vector<float> const& GetScaleFactors() const
-        { return mvScaleFactor; }
+    // TODO: PAE: to be removed
+    std::vector<float> GetScaleFactors() const
+    {
+        std::vector<float> result(nlevels);
+        result[0] = 1.f;
+        for (int level = 1; level < nlevels; ++level)
+            result[level] = result[level - 1] * m_scaleFactor;
+        return result;
+    }
 
-    std::vector<float> const& GetInverseScaleFactors() const
-        { return mvInvScaleFactor; }
+    // TODO: PAE: to be removed
+    std::vector<float> GetInverseScaleFactors() const
+    {
+        std::vector<float> result = GetScaleFactors();
+        for (float& sf : result)
+            sf = 1.f / sf;
+        return result;
+    }
 
-    std::vector<float> const& GetScaleSigmaSquares()
-        { return mvLevelSigma2; }
+    std::vector<float> GetScaleSigmaSquares()
+    {
+        std::vector<float> result = GetScaleFactors();
+        for (float& sf : result)
+            sf *= sf;
+        return result;
+    }
 
-    std::vector<float> const& GetInverseScaleSigmaSquares()
-        { return mvInvLevelSigma2; }
+    std::vector<float> GetInverseScaleSigmaSquares()
+    {
+        std::vector<float> result = GetScaleFactors();
+        for (float& sf : result)
+            sf = 1.f / (sf * sf);
+        return result;
+    }
 
     std::vector<cv::Mat> mvImagePyramid;
 
@@ -98,11 +104,11 @@ protected:
     void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);    
 
     static  std::vector<cv::KeyPoint> DistributeOctTree(
-        std::vector<cv::KeyPoint> const& vToDistributeKeys,
+        std::vector<cv::KeyPoint>& vToDistributeKeys,
         int minX, int maxX, int minY, int maxY, int nFeatures);
 
     int                     nfeatures;
-    double                  scaleFactor;
+    float                   m_scaleFactor;
     int                     nlevels;
     int                     iniThFAST;
     int                     minThFAST;

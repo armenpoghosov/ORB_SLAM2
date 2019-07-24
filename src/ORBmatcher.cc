@@ -393,7 +393,7 @@ int ORBmatcher::SearchForInitialization(Frame& F1, Frame& F2,
         cv::KeyPoint const& kp1 = F1.mvKeysUn[i1];
 
         int const level1 = kp1.octave;
-        if (level1 > 0) // TODO: PAE: hmmm matching done on features in the first octave only!
+        if (level1 > 0) ///TODO: PAE: hmmm matching done on features in the first octave only!
             continue;
 
         vector<size_t> vIndices2 = F2.GetFeaturesInArea(
