@@ -613,6 +613,9 @@ std::vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
 
                 to_expand.emplace_front(std::move(child_node));
             }
+
+            // NOTE: PAE: i modified the loop and the final stage of splitting only nodes with
+            // maximum number of features here but I might need to return this code back later ...
         }
     }
     while ((nodes.size() + to_expand.size()) < (std::size_t)N && !to_expand.empty());

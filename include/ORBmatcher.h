@@ -42,7 +42,7 @@ public:
     {
         TH_HIGH         = 100,
         TH_LOW          = 50,
-        HISTO_LENGTH    = 18 // PAE: originaly was 30
+        HISTO_LENGTH    = 30
     };
 
     ORBmatcher(float nnratio = 0.6, bool checkOri = true);
@@ -73,11 +73,12 @@ public:
     int SearchByBoW(KeyFrame *pKF1, KeyFrame* pKF2, std::vector<MapPoint*> &vpMatches12);
 
     // Matching for the Map Initialization (only used in the monocular case)
-    int SearchForInitialization(Frame &F1, Frame &F2, std::vector<cv::Point2f> &vbPrevMatched, std::vector<int> &vnMatches12, int windowSize=10);
+    int SearchForInitialization(Frame const& F1, Frame  const&F2,
+        std::vector<cv::Point2f>& vbPrevMatched, std::vector<int>& vnMatches12, int windowSize = 10);
 
     // Matching to triangulate new MapPoints. Check Epipolar Constraint.
     int SearchForTriangulation(KeyFrame *pKF1, KeyFrame* pKF2, cv::Mat F12,
-                               std::vector<pair<size_t, size_t> > &vMatchedPairs, const bool bOnlyStereo);
+        std::vector<pair<size_t, size_t> > &vMatchedPairs, bool bOnlyStereo);
 
     // Search matches between MapPoints seen in KF1 and KF2 transforming by a Sim3 [s12*R12|t12]
     // In the stereo and RGB-D case, s12=1

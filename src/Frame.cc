@@ -224,11 +224,11 @@ Frame::Frame(cv::Mat const& imGray, double timeStamp, ORBextractor* extractor,
     UndistortKeyPoints();
 
     // Set no stereo information
-    mvuRight = vector<float>(N, -1);
-    mvDepth = vector<float>(N, -1);
+    mvuRight = std::vector<float>(N, -1.f);
+    mvDepth = std::vector<float>(N, -1.f);
 
-    mvpMapPoints = vector<MapPoint*>(N);
-    mvbOutlier = vector<bool>(N);
+    mvpMapPoints = std::vector<MapPoint*>(N);
+    mvbOutlier = std::vector<bool>(N);
 
     // This is done only for the first Frame (or after a change in the calibration)
     ensure_initial_computations(imGray, K);
@@ -358,23 +358,23 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
     return true;
 }
 
-vector<size_t> Frame::GetFeaturesInArea(float x, float y, float r, int minLevel, int maxLevel) const
+std::vector<size_t> Frame::GetFeaturesInArea(float x, float y, float r, int minLevel, int maxLevel) const
 {
-    vector<size_t> vIndices;
+    std::vector<size_t> vIndices;
 
     int const nMinCellX = (std::max)(0, (int)floor((x - mnMinX - r) * mfGridElementWidthInv));
     if (nMinCellX >= FRAME_GRID_COLS)
         return vIndices;
 
-    int const nMaxCellX = (std::min)((int)FRAME_GRID_COLS-1,(int)ceil((x-mnMinX+r)*mfGridElementWidthInv));
+    int const nMaxCellX = (std::min)(FRAME_GRID_COLS - 1, (int)ceil((x - mnMinX + r) * mfGridElementWidthInv));
     if (nMaxCellX < 0)
         return vIndices;
 
-    int const nMinCellY = (std::max)(0,(int)floor((y - mnMinY - r) * mfGridElementHeightInv));
+    int const nMinCellY = (std::max)(0, (int)floor((y - mnMinY - r) * mfGridElementHeightInv));
     if (nMinCellY >= FRAME_GRID_ROWS)
         return vIndices;
 
-    int const nMaxCellY = (std::min)((int)FRAME_GRID_ROWS-1,(int)ceil((y-mnMinY+r)*mfGridElementHeightInv));
+    int const nMaxCellY = (std::min)(FRAME_GRID_ROWS - 1, (int)ceil((y - mnMinY + r) * mfGridElementHeightInv));
     if (nMaxCellY < 0)
         return vIndices;
 
@@ -384,21 +384,21 @@ vector<size_t> Frame::GetFeaturesInArea(float x, float y, float r, int minLevel,
     {
         for (int iy = nMinCellY; iy <= nMaxCellY; ++iy)
         {
-            vector<size_t> const& vCell = mGrid[ix][iy];
+            std::vector<size_t> const& vCell = mGrid[ix][iy];
 
             if (vCell.empty())
                 continue;
 
-            for (size_t j = 0, jend = vCell.size(); j < jend; ++j)
+            for (size_t const key_index : vCell)
             {
-                cv::KeyPoint const& kpUn = mvKeysUn[vCell[j]];
+                cv::KeyPoint const& kpUn = mvKeysUn[key_index];
 
                 if ((minLevel > 0 && kpUn.octave < minLevel) ||
                     (maxLevel >= 0 && kpUn.octave > maxLevel))
                     continue;
 
                 if (std::fabs(kpUn.pt.x - x) < r && std::fabs(kpUn.pt.y - y) < r)
-                    vIndices.push_back(vCell[j]);
+                    vIndices.push_back(key_index);
             }
         }
     }

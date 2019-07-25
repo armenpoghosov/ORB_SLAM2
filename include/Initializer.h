@@ -45,19 +45,25 @@ private:
     void FindHomography(vector<bool>& vbMatchesInliers, float& score, cv::Mat& H21);
     void FindFundamental(vector<bool>& vbInliers, float& score, cv::Mat& F21);
 
-    static cv::Mat ComputeH21(cv::Point2f const (&vP1)[8], cv::Point2f const (&vP2)[8]);
+    // PAE: NOTE: homography computation was done previously with 8 point!? why?
+    static cv::Mat ComputeH21(cv::Point2f const (&vP1)[4], cv::Point2f const (&vP2)[4]);
     static cv::Mat ComputeF21(cv::Point2f const (&vP1)[8], cv::Point2f const (&vP2)[8]);
 
-    float CheckHomography(cv::Mat const& H21, cv::Mat const& H12, vector<bool>& vbMatchesInliers, float sigma);
-    float CheckFundamental(cv::Mat const& F21, vector<bool>& vbMatchesInliers, float sigma);
+    float CheckHomography(cv::Mat const& H21, cv::Mat const& H12,
+        vector<bool>& vbMatchesInliers, float sigma);
+    float CheckFundamental(cv::Mat const& F21,
+        vector<bool>& vbMatchesInliers, float sigma);
 
-    bool ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv::Mat &K,
-                      cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated);
+    bool ReconstructF(std::vector<bool>& vbMatchesInliers, cv::Mat& F21, cv::Mat const& K,
+        cv::Mat& R21, cv::Mat& t21, std::vector<cv::Point3f>& vP3D, vector<bool>& vbTriangulated,
+        float minParallax, int minTriangulated);
 
-    bool ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv::Mat &K,
-                      cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated);
+    bool ReconstructH(std::vector<bool>& vbMatchesInliers, cv::Mat &H21, cv::Mat &K,
+        cv::Mat& R21, cv::Mat& t21, std::vector<cv::Point3f>& vP3D,
+        std::vector<bool>& vbTriangulated, float minParallax, int minTriangulated);
 
-    void Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &P1, const cv::Mat &P2, cv::Mat &x3D);
+    static void Triangulate(cv::KeyPoint const& kp1, cv::KeyPoint const& kp2,
+        cv::Mat const& P1, cv::Mat const& P2, cv::Mat& x3D);
 
     void Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2f> &vNormalizedPoints, cv::Mat &T);
 

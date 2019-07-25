@@ -514,7 +514,7 @@ void Tracking::MonocularInitialization()
         {
             delete mpInitializer;
             mpInitializer = nullptr;
-            std::fill(mvIniMatches.begin(), mvIniMatches.end(), -1);
+            mvIniMatches.clear();
             return;
         }
 
@@ -524,7 +524,9 @@ void Tracking::MonocularInitialization()
             mCurrentFrame, mvbPrevMatched, mvIniMatches, 100);
 
         // Check if there are enough correspondences
-        if (nmatches < MIN_KEY_COUNT_FOR_INITIALIZATOIN)
+        if (nmatches < MIN_KEY_COUNT_FOR_INITIALIZATOIN ||
+            // NOTE: PAE: added by me
+            mCurrentFrame.m_id - mInitialFrame.m_id > 2)
         {
             delete mpInitializer;
             mpInitializer = nullptr;
@@ -569,9 +571,9 @@ void Tracking::MonocularInitialization()
         for (size_t i = 0; i < size_vKeysUn; ++i)
             mvbPrevMatched[i] = mCurrentFrame.mvKeysUn[i].pt;
 
-        mpInitializer = new Initializer(mCurrentFrame, 1.0, 200);
+        mpInitializer = new Initializer(mCurrentFrame, 1.f, 200);
 
-        std::fill(mvIniMatches.begin(), mvIniMatches.end(), -1);
+        mvIniMatches = std::vector<int>(size_vKeysUn, -1);
     }
 }
 
@@ -631,7 +633,7 @@ void Tracking::CreateInitialMapMonocular()
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     float invMedianDepth = 1.0f/medianDepth;
 
-    if(medianDepth<0 || pKFcur->TrackedMapPoints(1)<100)
+    if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 100)
     {
         cout << "Wrong initialization, reseting..." << endl;
         Reset();
@@ -647,11 +649,9 @@ void Tracking::CreateInitialMapMonocular()
     vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
     for(size_t iMP=0; iMP<vpAllMapPoints.size(); iMP++)
     {
-        if(vpAllMapPoints[iMP])
-        {
-            MapPoint* pMP = vpAllMapPoints[iMP];
+        MapPoint* pMP = vpAllMapPoints[iMP];
+        if (pMP != nullptr)
             pMP->SetWorldPos(pMP->GetWorldPos()*invMedianDepth);
-        }
     }
 
     mpLocalMapper->InsertKeyFrame(pKFini);
@@ -680,7 +680,7 @@ void Tracking::CreateInitialMapMonocular()
 
 void Tracking::CheckReplacedInLastFrame()
 {
-    for(int i = 0; i < mLastFrame.N; ++i)
+    for (int i = 0; i < mLastFrame.N; ++i)
     {
         MapPoint*& rpMP = mLastFrame.mvpMapPoints[i];
 
@@ -701,9 +701,9 @@ bool Tracking::TrackReferenceKeyFrame()
 
     // We perform first an ORB matching with the reference keyframe
     // If enough matches are found we setup a PnP solver
-    ORBmatcher matcher(0.7,true);
+    ORBmatcher matcher(0.7, true);
 
-    vector<MapPoint*> vpMapPointMatches;
+    std::vector<MapPoint*> vpMapPointMatches;
     if (matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches) < 15)
         return false;
 
@@ -799,12 +799,11 @@ bool Tracking::TrackWithMotionModel()
 
     mCurrentFrame.SetPose(mVelocity * mLastFrame.mTcw);
 
-    std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), nullptr);
-
     // Project points seen in previous frame
     int th = mSensor != System::STEREO ? 15 : 7;
 
     // If few matches, uses a wider window search
+    std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), nullptr);
     int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
     if (nmatches < 20)
     {
@@ -1046,51 +1045,48 @@ void Tracking::CreateNewKeyFrame()
 void Tracking::SearchLocalPoints()
 {
     // Do not search map points already matched
-    for(vector<MapPoint*>::iterator vit=mCurrentFrame.mvpMapPoints.begin(), vend=mCurrentFrame.mvpMapPoints.end(); vit!=vend; vit++)
+    for (MapPoint*& rpMP : mCurrentFrame.mvpMapPoints)
     {
-        MapPoint* pMP = *vit;
-        if(pMP)
+        if (rpMP == nullptr)
+            continue;
+
+        if (rpMP->isBad())
         {
-            if(pMP->isBad())
-            {
-                *vit = static_cast<MapPoint*>(NULL);
-            }
-            else
-            {
-                pMP->IncreaseVisible();
-                pMP->mnLastFrameSeen = mCurrentFrame.m_id;
-                pMP->mbTrackInView = false;
-            }
+            rpMP = nullptr;
+            continue;
         }
+
+        rpMP->IncreaseVisible();
+        rpMP->mnLastFrameSeen = mCurrentFrame.m_id;
+        rpMP->mbTrackInView = false;
     }
 
-    int nToMatch=0;
+    int nToMatch = 0;
 
     // Project points in frame and check its visibility
-    for(vector<MapPoint*>::iterator vit=mvpLocalMapPoints.begin(), vend=mvpLocalMapPoints.end(); vit!=vend; vit++)
+    for (MapPoint* pMP : mvpLocalMapPoints)
     {
-        MapPoint* pMP = *vit;
-        if(pMP->mnLastFrameSeen == mCurrentFrame.m_id)
+        if (pMP->mnLastFrameSeen == mCurrentFrame.m_id || pMP->isBad())
             continue;
-        if(pMP->isBad())
-            continue;
+
         // Project (this fills MapPoint variables for matching)
-        if(mCurrentFrame.isInFrustum(pMP,0.5))
+        if (mCurrentFrame.isInFrustum(pMP, 0.5))
         {
             pMP->IncreaseVisible();
-            nToMatch++;
+            ++nToMatch;
         }
     }
 
-    if(nToMatch>0)
+    if (nToMatch > 0)
     {
         ORBmatcher matcher(0.8);
-        int th = 1;
-        if(mSensor==System::RGBD)
-            th=3;
+
+        int th = mSensor == System::RGBD ? 1 : 3;
+
         // If the camera has been relocalised recently, perform a coarser search
-        if(mCurrentFrame.m_id<mnLastRelocFrameId+2)
+        if (mCurrentFrame.m_id < mnLastRelocFrameId + 2)
             th=5;
+
         matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
     }
 }
@@ -1111,15 +1107,15 @@ void Tracking::UpdateLocalPoints()
 
     for (KeyFrame* pKF : mvpLocalKeyFrames)
     {
-        vector<MapPoint*> const vpMPs = pKF->GetMapPointMatches();
+        std::vector<MapPoint*> const vpMPs = pKF->GetMapPointMatches();
 
         for (MapPoint* pMP : vpMPs)
         {
-            if (pMP == nullptr || pMP->mnTrackReferenceForFrame==mCurrentFrame.m_id || pMP->isBad())
+            if (pMP == nullptr || pMP->mnTrackReferenceForFrame == mCurrentFrame.m_id || pMP->isBad())
                 continue;
 
             mvpLocalMapPoints.push_back(pMP);
-            pMP->mnTrackReferenceForFrame=mCurrentFrame.m_id;
+            pMP->mnTrackReferenceForFrame = mCurrentFrame.m_id;
         }
     }
 }
