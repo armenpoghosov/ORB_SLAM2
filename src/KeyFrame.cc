@@ -54,7 +54,7 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mbf(F.mbf),
     mb(F.mb),
     mThDepth(F.mThDepth),
-    N(F.N),
+    N(F.m_frame_N),
     mvKeys(F.mvKeys),
     mvKeysUn(F.mvKeysUn),
     mvuRight(F.mvuRight),
@@ -103,7 +103,7 @@ void KeyFrame::ComputeBoW()
 {
     if (mBowVec.empty() || mFeatVec.empty())
     {
-        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
+        std::vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
         // Feature vector associate features with nodes in the 4th level (from leaves up)
         // We assume the vocabulary tree has 6 levels, change the 4 otherwise
         mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
@@ -183,14 +183,14 @@ std::set<KeyFrame*> KeyFrame::GetConnectedKeyFrames()
     return s;
 }
 
-vector<KeyFrame*> KeyFrame::GetBestCovisibilityKeyFrames(int N)
+std::vector<KeyFrame*> KeyFrame::GetBestCovisibilityKeyFrames(int N)
 {
-    unique_lock<mutex> lock(mMutexConnections);
+    std::unique_lock<std::mutex> lock(mMutexConnections);
 
-    if ((int)mvpOrderedConnectedKeyFrames.size() < N)
+    if (mvpOrderedConnectedKeyFrames.size() < (std::size_t)N)
         return mvpOrderedConnectedKeyFrames;
 
-    return vector<KeyFrame*>(mvpOrderedConnectedKeyFrames.begin(), mvpOrderedConnectedKeyFrames.begin() + N);
+    return std::vector<KeyFrame*>(mvpOrderedConnectedKeyFrames.begin(), mvpOrderedConnectedKeyFrames.begin() + N);
 }
 
 vector<KeyFrame*> KeyFrame::GetCovisiblesByWeight(int w)
@@ -210,9 +210,9 @@ vector<KeyFrame*> KeyFrame::GetCovisiblesByWeight(int w)
 
 void KeyFrame::EraseMapPointMatch(MapPoint* pMP)
 {
-    int idx = pMP->GetIndexInKeyFrame(this);
-    if (idx >= 0)
-        mvpMapPoints[idx] = nullptr;
+    std::size_t index = pMP->GetIndexInKeyFrame(this);
+    if (index != (std::size_t)-1)
+        mvpMapPoints[index] = nullptr;
 }
 
 std::set<MapPoint*> KeyFrame::GetMapPoints()
@@ -258,7 +258,7 @@ void KeyFrame::UpdateConnections()
         vpMP = mvpMapPoints;
     }
 
-    std::map<KeyFrame*, int> KFcounter;
+    std::unordered_map<KeyFrame*, int> KFcounter;
 
     //For all map points in keyframe check in which other keyframes are they seen
     //Increase counter for those keyframes
@@ -267,7 +267,7 @@ void KeyFrame::UpdateConnections()
         if (pMP == nullptr || pMP->isBad())
             continue;
 
-        std::map<KeyFrame*, size_t> observations = pMP->GetObservations();
+        std::unordered_map<KeyFrame*, size_t> observations = pMP->GetObservations();
 
         for (auto const& pair : observations)
         {
@@ -312,11 +312,11 @@ void KeyFrame::UpdateConnections()
         pKFmax->AddConnection(this, nmax);
     }
 
-    sort(vPairs.begin(), vPairs.end());
+    std::sort(vPairs.begin(), vPairs.end());
 
     // TODO: PAE: refactor this crap!
-    list<KeyFrame*> lKFs;
-    list<int> lWs;
+    std::list<KeyFrame*> lKFs;
+    std::list<int> lWs;
     
     for(size_t i=0; i<vPairs.size();i++)
     {
@@ -514,7 +514,7 @@ vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const
     return vIndices;
 }
 
-cv::Mat KeyFrame::UnprojectStereo(int i)
+cv::Mat KeyFrame::UnprojectStereo(std::size_t i)
 {
     float const z = mvDepth[i];
 

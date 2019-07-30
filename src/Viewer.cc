@@ -41,13 +41,13 @@ Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer,
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
 
     float fps = fSettings["Camera.fps"];
-    if(fps<1)
-        fps=30;
-    mT = 1e3/fps;
+    if (fps < 1)
+        fps = 30;
+    mT = 1e3 / fps;
 
     mImageWidth = fSettings["Camera.width"];
     mImageHeight = fSettings["Camera.height"];
-    if(mImageWidth<1 || mImageHeight<1)
+    if (mImageWidth < 1 || mImageHeight < 1)
     {
         mImageWidth = 640;
         mImageHeight = 480;
@@ -108,33 +108,33 @@ void Viewer::Run()
     bool bFollow = true;
     bool bLocalizationMode = false;
 
-    while (true)
+    for (;;)
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         mpMapDrawer->GetCurrentOpenGLCameraMatrix(Twc);
 
-        if(menuFollowCamera && bFollow)
+        if (menuFollowCamera && bFollow)
         {
             s_cam.Follow(Twc);
         }
-        else if(menuFollowCamera && !bFollow)
+        else if (menuFollowCamera && !bFollow)
         {
             s_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(mViewpointX,mViewpointY,mViewpointZ, 0,0,0,0.0,-1.0, 0.0));
             s_cam.Follow(Twc);
             bFollow = true;
         }
-        else if(!menuFollowCamera && bFollow)
+        else if (!menuFollowCamera && bFollow)
         {
             bFollow = false;
         }
 
-        if(menuLocalizationMode && !bLocalizationMode)
+        if (menuLocalizationMode && !bLocalizationMode)
         {
             mpSystem->ActivateLocalizationMode();
             bLocalizationMode = true;
         }
-        else if(!menuLocalizationMode && bLocalizationMode)
+        else if (!menuLocalizationMode && bLocalizationMode)
         {
             mpSystem->DeactivateLocalizationMode();
             bLocalizationMode = false;
@@ -143,18 +143,18 @@ void Viewer::Run()
         d_cam.Activate(s_cam);
         glClearColor(1.0f,1.0f,1.0f,1.0f);
         mpMapDrawer->DrawCurrentCamera(Twc);
-        if(menuShowKeyFrames || menuShowGraph)
+        if (menuShowKeyFrames || menuShowGraph)
             mpMapDrawer->DrawKeyFrames(menuShowKeyFrames,menuShowGraph);
-        if(menuShowPoints)
+        if (menuShowPoints)
             mpMapDrawer->DrawMapPoints();
 
         pangolin::FinishFrame();
 
         cv::Mat im = mpFrameDrawer->DrawFrame();
-        cv::imshow("ORB-SLAM2: Current Frame",im);
+        cv::imshow("ORB-SLAM2: Current Frame", im);
         cv::waitKey(mT);
 
-        if(menuReset)
+        if (menuReset)
         {
             menuShowGraph = true;
             menuShowKeyFrames = true;
@@ -169,7 +169,7 @@ void Viewer::Run()
             menuReset = false;
         }
 
-        if(Stop())
+        if (Stop())
         {
             while(isStopped())
             {

@@ -30,7 +30,8 @@
 #include "KeyFrameDatabase.h"
 
 #include <mutex>
-
+#include <unordered_map>
+#include <unordered_set>
 
 namespace ORB_SLAM2
 {
@@ -126,7 +127,7 @@ public:
 
     void ChangeParent(KeyFrame* pKF);
 
-    std::set<KeyFrame*> GetChilds()
+    std::unordered_set<KeyFrame*> GetChilds()
     {
         unique_lock<mutex> lockCon(mMutexConnections);
         return mspChildrens;
@@ -147,7 +148,7 @@ public:
     // Loop Edges
     void AddLoopEdge(KeyFrame* pKF);
 
-    std::set<KeyFrame*> GetLoopEdges()
+    std::unordered_set<KeyFrame*> GetLoopEdges()
     {
         unique_lock<mutex> lockCon(mMutexConnections);
         return mspLoopEdges;
@@ -189,7 +190,7 @@ public:
 
     // KeyPoint functions
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r) const;
-    cv::Mat UnprojectStereo(int i);
+    cv::Mat UnprojectStereo(std::size_t index);
 
     // Image
     bool IsInImage(float x, float y) const
@@ -227,83 +228,84 @@ public:
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
 
-    static uint64_t s_next_id;
+    static uint64_t         s_next_id;
 
     uint64_t                mnId;
+    uint64_t const          mnFrameId;
 
-    const uint64_t          mnFrameId;
-
-    const double mTimeStamp;
+    double const            mTimeStamp;
 
     // Grid (to speed up feature matching)
-    const int mnGridCols;
-    const int mnGridRows;
-    const float mfGridElementWidthInv;
-    const float mfGridElementHeightInv;
+    int const               mnGridCols;
+    int const               mnGridRows;
+    float const             mfGridElementWidthInv;
+    float const             mfGridElementHeightInv;
 
     // Variables used by the tracking
-    long unsigned int mnTrackReferenceForFrame;
-    long unsigned int mnFuseTargetForKF;
+    uint64_t                mnTrackReferenceForFrame;
+    uint64_t                mnFuseTargetForKF;
 
     // Variables used by the local mapping
-    long unsigned int mnBALocalForKF;
-    long unsigned int mnBAFixedForKF;
+    long unsigned int       mnBALocalForKF;
+    long unsigned int       mnBAFixedForKF;
 
     // Variables used by the keyframe database
-    long unsigned int mnLoopQuery;
-    int mnLoopWords;
-    float mLoopScore;
-    long unsigned int mnRelocQuery;
-    int mnRelocWords;
-    float mRelocScore;
+    long unsigned int       mnLoopQuery;
+    int                     mnLoopWords;
+    float                   mLoopScore;
+    long unsigned int       mnRelocQuery;
+    int                     mnRelocWords;
+    float                   mRelocScore;
 
     // Variables used by loop closing
-    cv::Mat mTcwGBA;
-    cv::Mat mTcwBefGBA;
-    long unsigned int mnBAGlobalForKF;
+    cv::Mat                 mTcwGBA;
+    cv::Mat                 mTcwBefGBA;
+    long unsigned int       mnBAGlobalForKF;
 
     // Calibration parameters
-    const float fx;
-    const float fy;
-    const float cx;
-    const float cy;
-    const float invfx;
-    const float invfy;
-    const float mbf;
-    const float mb;
-    const float mThDepth;
+    float const                     fx;
+    float const                     fy;
+    float const                     cx;
+    float const                     cy;
+    float const                     invfx;
+    float const                     invfy;
+    float const                     mbf;
+    float const                     mb;
+    float const                     mThDepth;
 
     // Number of KeyPoints
-    const int N;
+    int const                       N;
 
     // KeyPoints, stereo coordinate and descriptors (all associated by an index)
-    const std::vector<cv::KeyPoint> mvKeys;
-    const std::vector<cv::KeyPoint> mvKeysUn;
-    const std::vector<float> mvuRight; // negative value for monocular points
-    const std::vector<float> mvDepth; // negative value for monocular points
-    const cv::Mat mDescriptors;
+    std::vector<cv::KeyPoint> const mvKeys;
+    std::vector<cv::KeyPoint> const mvKeysUn;
+    
+    std::vector<float> const        mvuRight;   // negative value for monocular points
+    std::vector<float> const        mvDepth;    // negative value for monocular points
 
-    //BoW
-    DBoW2::BowVector        mBowVec;
-    DBoW2::FeatureVector    mFeatVec;
+    cv::Mat const                   mDescriptors;
+
+    // BoW
+    DBoW2::BowVector                mBowVec;
+    DBoW2::FeatureVector            mFeatVec;
 
     // Pose relative to parent (this is computed when bad flag is activated)
     cv::Mat mTcp;
 
     // Scale
-    const int mnScaleLevels;
-    const float mfScaleFactor;
-    const float mfLogScaleFactor;
-    const std::vector<float> mvScaleFactors;
-    const std::vector<float> mvLevelSigma2;
-    const std::vector<float> mvInvLevelSigma2;
+    int const                       mnScaleLevels;
+    float const                     mfScaleFactor;
+    float const                     mfLogScaleFactor;
+    std::vector<float> const        mvScaleFactors;
+    std::vector<float> const        mvLevelSigma2;
+    std::vector<float> const        mvInvLevelSigma2;
 
     // Image bounds and calibration
-    const int mnMinX;
-    const int mnMinY;
-    const int mnMaxX;
-    const int mnMaxY;
-    const cv::Mat mK;
+    int const                       mnMinX;
+    int const                       mnMinY;
+    int const                       mnMaxX;
+    int const                       mnMaxY;
+    cv::Mat const                   mK;
 
     // The following variables need to be accessed trough a mutex to be thread safe.
 protected:
@@ -325,25 +327,25 @@ protected:
     // Grid over the image to speed up feature matching
     std::vector< std::vector <std::vector<size_t> > >   mGrid;
 
-    std::map<KeyFrame*, int>    mConnectedKeyFrameWeights;
+    std::unordered_map<KeyFrame*, int>    mConnectedKeyFrameWeights;
 
-    std::vector<KeyFrame*>      mvpOrderedConnectedKeyFrames;
-    std::vector<int>            mvOrderedWeights;
+    std::vector<KeyFrame*>          mvpOrderedConnectedKeyFrames;
+    std::vector<int>                mvOrderedWeights;
 
     // Spanning Tree and Loop Edges
-    bool                        mbFirstConnection;
-    KeyFrame*                   mpParent;
-    std::set<KeyFrame*>         mspChildrens;
-    std::set<KeyFrame*>         mspLoopEdges;
+    bool                            mbFirstConnection;
+    KeyFrame*                       mpParent;
+    std::unordered_set<KeyFrame*>   mspChildrens;
+    std::unordered_set<KeyFrame*>   mspLoopEdges;
 
     // Bad flags
-    bool                        mbNotErase;
-    bool                        mbToBeErased;
-    bool                        mbBad;
+    bool                            mbNotErase;
+    bool                            mbToBeErased;
+    bool                            mbBad;
 
-    float                       mHalfBaseline; // Only for visualization
+    float                           mHalfBaseline; // Only for visualization
 
-    Map*                        mpMap;
+    Map*                            mpMap;
 
     std::mutex mMutexPose;
     std::mutex mMutexConnections;

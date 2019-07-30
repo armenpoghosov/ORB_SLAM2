@@ -21,13 +21,10 @@
 #ifndef MAP_H
 #define MAP_H
 
-#include "MapPoint.h"
-#include "KeyFrame.h"
-#include <set>
-
+#include <atomic>
 #include <mutex>
-
-
+#include <unordered_set>
+#include <vector>
 
 namespace ORB_SLAM2
 {
@@ -38,73 +35,105 @@ class KeyFrame;
 class Map
 {
 public:
-    Map();
 
-    void AddKeyFrame(KeyFrame* pKF);
-    void AddMapPoint(MapPoint* pMP);
-    void EraseMapPoint(MapPoint* pMP);
-    void EraseKeyFrame(KeyFrame* pKF);
-    void SetReferenceMapPoints(const std::vector<MapPoint*> &vpMPs);
-    void InformNewBigChange();
-    int GetLastBigChangeIdx();
+    Map()
+        :
+        mnMaxKFid(0),
+        mnBigChangeIdx(0)
+    {}
 
-    std::vector<KeyFrame*> GetAllKeyFrames()
+    void AddKeyFrame(KeyFrame *pKF);
+
+    void AddMapPoint(MapPoint *pMP)
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        mspMapPoints.insert(pMP);
+    }
+
+    void EraseMapPoint(MapPoint *pMP)
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        mspMapPoints.erase(pMP);
+        // TODO: This only erase the pointer.
+        // Delete the MapPoint
+    }
+
+    void EraseKeyFrame(KeyFrame *pKF)
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        mspKeyFrames.erase(pKF);
+        // TODO: This only erase the pointer.
+        // Delete the MapPoint
+    }
+
+    // TODO: PAE: what does this thing do? ... it does not validate anything right?
+    void SetReferenceMapPoints(std::vector<MapPoint*> const& vpMPs)
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        mvpReferenceMapPoints = vpMPs;
+    }
+
+    void InformNewBigChange()
+        { ++mnBigChangeIdx; }
+
+    int GetLastBigChangeIdx() const
+        { return mnBigChangeIdx; }
+
+    std::vector<KeyFrame*> GetAllKeyFrames() const
     {
         std::unique_lock<std::mutex> lock(mMutexMap);
         return std::vector<KeyFrame*>(mspKeyFrames.begin(), mspKeyFrames.end());
     }
 
-    std::vector<MapPoint*> GetAllMapPoints()
+    std::vector<MapPoint*> GetAllMapPoints() const
     {
-        unique_lock<mutex> lock(mMutexMap);
-        return vector<MapPoint*>(mspMapPoints.begin(), mspMapPoints.end());
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        return std::vector<MapPoint*>(mspMapPoints.begin(), mspMapPoints.end());
     }
 
-    std::vector<MapPoint*> GetReferenceMapPoints()
+    std::vector<MapPoint*> GetReferenceMapPoints() const
     {
         std::unique_lock<std::mutex> lock(mMutexMap);
         return mvpReferenceMapPoints;
     }
 
-    std::size_t MapPointsInMap()
+    std::size_t MapPointsInMap() const
     {
-        unique_lock<mutex> lock(mMutexMap);
+        std::unique_lock<std::mutex> lock(mMutexMap);
         return mspMapPoints.size();
     }
 
-    std::size_t Map::KeyFramesInMap()
+    std::size_t KeyFramesInMap() const
     {
-        unique_lock<mutex> lock(mMutexMap);
+        std::unique_lock<std::mutex> lock(mMutexMap);
         return mspKeyFrames.size();
     }
 
-    long unsigned int Map::GetMaxKFid()
+    uint64_t GetMaxKFid() const
     {
-        unique_lock<mutex> lock(mMutexMap);
+        std::unique_lock<std::mutex> lock(mMutexMap);
         return mnMaxKFid;
     }
 
     void clear();
 
-    vector<KeyFrame*> mvpKeyFrameOrigins;
+    std::vector<KeyFrame*>          mvpKeyFrameOrigins;
 
-    std::mutex mMutexMapUpdate;
-
-    // This avoid that two points are created simultaneously in separate threads (id conflict)
-    std::mutex mMutexPointCreation;
+    std::mutex                      mMutexMapUpdate;
 
 protected:
-    std::set<MapPoint*> mspMapPoints;
-    std::set<KeyFrame*> mspKeyFrames;
 
-    std::vector<MapPoint*> mvpReferenceMapPoints;
+    std::unordered_set<MapPoint*>   mspMapPoints;
+    std::unordered_set<KeyFrame*>   mspKeyFrames;
 
-    long unsigned int mnMaxKFid;
+    std::vector<MapPoint*>          mvpReferenceMapPoints;
+
+    uint64_t                        mnMaxKFid;
 
     // Index related to a big change in the map (loop closure, global BA)
-    int mnBigChangeIdx;
+    std::atomic<int>                mnBigChangeIdx;
 
-    std::mutex mMutexMap;
+    std::mutex mutable              mMutexMap;
 };
 
 } //namespace ORB_SLAM

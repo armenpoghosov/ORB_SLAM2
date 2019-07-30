@@ -1096,7 +1096,7 @@ void TemplatedVocabulary<TDescriptor,F>::transform(
     if(!v.empty() && !must)
     {
       // unnecessary when normalizing
-      const double nd = v.size();
+      const double nd = (double)v.size();
       for(BowVector::iterator vit = v.begin(); vit != v.end(); vit++) 
         vit->second /= nd;
     }

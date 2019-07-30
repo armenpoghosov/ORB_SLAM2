@@ -407,14 +407,14 @@ void LoopClosing::CorrectLoop()
     mpLocalMapper->RequestStop();
 
     // If a Global Bundle Adjustment is running, abort it
-    if(isRunningGBA())
+    if (isRunningGBA())
     {
         unique_lock<mutex> lock(mMutexGBA);
         mbStopGBA = true;
 
         mnFullBAIdx++;
 
-        if(mpThreadGBA)
+        if (mpThreadGBA)
         {
             mpThreadGBA->detach();
             delete mpThreadGBA;
@@ -643,7 +643,7 @@ void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
     cout << "Starting Global Bundle Adjustment" << endl;
 
     int idx =  mnFullBAIdx;
-    Optimizer::GlobalBundleAdjustemnt(mpMap,10,&mbStopGBA,nLoopKF,false);
+    Optimizer::GlobalBundleAdjustemnt(mpMap, 10, &mbStopGBA, nLoopKF, false);
 
     // Update all MapPoints and KeyFrames
     // Local Mapping was active during BA, that means that there might be new keyframes
@@ -678,7 +678,7 @@ void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
             {
                 KeyFrame* pKF = lpKFtoCheck.front();
 
-                std::set<KeyFrame*> const sChilds = pKF->GetChilds();
+                std::unordered_set<KeyFrame*> const sChilds = pKF->GetChilds();
                 cv::Mat Twc = pKF->GetPoseInverse();
 
                 for (auto sit = sChilds.cbegin(); sit != sChilds.cend(); ++sit)

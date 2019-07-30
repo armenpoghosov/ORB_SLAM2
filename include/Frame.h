@@ -50,7 +50,8 @@ public:
         FRAME_GRID_COLS = 64
     };
 
-    Frame();
+    Frame() // PAE: may need complete removal?
+    {}
 
     // Copy constructor.
     Frame(Frame const& frame);
@@ -147,7 +148,7 @@ public:
     float                       mThDepth;
 
     // Number of KeyPoints.
-    int                         N;
+    std::size_t                 m_frame_N;
 
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
     // In the stereo case, mvKeysUn is redundant as images must be rectified.
@@ -176,8 +177,8 @@ public:
     std::vector<bool>           mvbOutlier;
 
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints.
-    static float mfGridElementWidthInv;
-    static float mfGridElementHeightInv;
+    static float                mfGridElementWidthInv;
+    static float                mfGridElementHeightInv;
 
     std::vector<std::size_t>    mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 

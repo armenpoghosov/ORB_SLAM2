@@ -112,10 +112,10 @@ public:
 
     // Lists used to recover the full camera trajectory at the end of the execution.
     // Basically we store the reference keyframe for each frame and its relative transformation
-    list<cv::Mat>               mlRelativeFramePoses;
-    list<KeyFrame*>             mlpReferences;
-    list<double>                mlFrameTimes;
-    list<bool>                  mlbLost;
+    std::list<cv::Mat>          mlRelativeFramePoses;
+    std::list<KeyFrame*>        mlpReferences;
+    std::list<double>           mlFrameTimes;
+    std::list<bool>             mlbLost;
 
     // True if local mapping is deactivated and we are performing only localization
     bool                        mbOnlyTracking;
@@ -177,7 +177,7 @@ protected:
     KeyFrame*               mpReferenceKF;
     std::vector<KeyFrame*>  mvpLocalKeyFrames;
     std::vector<MapPoint*>  mvpLocalMapPoints;
-    
+
     // System
     System*                 mpSystem;
     
@@ -212,8 +212,8 @@ protected:
     //Last Frame, KeyFrame and Relocalisation Info
     KeyFrame*               mpLastKeyFrame;
     Frame                   mLastFrame;
-    unsigned int            mnLastKeyFrameId;
-    unsigned int            mnLastRelocFrameId;
+    uint64_t                mnLastKeyFrameId;
+    uint64_t                mnLastRelocFrameId;
 
     // Motion Model
     cv::Mat                 mVelocity;

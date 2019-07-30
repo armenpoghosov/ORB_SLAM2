@@ -626,7 +626,7 @@ void LocalMapping::KeyFrameCulling()
             {
                 int const scaleLevel = pKF->mvKeysUn[i].octave;
 
-                const map<KeyFrame*, size_t> observations = pMP->GetObservations();
+                const std::unordered_map<KeyFrame*, size_t> observations = pMP->GetObservations();
 
                 int nObs = 0;
 

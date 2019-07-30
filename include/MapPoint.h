@@ -30,6 +30,7 @@
 #include <mutex>
 #include <cstdint>
 #include <atomic>
+#include <unordered_map>
 
 namespace ORB_SLAM2
 {
@@ -47,15 +48,15 @@ public:
 
     void SetWorldPos(const cv::Mat &Pos);
 
-    cv::Mat GetWorldPos()
+    cv::Mat GetWorldPos() const
     {
-        unique_lock<mutex> lock(mMutexPos);
+        std::unique_lock<std::mutex> lock(mMutexPos);
         return mWorldPos.clone();
     }
 
-    cv::Mat GetNormal()
+    cv::Mat GetNormal() const
     {
-        unique_lock<mutex> lock(mMutexPos);
+        std::unique_lock<std::mutex> lock(mMutexPos);
         return mNormalVector.clone();
     }
 
@@ -65,7 +66,7 @@ public:
         return mpRefKF;
     }
 
-    std::map<KeyFrame*, size_t> GetObservations()
+    std::unordered_map<KeyFrame*, size_t> GetObservations()
     {
         unique_lock<mutex> lock(mMutexFeatures);
         return mObservations;
@@ -102,8 +103,19 @@ public:
 
     void UpdateNormalAndDepth();
 
-    float GetMinDistanceInvariance();
-    float GetMaxDistanceInvariance();
+    float GetMinDistanceInvariance()
+    {
+        unique_lock<mutex> lock(mMutexPos);
+        return 0.8f * mfMinDistance;
+    }
+
+    float GetMaxDistanceInvariance()
+    {
+        unique_lock<mutex> lock(mMutexPos);
+        return 1.2f * mfMaxDistance;
+    }
+
+
 
     int PredictScale(float currentDist, KeyFrame* pKF);
     int PredictScale(float currentDist, Frame* pF);
@@ -112,35 +124,35 @@ public:
 
     static std::atomic<uint64_t>    s_next_id;
 
-    uint64_t        mnId;
-    uint64_t        mnFirstKFid;
-    uint64_t        mnFirstFrame;
+    uint64_t                        mnId;
+    uint64_t                        mnFirstKFid;
+    uint64_t                        mnFirstFrame;
 
     int nObs;
 
     // Variables used by the tracking
-    float mTrackProjX;
-    float mTrackProjY;
-    float mTrackProjXR;
-    bool mbTrackInView;
-    int mnTrackScaleLevel;
-    float mTrackViewCos;
-    long unsigned int mnTrackReferenceForFrame;
-    long unsigned int mnLastFrameSeen;
+    float                           mTrackProjX;
+    float                           mTrackProjY;
+    float                           mTrackProjXR;
+    bool                            mbTrackInView;
+    int                             mnTrackScaleLevel;
+    float                           mTrackViewCos;
+    long unsigned int               mnTrackReferenceForFrame;
+    uint64_t                        mnLastFrameSeen;
 
     // Variables used by local mapping
-    long unsigned int mnBALocalForKF;
-    long unsigned int mnFuseCandidateForKF;
+    long unsigned int               mnBALocalForKF;
+    uint64_t                        mnFuseCandidateForKF;
 
     // Variables used by loop closing
-    long unsigned int mnLoopPointForKF;
-    long unsigned int mnCorrectedByKF;
-    long unsigned int mnCorrectedReference;
-    cv::Mat mPosGBA;
+    long unsigned int               mnLoopPointForKF;
+    long unsigned int               mnCorrectedByKF;
+    long unsigned int               mnCorrectedReference;
+    cv::Mat                         mPosGBA;
 
-    long unsigned int mnBAGlobalForKF;
+    long unsigned int               mnBAGlobalForKF;
 
-    static std::mutex mGlobalMutex;
+    static std::mutex               mGlobalMutex;
 
 protected:
 
@@ -148,7 +160,8 @@ protected:
      cv::Mat                        mWorldPos;
 
      // Keyframes observing the point and associated index in keyframe
-     std::map<KeyFrame*, size_t>    mObservations;
+     std::unordered_map<KeyFrame*, size_t>
+                                    mObservations;
 
      // Mean viewing direction
      cv::Mat                        mNormalVector;
@@ -161,6 +174,8 @@ protected:
 
      // Tracking counters
      int                            mnVisible;
+     
+     
      int                            mnFound;
 
      // Bad flag (we do not currently erase MapPoint from memory)
@@ -173,8 +188,8 @@ protected:
 
      Map*                           mpMap;
 
-     std::mutex mMutexPos;
-     std::mutex mMutexFeatures;
+     std::mutex mutable             mMutexPos;
+     std::mutex                     mMutexFeatures;
 };
 
 } //namespace ORB_SLAM

@@ -177,7 +177,7 @@ void Initializer::FindHomography(vector<bool>& vbMatchesInliers, float& score, c
 void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, cv::Mat &F21)
 {
     // Number of putative matches
-    const int N = vbMatchesInliers.size();
+    std::size_t const N = vbMatchesInliers.size();
 
     // Normalize coordinates
     cv::Mat T1;
@@ -204,18 +204,19 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
     // Perform all RANSAC iterations and save the solution with highest score
     for (int it = 0; it < mMaxIterations; ++it)
     {
+        std::size_t const (&index_set)[8] = mvSets[it];
+
         // Select a minimum set
         for (int j = 0; j < 8; ++j)
         {
-            int idx = mvSets[it][j];
-
-            vPn1i[j] = vPn1[mvMatches12[idx].first];
-            vPn2i[j] = vPn2[mvMatches12[idx].second];
+            auto const& pair_match = mvMatches12[index_set[j]];
+            vPn1i[j] = vPn1[pair_match.first];
+            vPn2i[j] = vPn2[pair_match.second];
         }
 
         cv::Mat Fn = ComputeF21(vPn1i,vPn2i);
 
-        F21i = T2t*Fn*T1;
+        F21i = T2t * Fn * T1;
 
         float const currentScore = CheckFundamental(F21i, vbCurrentInliers, mSigma);
         if (currentScore > score)
@@ -476,9 +477,8 @@ bool Initializer::ReconstructF(std::vector<bool>& vbMatchesInliers, cv::Mat& F21
 {
     int N = 0;
     
-    for (size_t i = 0, iend = vbMatchesInliers.size() ; i < iend; ++i)
-        if (vbMatchesInliers[i])
-            ++N;
+    for (bool const is_inlier : vbMatchesInliers)
+        N += is_inlier ? 1 : 0;
 
     // Compute Essential Matrix from Fundamental Matrix
     cv::Mat E21 = K.t() * F21 * K;

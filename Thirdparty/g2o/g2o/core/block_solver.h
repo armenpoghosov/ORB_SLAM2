@@ -34,17 +34,20 @@
 #include "openmp_mutex.h"
 #include "../../config.h"
 
-namespace g2o {
-  using namespace Eigen;
+namespace g2o
+{
 
-  /**
-   * \brief traits to summarize the properties of the fixed size optimization problem
-   */
-  template <int _PoseDim, int _LandmarkDim>
-  struct BlockSolverTraits
-  {
+using namespace Eigen;
+
+/**
+* \brief traits to summarize the properties of the fixed size optimization problem
+*/
+template <int _PoseDim, int _LandmarkDim>
+struct BlockSolverTraits
+{
     static const int PoseDim = _PoseDim;
     static const int LandmarkDim = _LandmarkDim;
+
     typedef Matrix<double, PoseDim, PoseDim> PoseMatrixType;
     typedef Matrix<double, LandmarkDim, LandmarkDim> LandmarkMatrixType;
     typedef Matrix<double, PoseDim, LandmarkDim> PoseLandmarkMatrixType;
@@ -55,16 +58,17 @@ namespace g2o {
     typedef SparseBlockMatrix<LandmarkMatrixType> LandmarkHessianType;
     typedef SparseBlockMatrix<PoseLandmarkMatrixType> PoseLandmarkHessianType;
     typedef LinearSolver<PoseMatrixType> LinearSolverType;
-  };
+};
 
-  /**
-   * \brief traits to summarize the properties of the dynamic size optimization problem
-   */
-  template <>
-  struct BlockSolverTraits<Eigen::Dynamic, Eigen::Dynamic>
-  {
+/**
+* \brief traits to summarize the properties of the dynamic size optimization problem
+*/
+template <>
+struct BlockSolverTraits<Eigen::Dynamic, Eigen::Dynamic>
+{
     static const int PoseDim = Eigen::Dynamic;
     static const int LandmarkDim = Eigen::Dynamic;
+
     typedef MatrixXd PoseMatrixType;
     typedef MatrixXd LandmarkMatrixType;
     typedef MatrixXd PoseLandmarkMatrixType;
@@ -75,42 +79,47 @@ namespace g2o {
     typedef SparseBlockMatrix<LandmarkMatrixType> LandmarkHessianType;
     typedef SparseBlockMatrix<PoseLandmarkMatrixType> PoseLandmarkHessianType;
     typedef LinearSolver<PoseMatrixType> LinearSolverType;
-  };
+};
 
-  /**
-   * \brief base for the block solvers with some basic function interfaces
-   */
-  class BlockSolverBase : public Solver
-  {
-    public:
-      virtual ~BlockSolverBase() {}
-      /**
-       * compute dest = H * src
-       */
-      virtual void multiplyHessian(double* dest, const double* src) const = 0;
-  };
+/**
+* \brief base for the block solvers with some basic function interfaces
+*/
+class BlockSolverBase : public Solver
+{
+public:
 
-  /**
-   * \brief Implementation of a solver operating on the blocks of the Hessian
-   */
-  template <typename Traits>
-  class BlockSolver: public BlockSolverBase {
-    public:
+    virtual ~BlockSolverBase()
+    {}
 
-      static const int PoseDim = Traits::PoseDim;
-      static const int LandmarkDim = Traits::LandmarkDim;
-      typedef typename Traits::PoseMatrixType PoseMatrixType;
-      typedef typename Traits::LandmarkMatrixType LandmarkMatrixType; 
-      typedef typename Traits::PoseLandmarkMatrixType PoseLandmarkMatrixType;
-      typedef typename Traits::PoseVectorType PoseVectorType;
-      typedef typename Traits::LandmarkVectorType LandmarkVectorType;
+    /**
+    * compute dest = H * src
+    */
+    virtual void multiplyHessian(double* dest, const double* src) const = 0;
+};
 
-      typedef typename Traits::PoseHessianType PoseHessianType;
-      typedef typename Traits::LandmarkHessianType LandmarkHessianType;
-      typedef typename Traits::PoseLandmarkHessianType PoseLandmarkHessianType;
-      typedef typename Traits::LinearSolverType LinearSolverType;
+/**
+* \brief Implementation of a solver operating on the blocks of the Hessian
+*/
+template <typename Traits>
+class BlockSolver: public BlockSolverBase
+{
+public:
 
-    public:
+    static const int PoseDim = Traits::PoseDim;
+    static const int LandmarkDim = Traits::LandmarkDim;
+
+    typedef typename Traits::PoseMatrixType PoseMatrixType;
+    typedef typename Traits::LandmarkMatrixType LandmarkMatrixType; 
+    typedef typename Traits::PoseLandmarkMatrixType PoseLandmarkMatrixType;
+    typedef typename Traits::PoseVectorType PoseVectorType;
+    typedef typename Traits::LandmarkVectorType LandmarkVectorType;
+
+    typedef typename Traits::PoseHessianType PoseHessianType;
+    typedef typename Traits::LandmarkHessianType LandmarkHessianType;
+    typedef typename Traits::PoseLandmarkHessianType PoseLandmarkHessianType;
+    typedef typename Traits::LinearSolverType LinearSolverType;
+
+public:
 
       /**
        * allocate a block solver ontop of the underlying linear solver.

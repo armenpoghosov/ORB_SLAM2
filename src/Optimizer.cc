@@ -98,11 +98,11 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
 
-       const map<KeyFrame*,size_t> observations = pMP->GetObservations();
+       const std::unordered_map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
         int nEdges = 0;
         //SET EDGES
-        for(map<KeyFrame*,size_t>::const_iterator mit=observations.begin(); mit!=observations.end(); mit++)
+        for (auto mit=observations.begin(); mit!=observations.end(); mit++)
         {
 
             KeyFrame* pKF = mit->first;
@@ -252,7 +252,7 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     optimizer.addVertex(vSE3);
 
     // Set MapPoint vertices
-    const int N = pFrame->N;
+    std::size_t const N = pFrame->m_frame_N;
 
     std::vector<g2o::EdgeSE3ProjectXYZOnlyPose*> vpEdgesMono;
     vpEdgesMono.reserve(N);
@@ -277,6 +277,7 @@ int Optimizer::PoseOptimization(Frame* pFrame)
         for (int i = 0; i < N; ++i)
         {
             MapPoint* pMP = pFrame->mvpMapPoints[i];
+
             if (pMP == nullptr)
                 continue;
 
@@ -363,6 +364,7 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     static int const its[4] = { 10, 10, 10, 10 };
 
     int nBad = 0;
+
     for (size_t it = 0; it < 4; ++it)
     {
         vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
@@ -378,23 +380,12 @@ int Optimizer::PoseOptimization(Frame* pFrame)
             size_t const idx = vnIndexEdgeMono[i];
 
             if (pFrame->mvbOutlier[idx])
-            {
                 e->computeError();
-            }
 
-            float const chi2 = e->chi2();
-
-            if (chi2 > chi2Mono[it])
-            {                
-                pFrame->mvbOutlier[idx] = true;
-                e->setLevel(1);
-                ++nBad;
-            }
-            else
-            {
-                pFrame->mvbOutlier[idx] = false;
-                e->setLevel(0);
-            }
+            bool const is_bad = e->chi2() > chi2Mono[it];
+            pFrame->mvbOutlier[idx] = is_bad;
+            e->setLevel((int)is_bad);
+            nBad += (int)is_bad;
 
             if (it == 2)
                 e->setRobustKernel(0);
@@ -407,23 +398,12 @@ int Optimizer::PoseOptimization(Frame* pFrame)
             size_t const idx = vnIndexEdgeStereo[i];
 
             if (pFrame->mvbOutlier[idx])
-            {
                 e->computeError();
-            }
 
-            float const chi2 = e->chi2();
-
-            if (chi2 > chi2Stereo[it])
-            {
-                pFrame->mvbOutlier[idx] = true;
-                e->setLevel(1);
-                nBad++;
-            }
-            else
-            {
-                e->setLevel(0);
-                pFrame->mvbOutlier[idx] = false;
-            }
+            bool const is_bad = e->chi2() > chi2Stereo[it];
+            pFrame->mvbOutlier[idx] = is_bad;
+            e->setLevel((int)is_bad);
+            nBad += (int)is_bad;
 
             if (it == 2)
                 e->setRobustKernel(0);
@@ -444,12 +424,12 @@ int Optimizer::PoseOptimization(Frame* pFrame)
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
 {
     // Local KeyFrames: First Breath Search from Current Keyframe
-    list<KeyFrame*> lLocalKeyFrames;
+    std::list<KeyFrame*> lLocalKeyFrames;
 
     lLocalKeyFrames.push_back(pKF);
     pKF->mnBALocalForKF = pKF->mnId;
 
-    vector<KeyFrame*> const vNeighKFs = pKF->GetVectorCovisibleKeyFrames();
+    std::vector<KeyFrame*> const vNeighKFs = pKF->GetVectorCovisibleKeyFrames();
 
     for (KeyFrame* pKFi : vNeighKFs)
     {
@@ -460,7 +440,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     }
 
     // Local MapPoints seen in Local KeyFrames
-    list<MapPoint*> lLocalMapPoints;
+    std::list<MapPoint*> lLocalMapPoints;
 
     for (KeyFrame* pLKF : lLocalKeyFrames)
     {
@@ -480,7 +460,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     list<KeyFrame*> lFixedCameras;
     for (MapPoint *pLMP : lLocalMapPoints)
     {
-        std:map<KeyFrame*, size_t> observations = pLMP->GetObservations();
+        std:unordered_map<KeyFrame*, size_t> observations = pLMP->GetObservations();
 
         for (auto const& pair : observations)
         {
@@ -568,10 +548,10 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
 
-        const map<KeyFrame*,size_t> observations = pMP->GetObservations();
+        const std::unordered_map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
         //Set edges
-        for (map<KeyFrame*,size_t>::const_iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+        for (auto mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
             KeyFrame* pKFi = mit->first;
 
@@ -897,62 +877,58 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         }
 
         // Loop edges
-        const set<KeyFrame*> sLoopEdges = pKF->GetLoopEdges();
-        for(set<KeyFrame*>::const_iterator sit=sLoopEdges.begin(), send=sLoopEdges.end(); sit!=send; sit++)
+        const std::unordered_set<KeyFrame*> sLoopEdges = pKF->GetLoopEdges();
+        for (KeyFrame* pLKF : sLoopEdges)
         {
-            KeyFrame* pLKF = *sit;
-            if(pLKF->mnId<pKF->mnId)
-            {
-                g2o::Sim3 Slw;
+            if (pLKF->mnId >= pKF->mnId)
+                continue;
 
-                LoopClosing::KeyFrameAndPose::const_iterator itl = NonCorrectedSim3.find(pLKF);
+            g2o::Sim3 Slw;
 
-                if(itl!=NonCorrectedSim3.end())
-                    Slw = itl->second;
-                else
-                    Slw = vScw[pLKF->mnId];
+            LoopClosing::KeyFrameAndPose::const_iterator itl = NonCorrectedSim3.find(pLKF);
 
-                g2o::Sim3 Sli = Slw * Swi;
-                g2o::EdgeSim3* el = new g2o::EdgeSim3();
-                el->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pLKF->mnId)));
-                el->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
-                el->setMeasurement(Sli);
-                el->information() = matLambda;
-                optimizer.addEdge(el);
-            }
+            if(itl!=NonCorrectedSim3.end())
+                Slw = itl->second;
+            else
+                Slw = vScw[pLKF->mnId];
+
+            g2o::Sim3 Sli = Slw * Swi;
+            g2o::EdgeSim3* el = new g2o::EdgeSim3();
+            el->setVertex(1, optimizer.vertex(pLKF->mnId));
+            el->setVertex(0, optimizer.vertex(nIDi));
+            el->setMeasurement(Sli);
+            el->information() = matLambda;
+            optimizer.addEdge(el);
         }
 
         // Covisibility graph edges
         const vector<KeyFrame*> vpConnectedKFs = pKF->GetCovisiblesByWeight(minFeat);
-        for(vector<KeyFrame*>::const_iterator vit=vpConnectedKFs.begin(); vit!=vpConnectedKFs.end(); vit++)
+        for (KeyFrame* pKFn : vpConnectedKFs)
         {
-            KeyFrame* pKFn = *vit;
-            if(pKFn && pKFn!=pParentKF && !pKF->hasChild(pKFn) && !sLoopEdges.count(pKFn))
-            {
-                if(!pKFn->isBad() && pKFn->mnId<pKF->mnId)
-                {
-                    if(sInsertedEdges.count(make_pair(min(pKF->mnId,pKFn->mnId),max(pKF->mnId,pKFn->mnId))))
-                        continue;
+            if (pKFn == nullptr || pKFn == pParentKF || pKF->hasChild(pKFn) ||
+                sLoopEdges.count(pKFn) != 0 || pKFn->isBad() || pKFn->mnId >= pKF->mnId)
+                continue;
 
-                    g2o::Sim3 Snw;
+            if (sInsertedEdges.count(std::make_pair((std::min)(pKF->mnId, pKFn->mnId), (std::max)(pKF->mnId, pKFn->mnId))))
+                continue;
 
-                    LoopClosing::KeyFrameAndPose::const_iterator itn = NonCorrectedSim3.find(pKFn);
+            g2o::Sim3 Snw;
 
-                    if(itn!=NonCorrectedSim3.end())
-                        Snw = itn->second;
-                    else
-                        Snw = vScw[pKFn->mnId];
+            LoopClosing::KeyFrameAndPose::const_iterator itn = NonCorrectedSim3.find(pKFn);
 
-                    g2o::Sim3 Sni = Snw * Swi;
+            if(itn!=NonCorrectedSim3.end())
+                Snw = itn->second;
+            else
+                Snw = vScw[pKFn->mnId];
 
-                    g2o::EdgeSim3* en = new g2o::EdgeSim3();
-                    en->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFn->mnId)));
-                    en->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
-                    en->setMeasurement(Sni);
-                    en->information() = matLambda;
-                    optimizer.addEdge(en);
-                }
-            }
+            g2o::Sim3 Sni = Snw * Swi;
+
+            g2o::EdgeSim3* en = new g2o::EdgeSim3();
+            en->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFn->mnId)));
+            en->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
+            en->setMeasurement(Sni);
+            en->information() = matLambda;
+            optimizer.addEdge(en);
         }
     }
 

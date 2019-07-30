@@ -146,21 +146,20 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
             // Covisibility Graph
             const vector<KeyFrame*> vCovKFs = vpKFs[i]->GetCovisiblesByWeight(100);
             cv::Mat Ow = vpKFs[i]->GetCameraCenter();
-            if(!vCovKFs.empty())
+
+            for (KeyFrame* pCovKF : vCovKFs)
             {
-                for(vector<KeyFrame*>::const_iterator vit=vCovKFs.begin(), vend=vCovKFs.end(); vit!=vend; vit++)
-                {
-                    if((*vit)->mnId<vpKFs[i]->mnId)
-                        continue;
-                    cv::Mat Ow2 = (*vit)->GetCameraCenter();
-                    glVertex3f(Ow.at<float>(0),Ow.at<float>(1),Ow.at<float>(2));
-                    glVertex3f(Ow2.at<float>(0),Ow2.at<float>(1),Ow2.at<float>(2));
-                }
+                if (pCovKF->mnId < vpKFs[i]->mnId)
+                    continue;
+
+                cv::Mat Ow2 = pCovKF->GetCameraCenter();
+                glVertex3f(Ow.at<float>(0),Ow.at<float>(1),Ow.at<float>(2));
+                glVertex3f(Ow2.at<float>(0),Ow2.at<float>(1),Ow2.at<float>(2));
             }
 
             // Spanning tree
             KeyFrame* pParent = vpKFs[i]->GetParent();
-            if(pParent)
+            if (pParent != nullptr)
             {
                 cv::Mat Owp = pParent->GetCameraCenter();
                 glVertex3f(Ow.at<float>(0),Ow.at<float>(1),Ow.at<float>(2));
@@ -168,14 +167,15 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
             }
 
             // Loops
-            set<KeyFrame*> sLoopKFs = vpKFs[i]->GetLoopEdges();
-            for(set<KeyFrame*>::iterator sit=sLoopKFs.begin(), send=sLoopKFs.end(); sit!=send; sit++)
+            std::unordered_set<KeyFrame*> sLoopKFs = vpKFs[i]->GetLoopEdges();
+            for (KeyFrame* pLoopKF : sLoopKFs)
             {
-                if((*sit)->mnId<vpKFs[i]->mnId)
+                if (pLoopKF->mnId < vpKFs[i]->mnId)
                     continue;
-                cv::Mat Owl = (*sit)->GetCameraCenter();
-                glVertex3f(Ow.at<float>(0),Ow.at<float>(1),Ow.at<float>(2));
-                glVertex3f(Owl.at<float>(0),Owl.at<float>(1),Owl.at<float>(2));
+
+                cv::Mat Owl = pLoopKF->GetCameraCenter();
+                glVertex3f(Ow.at<float>(0), Ow.at<float>(1), Ow.at<float>(2));
+                glVertex3f(Owl.at<float>(0), Owl.at<float>(1), Owl.at<float>(2));
             }
         }
 
