@@ -375,8 +375,8 @@ void KeyFrame::SetBadFlag()
 {
     {
         unique_lock<mutex> lock(mMutexConnections);
-        
-        if (mnId==0)
+
+        if (mnId == 0)
             return;
 
         if (mbNotErase)
@@ -420,21 +420,21 @@ void KeyFrame::SetBadFlag()
                     continue;
 
                 // Check if a parent candidate is connected to the keyframe
-                vector<KeyFrame*> vpConnected = pKF->GetVectorCovisibleKeyFrames();
+                std::vector<KeyFrame*> vpConnected = pKF->GetVectorCovisibleKeyFrames();
                 for (size_t i = 0, iend = vpConnected.size(); i<iend; i++)
                 {
                     for (KeyFrame* pcKF : sParentCandidates)
                     {
-                        if (vpConnected[i]->mnId == pcKF->mnId)
+                        if (vpConnected[i]->mnId != pcKF->mnId)
+                            continue;
+
+                        int w = pKF->GetWeight(vpConnected[i]);
+                        if (w > max)
                         {
-                            int w = pKF->GetWeight(vpConnected[i]);
-                            if (w > max)
-                            {
-                                pC = pKF;
-                                pP = vpConnected[i];
-                                max = w;
-                                bContinue = true;
-                            }
+                            pC = pKF;
+                            pP = vpConnected[i];
+                            max = w;
+                            bContinue = true;
                         }
                     }
                 }

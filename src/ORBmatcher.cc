@@ -150,7 +150,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
 
     vpMapPointMatches = vector<MapPoint*>(F.m_frame_N);
 
-    vector<MapPoint*> const vpMapPointsKF = pKF->GetMapPointMatches();
+    std::vector<MapPoint*> const vpMapPointsKF = pKF->GetMapPointMatches();
     DBoW2::FeatureVector const& vFeatVecKF = pKF->mFeatVec;
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
@@ -163,12 +163,12 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
     {
         if (KFit->first == Fit->first)
         {
-            vector<unsigned int> const& vIndicesKF = KFit->second;
-            vector<unsigned int> const& vIndicesF = Fit->second;
+            std::vector<unsigned int> const& vIndicesKF = KFit->second;
+            std::vector<unsigned int> const& vIndicesF = Fit->second;
 
             for (size_t iKF = 0; iKF < vIndicesKF.size(); ++iKF)
             {
-                const unsigned int realIdxKF = vIndicesKF[iKF];
+                unsigned int const realIdxKF = vIndicesKF[iKF];
 
                 MapPoint* pMP = vpMapPointsKF[realIdxKF];
 
@@ -1420,7 +1420,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
         }
     }
 
-    //Apply rotation consistency
+    // Apply rotation consistency
     if (mbCheckOrientation)
     {
         int ind1 = -1;

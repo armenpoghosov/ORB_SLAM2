@@ -50,37 +50,37 @@ public:
     // Pose functions
     void SetPose(cv::Mat const& Tcw);
 
-    cv::Mat GetPose()
+    cv::Mat GetPose() const
     {
         unique_lock<mutex> lock(mMutexPose);
         return Tcw.clone();
     }
 
-    cv::Mat GetPoseInverse()
+    cv::Mat GetPoseInverse() const
     {
         unique_lock<mutex> lock(mMutexPose);
         return Twc.clone();
     }
 
-    cv::Mat GetCameraCenter()
+    cv::Mat GetCameraCenter() const
     {
         unique_lock<mutex> lock(mMutexPose);
         return Ow.clone();
     }
 
-    cv::Mat GetStereoCenter()
+    cv::Mat GetStereoCenter() const
     {
         unique_lock<mutex> lock(mMutexPose);
         return Cw.clone();
     }
 
-    cv::Mat GetRotation()
+    cv::Mat GetRotation() const
     {
         unique_lock<mutex> lock(mMutexPose);
         return Tcw.rowRange(0, 3).colRange(0, 3).clone();
     }
 
-    cv::Mat GetTranslation()
+    cv::Mat GetTranslation() const
     {
         unique_lock<mutex> lock(mMutexPose);
         return Tcw.rowRange(0, 3).col(3).clone();
@@ -95,6 +95,7 @@ public:
     void EraseConnection(KeyFrame* pKF);
     void UpdateConnections();
     void UpdateBestCovisibles();
+
     std::set<KeyFrame*> GetConnectedKeyFrames();
     std::vector<KeyFrame*> GetBestCovisibilityKeyFrames(int N);
     std::vector<KeyFrame*> GetCovisiblesByWeight(int w);
@@ -347,9 +348,9 @@ protected:
 
     Map*                            mpMap;
 
-    std::mutex mMutexPose;
-    std::mutex mMutexConnections;
-    std::mutex mMutexFeatures;
+    std::mutex mutable              mMutexPose;
+    std::mutex mutable              mMutexConnections;
+    std::mutex mutable              mMutexFeatures;
 };
 
 } //namespace ORB_SLAM

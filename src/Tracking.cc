@@ -479,7 +479,7 @@ void Tracking::StereoInitialization()
 
     cout << "New map created with " << mpMap->MapPointsInMap() << " points" << endl;
 
-    mpLocalMapper->InsertKeyFrame(pKFini);
+    mpLocalMapper->enqueue_key_frame(pKFini);
 
     mLastFrame = Frame(mCurrentFrame);
     mnLastKeyFrameId = mCurrentFrame.m_id;
@@ -651,8 +651,8 @@ void Tracking::CreateInitialMapMonocular()
             pMP->SetWorldPos(pMP->GetWorldPos() * invMedianDepth);
     }
 
-    mpLocalMapper->InsertKeyFrame(pKFini);
-    mpLocalMapper->InsertKeyFrame(pKFcur);
+    mpLocalMapper->enqueue_key_frame(pKFini);
+    mpLocalMapper->enqueue_key_frame(pKFcur);
 
     mCurrentFrame.SetPose(pKFcur->GetPose());
     mnLastKeyFrameId = mCurrentFrame.m_id;
@@ -886,7 +886,7 @@ bool Tracking::TrackLocalMap()
 bool Tracking::NeedNewKeyFrame()
 {
     // If Local Mapping is freezed by a Loop Closure do not insert keyframes
-    if (mbOnlyTracking || mpLocalMapper->isStopped() || mpLocalMapper->stopRequested())
+    if (mbOnlyTracking || mpLocalMapper->is_paused() || mpLocalMapper->is_pause_requested())
         return false;
 
     int const nKFs = mpMap->KeyFramesInMap();
@@ -951,7 +951,7 @@ bool Tracking::NeedNewKeyFrame()
         }
 
         mpLocalMapper->InterruptBA();
-        return mSensor != System::MONOCULAR && mpLocalMapper->KeyframesInQueue() < 3;
+        return mSensor != System::MONOCULAR && mpLocalMapper->queued_key_frames() < 3;
     }
 
     return false;
@@ -1029,7 +1029,7 @@ void Tracking::CreateNewKeyFrame()
         }
     }
 
-    mpLocalMapper->InsertKeyFrame(pKF);
+    mpLocalMapper->enqueue_key_frame(pKF);
 
     mpLocalMapper->SetNotStop(false);
 

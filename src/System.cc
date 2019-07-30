@@ -388,10 +388,10 @@ void System::locked_handle_activate_localization()
 {
     if (mbActivateLocalizationMode)
     {
-        mpLocalMapper->RequestStop();
+        mpLocalMapper->pause();
 
         // Wait until Local Mapping has effectively stopped
-        while (!mpLocalMapper->isStopped())
+        while (!mpLocalMapper->is_paused())
         {
             std::this_thread::sleep_for(std::chrono::microseconds(1000));
         }

@@ -21,14 +21,13 @@
 #ifndef LOCALMAPPING_H
 #define LOCALMAPPING_H
 
-#include "KeyFrame.h"
-#include "Map.h"
-#include "LoopClosing.h"
-#include "Tracking.h"
-#include "KeyFrameDatabase.h"
+#include <opencv2/core/core.hpp>
 
+#include <atomic> // TODO: remove?
+#include <condition_variable>
+#include <list>
 #include <mutex>
-
+#include <thread>
 
 namespace ORB_SLAM2
 {
@@ -36,13 +35,30 @@ namespace ORB_SLAM2
 class Tracking;
 class LoopClosing;
 class Map;
+class KeyFrame;
+class MapPoint;
+
+// -------------------------------------------------------------------------------------------------
+//
+//
+//
 
 class LocalMapping
 {
 public:
 
+    // ---------------------------------------------------------------------------------------------
+    //
+    //
+    //
+
     LocalMapping(Map* pMap, bool bMonocular);
     ~LocalMapping();
+
+    // ---------------------------------------------------------------------------------------------
+    //
+    //
+    //
 
     void SetLoopCloser(LoopClosing* pLoopCloser)
         { mpLoopCloser = pLoopCloser; }
@@ -50,32 +66,43 @@ public:
     void SetTracker(Tracking *pTracker)
         { mpTracker = pTracker; }
 
-    void InsertKeyFrame(KeyFrame* pKF);
+    // ---------------------------------------------------------------------------------------------
+    //
+    //
+    //
 
-    // Thread Synch
-    void RequestStop();
+    bool pause()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        mbStopRequested = true;
+        mbAbortBA = true;
+        return true;
+    }
+
+    bool is_paused() const
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_state == eState_Paused;
+    }
+
+    bool is_pause_requested() const
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_state == eState_Pausing;
+    }
+
+
+
 
     void RequestReset();
 
-    bool Stop();
-
     void Release();
-
-    bool isStopped();
-
-    bool stopRequested();
-
-    bool AcceptKeyFrames()
-    {
-        unique_lock<mutex> lock(mMutexAccept);
-        return mbAcceptKeyFrames;
-    }
 
     bool SetNotStop(bool flag)
     {
-        unique_lock<mutex> lock(mMutexStop);
+        std::unique_lock<std::mutex> lock(m_mutex);
 
-        if (flag && mbStopped)
+        if (flag && m_state == eState_Paused)
             return false;
 
         mbNotStop = flag;
@@ -85,43 +112,52 @@ public:
 
     void InterruptBA()
     {
+        // TODO: think about it!
         mbAbortBA = true;
     }
 
     void RequestFinish()
     {
-        unique_lock<mutex> lock(mMutexFinish);
-        mbFinishRequested = true;
+        // TODO: think about it
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_state = eState_Stopping;
+        }
+
+        m_kick_condition.notify_all();
     }
 
     bool isFinished()
     {
-        unique_lock<mutex> lock(mMutexFinish);
-        return mbFinished;
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_state == eState_Stopped;
     }
 
-    std::size_t KeyframesInQueue()
+    // ---------------------------------------------------------------------------------------------
+    //
+    //
+    //
+
+    bool AcceptKeyFrames() const
     {
-        unique_lock<std::mutex> lock(mMutexNewKFs);
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_state == eState_Idle;
+    }
+
+    std::size_t queued_key_frames() const
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
         return mlNewKeyFrames.size();
     }
+
+    void enqueue_key_frame(KeyFrame* pKF);
 
 protected:
 
     // Main function
     void Run();
 
-    void SetAcceptKeyFrames(bool flag)
-    {
-        unique_lock<mutex> lock(mMutexAccept);
-        mbAcceptKeyFrames = flag;
-    }
-
-    bool CheckNewKeyFrames()
-    {
-        unique_lock<mutex> lock(mMutexNewKFs);
-        return !mlNewKeyFrames.empty();
-    }
+    bool Stop();
 
     void ProcessNewKeyFrame();
     void CreateNewMapPoints();
@@ -131,34 +167,46 @@ protected:
 
     void KeyFrameCulling();
 
-    cv::Mat ComputeF12(KeyFrame* pKF1, KeyFrame* pKF2);
+    static cv::Mat ComputeF12(KeyFrame* pKF1, KeyFrame* pKF2);
 
-    cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
+    static cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
 
     void ResetIfRequested();
-    bool CheckFinish();
-    void SetFinish();
+
+    bool CheckFinish() const
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_state == eState_Stopping;
+    }
+
+    enum eStates
+    {
+        eState_Stopped,
+        eState_Idle,
+        eState_Running,
+        eState_Stopping,
+        eState_Pausing,
+        eState_Paused
+    };
 
     bool                    mbResetRequested;
     bool                    mbMonocular;
-    bool                    mbFinishRequested;
-    bool                    mbFinished;
-    std::mutex              mMutexReset;
-    std::mutex              mMutexFinish;
     Map*                    mpMap;
     LoopClosing*            mpLoopCloser;
     Tracking*               mpTracker;
-    std::list<KeyFrame*>    mlNewKeyFrames;
     KeyFrame*               mpCurrentKeyFrame;
+    std::list<KeyFrame*>    mlNewKeyFrames;
     std::list<MapPoint*>    mlpRecentAddedMapPoints;
-    std::mutex              mMutexNewKFs;
     bool                    mbAbortBA;
     bool                    mbStopped;
     bool                    mbStopRequested;
     bool                    mbNotStop;
-    std::mutex              mMutexStop;
-    bool                    mbAcceptKeyFrames;
-    std::mutex              mMutexAccept;
+    std::atomic<bool>       mbAcceptKeyFrames;
+
+
+    eStates                 m_state;
+    std::mutex mutable      m_mutex;
+    std::condition_variable m_kick_condition;
     std::thread             m_thread;
 };
 
