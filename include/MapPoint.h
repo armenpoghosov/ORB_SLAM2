@@ -72,50 +72,88 @@ public:
         return mObservations;
     }
 
-    int Observations()
+    std::size_t Observations()
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         return nObs;
     }
 
     void AddObservation(KeyFrame* pKF,size_t idx);
     void EraseObservation(KeyFrame* pKF);
 
-    std::size_t GetIndexInKeyFrame(KeyFrame* pKF);
-    bool IsInKeyFrame(KeyFrame* pKF);
+    std::size_t GetIndexInKeyFrame(KeyFrame *pKF) const
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        auto it = mObservations.find(pKF);
+        return it != mObservations.end() ? it->second : (std::size_t) - 1;
+    }
+
+    bool IsInKeyFrame(KeyFrame *pKF) const
+    {
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        return mObservations.count(pKF) != 0;
+    }
 
     void SetBadFlag();
-    bool isBad();
+
+    bool isBad() const
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        unique_lock<mutex> lock2(mMutexPos);
+        return mbBad;
+    }
 
     void Replace(MapPoint* pMP);
-    MapPoint* GetReplaced();
 
-    void IncreaseVisible(int n=1);
-    void IncreaseFound(int n=1);
-    float GetFoundRatio();
+    MapPoint* GetReplaced() const
+    {
+        unique_lock<mutex> lock1(mMutexFeatures);
+        unique_lock<mutex> lock2(mMutexPos);
+        return mpReplaced;
+    }
 
-    int GetFound()
+    void IncreaseVisible(int n = 1)
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        mnVisible += n;
+    }
+
+    void IncreaseFound(int n = 1)
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        mnFound += n;
+    }
+
+    float GetFoundRatio() const
+    {
+        unique_lock<mutex> lock(mMutexFeatures);
+        return (float)mnFound / mnVisible;
+    }
+
+    int GetFound() const
         { return mnFound; }
 
     void ComputeDistinctiveDescriptors();
 
-    cv::Mat GetDescriptor();
+    cv::Mat GetDescriptor() const
+    {
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        return mDescriptor.clone();
+    }
 
     void UpdateNormalAndDepth();
 
-    float GetMinDistanceInvariance()
+    float GetMinDistanceInvariance() const
     {
-        unique_lock<mutex> lock(mMutexPos);
+        std::unique_lock<std::mutex> lock(mMutexPos);
         return 0.8f * mfMinDistance;
     }
 
     float GetMaxDistanceInvariance()
     {
-        unique_lock<mutex> lock(mMutexPos);
+        std::unique_lock<std::mutex> lock(mMutexPos);
         return 1.2f * mfMaxDistance;
     }
-
-
 
     int PredictScale(float currentDist, KeyFrame* pKF);
     int PredictScale(float currentDist, Frame* pF);
@@ -128,7 +166,7 @@ public:
     uint64_t                        mnFirstKFid;
     uint64_t                        mnFirstFrame;
 
-    int nObs;
+    std::size_t                     nObs;
 
     // Variables used by the tracking
     float                           mTrackProjX;
@@ -137,20 +175,20 @@ public:
     bool                            mbTrackInView;
     int                             mnTrackScaleLevel;
     float                           mTrackViewCos;
-    long unsigned int               mnTrackReferenceForFrame;
+    uint64_t                        mnTrackReferenceForFrame;
     uint64_t                        mnLastFrameSeen;
 
     // Variables used by local mapping
-    long unsigned int               mnBALocalForKF;
+    uint64_t                        mnBALocalForKF;
     uint64_t                        mnFuseCandidateForKF;
 
     // Variables used by loop closing
-    long unsigned int               mnLoopPointForKF;
-    long unsigned int               mnCorrectedByKF;
-    long unsigned int               mnCorrectedReference;
+    uint64_t                        mnLoopPointForKF;
+    uint64_t                        mnCorrectedByKF;
+    uint64_t                        mnCorrectedReference;
     cv::Mat                         mPosGBA;
 
-    long unsigned int               mnBAGlobalForKF;
+    uint64_t                        mnBAGlobalForKF;
 
     static std::mutex               mGlobalMutex;
 
@@ -160,8 +198,7 @@ protected:
      cv::Mat                        mWorldPos;
 
      // Keyframes observing the point and associated index in keyframe
-     std::unordered_map<KeyFrame*, size_t>
-                                    mObservations;
+     std::unordered_map<KeyFrame*, size_t>  mObservations;
 
      // Mean viewing direction
      cv::Mat                        mNormalVector;
@@ -189,7 +226,7 @@ protected:
      Map*                           mpMap;
 
      std::mutex mutable             mMutexPos;
-     std::mutex                     mMutexFeatures;
+     std::mutex mutable             mMutexFeatures;
 };
 
 } //namespace ORB_SLAM

@@ -30,7 +30,7 @@ std::atomic<uint64_t> MapPoint::s_next_id;
 
 mutex MapPoint::mGlobalMutex;
 
-MapPoint::MapPoint(cv::Mat const& Pos, KeyFrame *pRefKF, Map* pMap)
+MapPoint::MapPoint(cv::Mat const& Pos, KeyFrame* pRefKF, Map* pMap)
     :
     mnFirstKFid(pRefKF->mnId),
     mnFirstFrame(pRefKF->mnFrameId),
@@ -107,7 +107,7 @@ void MapPoint::SetWorldPos(cv::Mat const& Pos)
 
 void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    std::unique_lock<std::mutex> lock(mMutexFeatures);
 
     auto const& pair = mObservations.emplace(pKF, idx);
     if (pair.second)
@@ -164,13 +164,6 @@ void MapPoint::SetBadFlag()
     mpMap->EraseMapPoint(this);
 }
 
-MapPoint* MapPoint::GetReplaced()
-{
-    unique_lock<mutex> lock1(mMutexFeatures);
-    unique_lock<mutex> lock2(mMutexPos);
-    return mpReplaced;
-}
-
 void MapPoint::Replace(MapPoint* pMP)
 {
     if (pMP->mnId == mnId)
@@ -213,31 +206,6 @@ void MapPoint::Replace(MapPoint* pMP)
     pMP->ComputeDistinctiveDescriptors();
 
     mpMap->EraseMapPoint(this);
-}
-
-bool MapPoint::isBad()
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    unique_lock<mutex> lock2(mMutexPos);
-    return mbBad;
-}
-
-void MapPoint::IncreaseVisible(int n)
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    mnVisible += n;
-}
-
-void MapPoint::IncreaseFound(int n)
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    mnFound += n;
-}
-
-float MapPoint::GetFoundRatio()
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    return (float)mnFound / mnVisible;
 }
 
 void MapPoint::ComputeDistinctiveDescriptors()
@@ -315,40 +283,22 @@ void MapPoint::ComputeDistinctiveDescriptors()
     }
 }
 
-cv::Mat MapPoint::GetDescriptor()
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    return mDescriptor.clone();
-}
-
-std::size_t MapPoint::GetIndexInKeyFrame(KeyFrame *pKF)
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    auto it = mObservations.find(pKF);
-    return it != mObservations.end() ? it->second : (std::size_t)-1;
-}
-
-bool MapPoint::IsInKeyFrame(KeyFrame *pKF)
-{
-    unique_lock<mutex> lock(mMutexFeatures);
-    return mObservations.count(pKF) != 0;
-}
-
 void MapPoint::UpdateNormalAndDepth()
 {
-    std::unordered_map<KeyFrame*, size_t> observations;
-    KeyFrame* pRefKF;
     cv::Mat Pos;
+    KeyFrame* pRefKF;
+    std::unordered_map<KeyFrame*, size_t> observations;
 
     {
         unique_lock<mutex> lock1(mMutexFeatures);
         unique_lock<mutex> lock2(mMutexPos);
+
         if (mbBad)
             return;
 
-        observations = mObservations;
-        pRefKF = mpRefKF;
         Pos = mWorldPos.clone();
+        pRefKF = mpRefKF;
+        observations = mObservations;
     }
 
     std::size_t const n = observations.size();
@@ -362,14 +312,14 @@ void MapPoint::UpdateNormalAndDepth()
     {
         cv::Mat Owi = pair.first->GetCameraCenter();
         cv::Mat normali = mWorldPos - Owi;
-        normal = normal + normali/cv::norm(normali);
+        normal = normal + normali / cv::norm(normali);
     }
 
     cv::Mat PC = Pos - pRefKF->GetCameraCenter();
-    const float dist = (float)cv::norm(PC);
-    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
-    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
-    const int nLevels = pRefKF->mnScaleLevels;
+    float const dist = (float)cv::norm(PC);
+    int const level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
+    float const levelScaleFactor =  pRefKF->mvScaleFactors[level];
+    int const nLevels = pRefKF->mnScaleLevels;
 
     {
         unique_lock<mutex> lock3(mMutexPos);

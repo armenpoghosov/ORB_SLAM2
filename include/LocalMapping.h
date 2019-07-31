@@ -201,7 +201,6 @@ protected:
     bool                    mbStopped;
     bool                    mbStopRequested;
     bool                    mbNotStop;
-    std::atomic<bool>       mbAcceptKeyFrames;
 
 
     eStates                 m_state;

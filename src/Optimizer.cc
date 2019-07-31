@@ -37,17 +37,16 @@
 namespace ORB_SLAM2
 {
 
-
-void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations,
+    bool* pbStopFlag, uint64_t nLoopKF, bool bRobust)
 {
-    vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
-    vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
-    BundleAdjustment(vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
+    std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
+    std::vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
+    BundleAdjustment(vpKFs, vpMP, nIterations, pbStopFlag, nLoopKF, bRobust);
 }
 
-
-void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
-                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::BundleAdjustment(std::vector<KeyFrame*> const& vpKFs,
+    std::vector<MapPoint*> const& vpMP, int nIterations, bool* pbStopFlag, uint64_t nLoopKF, bool bRobust)
 {
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
@@ -148,14 +147,14 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
                 g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
 
-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
-                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
+                e->setVertex(0, optimizer.vertex(id));
+                e->setVertex(1, optimizer.vertex(pKF->mnId));
                 e->setMeasurement(obs);
-                const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
-                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
+                float const invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
                 e->setInformation(Info);
 
-                if(bRobust)
+                if (bRobust)
                 {
                     g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
                     e->setRobustKernel(rk);
@@ -263,7 +262,7 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     std::vector<g2o::EdgeStereoSE3ProjectXYZOnlyPose*> vpEdgesStereo;
     vpEdgesStereo.reserve(N);
 
-    std::vector<size_t> vnIndexEdgeStereo;
+    std::vector<std::size_t> vnIndexEdgeStereo;
     vnIndexEdgeStereo.reserve(N);
 
     float const deltaMono = std::sqrt(5.991);
@@ -274,7 +273,7 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     {
         std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
 
-        for (int i = 0; i < N; ++i)
+        for (std::size_t i = 0; i < N; ++i)
         {
             MapPoint* pMP = pFrame->mvpMapPoints[i];
 
@@ -735,7 +734,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
 void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
     LoopClosing::KeyFrameAndPose const& NonCorrectedSim3, LoopClosing::KeyFrameAndPose const& CorrectedSim3,
-    map<KeyFrame *, set<KeyFrame *> > const& LoopConnections, const bool &bFixScale)
+    std::unordered_map<KeyFrame*, std::unordered_set<KeyFrame*> > const& LoopConnections, bool bFixScale)
 {
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
@@ -751,11 +750,11 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     const vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     const vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
 
-    const unsigned int nMaxKFid = pMap->GetMaxKFid();
+    uint64_t const nMaxKFid = pMap->GetMaxKFid();
 
-    vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vScw(nMaxKFid+1);
-    vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vCorrectedSwc(nMaxKFid+1);
-    vector<g2o::VertexSim3Expmap*> vpVertices(nMaxKFid+1);
+    vector<g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3> > vScw(nMaxKFid + 1);
+    vector<g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3> > vCorrectedSwc(nMaxKFid + 1);
+    vector<g2o::VertexSim3Expmap*> vpVertices(nMaxKFid + 1);
 
     const int minFeat = 100;
 
@@ -797,39 +796,42 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         vpVertices[nIDi]=VSim3;
     }
 
-
-    set<pair<long unsigned int,long unsigned int> > sInsertedEdges;
+    // NOTE: PAE: need to change to unordered_set but have to add hasher first
+    std::set<std::pair<uint64_t, uint64_t> > sInsertedEdges;
 
     const Eigen::Matrix<double,7,7> matLambda = Eigen::Matrix<double,7,7>::Identity();
 
     // Set Loop edges
-    for(map<KeyFrame *, set<KeyFrame *> >::const_iterator mit = LoopConnections.begin(), mend=LoopConnections.end(); mit!=mend; mit++)
+    for (auto mit = LoopConnections.begin(), mend=LoopConnections.end(); mit != mend; ++mit)
     {
         KeyFrame* pKF = mit->first;
-        const long unsigned int nIDi = pKF->mnId;
-        const set<KeyFrame*> &spConnections = mit->second;
+
+        uint64_t const nIDi = pKF->mnId;
+        std::unordered_set<KeyFrame*> const& spConnections = mit->second;
+
         const g2o::Sim3 Siw = vScw[nIDi];
         const g2o::Sim3 Swi = Siw.inverse();
 
-        for(set<KeyFrame*>::const_iterator sit=spConnections.begin(), send=spConnections.end(); sit!=send; sit++)
+        for (auto sit = spConnections.begin(), send = spConnections.end(); sit != send; ++sit)
         {
-            const long unsigned int nIDj = (*sit)->mnId;
-            if((nIDi!=pCurKF->mnId || nIDj!=pLoopKF->mnId) && pKF->GetWeight(*sit)<minFeat)
+            uint64_t const nIDj = (*sit)->mnId;
+
+            if ((nIDi != pCurKF->mnId || nIDj != pLoopKF->mnId) && pKF->GetWeight(*sit) < minFeat)
                 continue;
 
             const g2o::Sim3 Sjw = vScw[nIDj];
             const g2o::Sim3 Sji = Sjw * Swi;
 
             g2o::EdgeSim3* e = new g2o::EdgeSim3();
-            e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDj)));
-            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
+            e->setVertex(1, optimizer.vertex(nIDj));
+            e->setVertex(0, optimizer.vertex(nIDi));
             e->setMeasurement(Sji);
 
             e->information() = matLambda;
 
             optimizer.addEdge(e);
 
-            sInsertedEdges.insert(make_pair(min(nIDi,nIDj),max(nIDi,nIDj)));
+            sInsertedEdges.emplace((std::min)(nIDi, nIDj), (std::max)(nIDi, nIDj));
         }
     }
 

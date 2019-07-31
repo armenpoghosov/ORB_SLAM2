@@ -650,8 +650,8 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
     // Compare only ORB that share the same node
 
     int nmatches = 0;
-    vector<bool> vbMatched2(pKF2->N);
-    vector<int> vMatches12(pKF1->N,-1);
+    vector<bool> vbMatched2(pKF2->m_kf_N);
+    vector<int> vMatches12(pKF1->m_kf_N,-1);
 
     vector<int> rotHist[HISTO_LENGTH];
     for(int i=0;i<HISTO_LENGTH;i++)
@@ -803,11 +803,11 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, float
     cv::Mat Rcw = pKF->GetRotation();
     cv::Mat tcw = pKF->GetTranslation();
 
-    float const& fx = pKF->fx;
-    float const& fy = pKF->fy;
-    float const& cx = pKF->cx;
-    float const& cy = pKF->cy;
-    float const& bf = pKF->mbf;
+    float const fx = pKF->fx;
+    float const fy = pKF->fy;
+    float const cx = pKF->cx;
+    float const cy = pKF->cy;
+    float const bf = pKF->mbf;
 
     cv::Mat Ow = pKF->GetCameraCenter();
 
@@ -922,22 +922,20 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, float
         {
             MapPoint* pMPinKF = pKF->GetMapPoint(bestIdx);
 
-            if(pMPinKF)
+            if (pMPinKF == nullptr)
             {
-                if(!pMPinKF->isBad())
-                {
-                    if(pMPinKF->Observations()>pMP->Observations())
-                        pMP->Replace(pMPinKF);
-                    else
-                        pMPinKF->Replace(pMP);
-                }
+                pMP->AddObservation(pKF, bestIdx);
+                pKF->AddMapPoint(pMP, bestIdx);
             }
-            else
+            else if (!pMPinKF->isBad())
             {
-                pMP->AddObservation(pKF,bestIdx);
-                pKF->AddMapPoint(pMP,bestIdx);
+                if (pMPinKF->Observations() > pMP->Observations())
+                    pMP->Replace(pMPinKF);
+                else
+                    pMPinKF->Replace(pMP);
             }
-            nFused++;
+
+            ++nFused;
         }
     }
 
@@ -960,14 +958,14 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
     cv::Mat Ow = -Rcw.t()*tcw;
 
     // Set of MapPoints already found in the KeyFrame
-    const set<MapPoint*> spAlreadyFound = pKF->GetMapPoints();
+    std::unordered_set<MapPoint*> const spAlreadyFound = pKF->GetMapPoints();
 
     int nFused=0;
 
-    const int nPoints = vpPoints.size();
+    std::size_t const nPoints = vpPoints.size();
 
     // For each candidate MapPoint project and match
-    for(int iMP=0; iMP<nPoints; iMP++)
+    for (std::size_t iMP = 0; iMP < nPoints; ++iMP)
     {
         MapPoint* pMP = vpPoints[iMP];
 
@@ -1025,23 +1023,25 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
 
         // Match to the most similar keypoint in the radius
 
-        const cv::Mat dMP = pMP->GetDescriptor();
+        cv::Mat const dMP = pMP->GetDescriptor();
 
         int bestDist = INT_MAX;
         int bestIdx = -1;
-        for(vector<size_t>::const_iterator vit=vIndices.begin(); vit!=vIndices.end(); vit++)
-        {
-            const size_t idx = *vit;
-            const int &kpLevel = pKF->mvKeysUn[idx].octave;
 
-            if(kpLevel<nPredictedLevel-1 || kpLevel>nPredictedLevel)
+        for (auto vit = vIndices.begin(); vit != vIndices.end(); ++vit)
+        {
+            size_t const idx = *vit;
+
+            int const kpLevel = pKF->mvKeysUn[idx].octave;
+
+            if (kpLevel < nPredictedLevel - 1 || kpLevel > nPredictedLevel)
                 continue;
 
-            const cv::Mat &dKF = pKF->mDescriptors.row(idx);
+            cv::Mat const& dKF = pKF->mDescriptors.row(idx);
 
-            int dist = DescriptorDistance(dMP,dKF);
+            int const dist = DescriptorDistance(dMP, dKF);
 
-            if(dist<bestDist)
+            if (dist < bestDist)
             {
                 bestDist = dist;
                 bestIdx = idx;
@@ -1049,19 +1049,18 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
         }
 
         // If there is already a MapPoint replace otherwise add new measurement
-        if(bestDist<=TH_LOW)
+        if (bestDist <= TH_LOW)
         {
             MapPoint* pMPinKF = pKF->GetMapPoint(bestIdx);
-            if(pMPinKF)
+
+            if (pMPinKF == nullptr)
             {
-                if(!pMPinKF->isBad())
-                    vpReplacePoint[iMP] = pMPinKF;
+                pMP->AddObservation(pKF, bestIdx);
+                pKF->AddMapPoint(pMP, bestIdx);
             }
-            else
-            {
-                pMP->AddObservation(pKF,bestIdx);
-                pKF->AddMapPoint(pMP,bestIdx);
-            }
+            else if (!pMPinKF->isBad())
+                vpReplacePoint[iMP] = pMPinKF;
+
             nFused++;
         }
     }
@@ -1573,15 +1572,15 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, KeyFrame* pKF,
     return nmatches;
 }
 
-void ORBmatcher::ComputeThreeMaxima(vector<int> const* histo, int L, int &ind1, int &ind2, int &ind3)
+void ORBmatcher::ComputeThreeMaxima(std::vector<int> const* histo, int L, int &ind1, int &ind2, int &ind3)
 {
-    int max1 = 0;
-    int max2 = 0;
-    int max3 = 0;
+    std::size_t max1 = 0;
+    std::size_t max2 = 0;
+    std::size_t max3 = 0;
 
     for (int i = 0; i < L; ++i)
     {
-        const int s = histo[i].size();
+        std::size_t const s = histo[i].size();
         if (s > max1)
         {
             max3 = max2;

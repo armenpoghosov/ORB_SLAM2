@@ -37,7 +37,6 @@ LocalMapping::LocalMapping(Map *pMap, bool bMonocular)
     mbStopped(false),
     mbStopRequested(false),
     mbNotStop(false),
-    mbAcceptKeyFrames(true),
 
 
     m_state(eState_Stopped)
@@ -65,10 +64,10 @@ void LocalMapping::Run()
 {
     // TODO: PAE: review exception safety here!
 
+    std::unique_lock<std::mutex> lock(m_mutex);
+
     for (;;)
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
-
         switch (m_state)
         {
         case eState_Stopped:
@@ -76,6 +75,7 @@ void LocalMapping::Run()
             m_state = eState_Idle;
             lock.unlock();
             m_kick_condition.notify_all();
+            lock.lock();
         }
         break;
         case eState_Idle:
@@ -122,6 +122,8 @@ void LocalMapping::Run()
             }
 
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame); // PAE: pass to loop closer?
+
+            lock.lock();
         }
         break;
         case eState_Stopping:
@@ -186,7 +188,6 @@ void LocalMapping::enqueue_key_frame(KeyFrame *pKF)
     }
 }
 
-
 void LocalMapping::ProcessNewKeyFrame()
 {
     // Compute Bags of Words structures
@@ -212,7 +213,7 @@ void LocalMapping::ProcessNewKeyFrame()
         {
             mlpRecentAddedMapPoints.push_back(pMP);
         }
-    }    
+    }
 
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
@@ -236,15 +237,15 @@ void LocalMapping::MapPointCulling()
         if (pMP->isBad())
             lit = mlpRecentAddedMapPoints.erase(lit);
         else if (pMP->GetFoundRatio() < 0.25f ||
-            (((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 2 && pMP->Observations() <= cnThObs))
+            (nCurrentKFid >= pMP->mnFirstKFid + 2 && pMP->Observations() <= cnThObs))
         {
             pMP->SetBadFlag();
             lit = mlpRecentAddedMapPoints.erase(lit);
         }
-        else if (((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 3)
+        else if (nCurrentKFid >= pMP->mnFirstKFid + 3)
             lit = mlpRecentAddedMapPoints.erase(lit);
         else
-            lit++;
+            ++lit;
     }
 }
 
@@ -253,7 +254,7 @@ void LocalMapping::CreateNewMapPoints()
     // Retrieve neighbor keyframes in covisibility graph
     int nn = mbMonocular ? 20 : 10;
 
-    const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+    std::vector<KeyFrame*> const vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
     ORBmatcher matcher(0.6f, false);
 
@@ -276,8 +277,6 @@ void LocalMapping::CreateNewMapPoints()
 
     float const ratioFactor = 1.5f * mpCurrentKeyFrame->mfScaleFactor;
 
-    int nnew = 0;
-
     // Search matches with epipolar restriction and triangulate
     for (size_t i = 0; i < vpNeighKFs.size(); ++i)
     {
@@ -299,8 +298,8 @@ void LocalMapping::CreateNewMapPoints()
         }
         else
         {
-            const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-            const float ratioBaselineDepth = baseline / medianDepthKF2;
+            float const medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
+            float const ratioBaselineDepth = baseline / medianDepthKF2;
 
             if (ratioBaselineDepth < 0.01)
                 continue;
@@ -398,11 +397,11 @@ void LocalMapping::CreateNewMapPoints()
             cv::Mat x3Dt = x3D.t();
 
             //Check triangulation in front of cameras
-            float z1 = Rcw1.row(2).dot(x3Dt) + tcw1.at<float>(2);
+            float const z1 = Rcw1.row(2).dot(x3Dt) + tcw1.at<float>(2);
             if (z1 <= 0.f)
                 continue;
 
-            float z2 = Rcw2.row(2).dot(x3Dt) + tcw2.at<float>(2);
+            float const z2 = Rcw2.row(2).dot(x3Dt) + tcw2.at<float>(2);
             if (z2 <= 0.f)
                 continue;
 
@@ -502,8 +501,6 @@ void LocalMapping::CreateNewMapPoints()
             mpMap->AddMapPoint(pMP);
 
             mlpRecentAddedMapPoints.push_back(pMP);
-
-            ++nnew;
         }
     }
 }
@@ -620,8 +617,22 @@ void LocalMapping::Release()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
+    // TODO: implement it
+    switch (m_state)
+    {
+    case eState_Stopped:
+    break;
+    case eState_Idle:
+    case eState_Running:
+    case eState_Stopping:
+    case eState_Pausing:
+    case eState_Paused:
+    break;
+    }
+
     if (m_state == eState_Stopped)
         return;
+
 
     mbStopped = false;
     mbStopRequested = false;

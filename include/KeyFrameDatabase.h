@@ -45,13 +45,11 @@ public:
     KeyFrameDatabase(ORBVocabulary const& voc);
 
    void add(KeyFrame* pKF);
-
    void erase(KeyFrame* pKF);
-
    void clear();
 
    // Loop Detection
-   std::vector<KeyFrame *> DetectLoopCandidates(KeyFrame* pKF, float minScore);
+   std::vector<KeyFrame*> DetectLoopCandidates(KeyFrame* pKF, float minScore);
 
    // Relocalization
    std::vector<KeyFrame*> DetectRelocalizationCandidates(Frame* F);
@@ -63,7 +61,7 @@ protected:
     // Inverted file
     std::vector<std::list<KeyFrame*> >  mvInvertedFile;
     // Mutex
-    std::mutex                          mMutex;
+    std::mutex mutable                  mMutex;
 };
 
 } //namespace ORB_SLAM

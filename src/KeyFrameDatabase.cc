@@ -75,39 +75,41 @@ void KeyFrameDatabase::clear()
 }
 
 
-vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float minScore)
+std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float minScore)
 {
-    set<KeyFrame*> spConnectedKeyFrames = pKF->GetConnectedKeyFrames();
-    list<KeyFrame*> lKFsSharingWords;
+    std::unordered_set<KeyFrame*> spConnectedKeyFrames = pKF->GetConnectedKeyFrames();
+
+    std::list<KeyFrame*> lKFsSharingWords;
 
     // Search all keyframes that share a word with current keyframes
     // Discard keyframes connected to the query keyframe
     {
         unique_lock<mutex> lock(mMutex);
 
-        for(DBoW2::BowVector::const_iterator vit=pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit != vend; vit++)
+        for (auto vit = pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit != vend; ++vit)
         {
-            list<KeyFrame*> &lKFs =   mvInvertedFile[vit->first];
+            std::list<KeyFrame*>& lKFs = mvInvertedFile[vit->first];
 
-            for(list<KeyFrame*>::iterator lit=lKFs.begin(), lend= lKFs.end(); lit!=lend; lit++)
+            for (KeyFrame* pKFi : lKFs)
             {
-                KeyFrame* pKFi=*lit;
-                if(pKFi->mnLoopQuery!=pKF->mnId)
+                if (pKFi->mnLoopQuery != pKF->mnId)
                 {
-                    pKFi->mnLoopWords=0;
-                    if(!spConnectedKeyFrames.count(pKFi))
+                    pKFi->mnLoopWords = 0;
+
+                    if (spConnectedKeyFrames.count(pKFi) == 0)
                     {
-                        pKFi->mnLoopQuery=pKF->mnId;
+                        pKFi->mnLoopQuery = pKF->mnId;
                         lKFsSharingWords.push_back(pKFi);
                     }
                 }
-                pKFi->mnLoopWords++;
+
+                ++pKFi->mnLoopWords;
             }
         }
     }
 
-    if(lKFsSharingWords.empty())
-        return vector<KeyFrame*>();
+    if (lKFsSharingWords.empty())
+        return std::vector<KeyFrame*>();
 
     list<pair<float,KeyFrame*> > lScoreAndMatch;
 

@@ -52,37 +52,37 @@ public:
 
     cv::Mat GetPose() const
     {
-        unique_lock<mutex> lock(mMutexPose);
+        std::unique_lock<std::mutex> lock(mMutexPose);
         return Tcw.clone();
     }
 
     cv::Mat GetPoseInverse() const
     {
-        unique_lock<mutex> lock(mMutexPose);
+        std::unique_lock<std::mutex> lock(mMutexPose);
         return Twc.clone();
     }
 
     cv::Mat GetCameraCenter() const
     {
-        unique_lock<mutex> lock(mMutexPose);
+        std::unique_lock<std::mutex> lock(mMutexPose);
         return Ow.clone();
     }
 
     cv::Mat GetStereoCenter() const
     {
-        unique_lock<mutex> lock(mMutexPose);
+        std::unique_lock<std::mutex> lock(mMutexPose);
         return Cw.clone();
     }
 
     cv::Mat GetRotation() const
     {
-        unique_lock<mutex> lock(mMutexPose);
+        std::unique_lock<std::mutex> lock(mMutexPose);
         return Tcw.rowRange(0, 3).colRange(0, 3).clone();
     }
 
     cv::Mat GetTranslation() const
     {
-        unique_lock<mutex> lock(mMutexPose);
+        std::unique_lock<std::mutex> lock(mMutexPose);
         return Tcw.rowRange(0, 3).col(3).clone();
     }
 
@@ -96,75 +96,75 @@ public:
     void UpdateConnections();
     void UpdateBestCovisibles();
 
-    std::set<KeyFrame*> GetConnectedKeyFrames();
-    std::vector<KeyFrame*> GetBestCovisibilityKeyFrames(int N);
-    std::vector<KeyFrame*> GetCovisiblesByWeight(int w);
+    std::unordered_set<KeyFrame*> GetConnectedKeyFrames() const;
+    std::vector<KeyFrame*> GetBestCovisibilityKeyFrames(std::size_t N) const;
+    std::vector<KeyFrame*> GetCovisiblesByWeight(int w) const;
 
-    std::vector<KeyFrame*> KeyFrame::GetVectorCovisibleKeyFrames()
+    std::vector<KeyFrame*> KeyFrame::GetVectorCovisibleKeyFrames() const
     {
-        unique_lock<mutex> lock(mMutexConnections);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
         return mvpOrderedConnectedKeyFrames;
     }
 
-    int GetWeight(KeyFrame* pKF)
+    int GetWeight(KeyFrame* pKF) const
     {
-        unique_lock<mutex> lock(mMutexConnections);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
         auto it = mConnectedKeyFrameWeights.find(pKF);
         return it != mConnectedKeyFrameWeights.end() ? it->second : 0;
     }
 
     // Spanning tree functions
-    void AddChild(KeyFrame *pKF)
+    void AddChild(KeyFrame* pKF)
     {
-        unique_lock<mutex> lockCon(mMutexConnections);
+        std::unique_lock<std::mutex> lockCon(mMutexConnections);
         mspChildrens.insert(pKF);
     }
 
-    void EraseChild(KeyFrame *pKF)
+    void EraseChild(KeyFrame* pKF)
     {
-        unique_lock<mutex> lockCon(mMutexConnections);
+        std::unique_lock<std::mutex> lockCon(mMutexConnections);
         mspChildrens.erase(pKF);
     }
 
     void ChangeParent(KeyFrame* pKF);
 
-    std::unordered_set<KeyFrame*> GetChilds()
+    std::unordered_set<KeyFrame*> GetChilds() const
     {
-        unique_lock<mutex> lockCon(mMutexConnections);
+        std::unique_lock<std::mutex> lockCon(mMutexConnections);
         return mspChildrens;
     }
 
-    KeyFrame* GetParent()
+    KeyFrame* GetParent() const
     {
-        unique_lock<mutex> lockCon(mMutexConnections);
+        std::unique_lock<std::mutex> lockCon(mMutexConnections);
         return mpParent;
     }
 
-    bool hasChild(KeyFrame *pKF)
+    bool hasChild(KeyFrame* pKF) const
     {
-        unique_lock<mutex> lockCon(mMutexConnections);
-        return mspChildrens.count(pKF);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
+        return mspChildrens.count(pKF) != 0;
     }
 
     // Loop Edges
     void AddLoopEdge(KeyFrame* pKF);
 
-    std::unordered_set<KeyFrame*> GetLoopEdges()
+    std::unordered_set<KeyFrame*> GetLoopEdges() const
     {
-        unique_lock<mutex> lockCon(mMutexConnections);
+        std::unique_lock<std::mutex> lockCon(mMutexConnections);
         return mspLoopEdges;
     }
 
     // MapPoint observation functions
     void AddMapPoint(MapPoint* pMP, size_t idx)
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         mvpMapPoints[idx] = pMP;
     }
 
     void EraseMapPointMatch(size_t idx)
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         mvpMapPoints[idx] = nullptr;
     }
 
@@ -173,57 +173,52 @@ public:
     void ReplaceMapPointMatch(size_t idx, MapPoint* pMP)
         { mvpMapPoints[idx] = pMP; }
 
-    std::set<MapPoint*> GetMapPoints();
+    std::unordered_set<MapPoint*> GetMapPoints() const;
 
-    std::vector<MapPoint*> GetMapPointMatches()
+    std::vector<MapPoint*> GetMapPointMatches() const
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mvpMapPoints;
     }
 
-    MapPoint* GetMapPoint(std::size_t idx)
+    MapPoint* GetMapPoint(std::size_t idx) const
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mvpMapPoints[idx];
     }
 
-    int TrackedMapPoints(int minObs);
+    int TrackedMapPoints(int minObs) const;
 
     // KeyPoint functions
-    std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r) const;
+    std::vector<size_t> GetFeaturesInArea(float x, float y, float r) const;
     cv::Mat UnprojectStereo(std::size_t index);
 
     // Image
     bool IsInImage(float x, float y) const
-    {
-        return x >= mnMinX && x < mnMaxX && y >= mnMinY && y < mnMaxY;
-    }
+        { return x >= mnMinX && x < mnMaxX && y >= mnMinY && y < mnMaxY; }
 
     // Enable/Disable bad flag changes
     void SetErase();
 
     void SetNotErase()
     {
-        unique_lock<mutex> lock(mMutexConnections);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
         mbNotErase = true;
     }
 
     // Set/check bad flag
     void SetBadFlag();
 
-    bool isBad()
+    bool isBad() const
     {
-        unique_lock<mutex> lock(mMutexConnections);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
         return mbBad;
     }
 
     // Compute Scene Depth (q=2 median). Used in monocular.
-    float ComputeSceneMedianDepth(int q);
+    float ComputeSceneMedianDepth(int q) const;
 
-    static bool weightComp(int a, int b)
-        { return a > b; }
-
-    static bool lId(KeyFrame* pKF1, KeyFrame* pKF2)
+    static bool lId(KeyFrame const* pKF1, KeyFrame const* pKF2)
         { return pKF1->mnId < pKF2->mnId; }
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
@@ -247,21 +242,21 @@ public:
     uint64_t                mnFuseTargetForKF;
 
     // Variables used by the local mapping
-    long unsigned int       mnBALocalForKF;
-    long unsigned int       mnBAFixedForKF;
+    uint64_t                mnBALocalForKF;
+    uint64_t                mnBAFixedForKF;
 
     // Variables used by the keyframe database
-    long unsigned int       mnLoopQuery;
+    uint64_t                mnLoopQuery;
     int                     mnLoopWords;
     float                   mLoopScore;
-    long unsigned int       mnRelocQuery;
+    uint64_t                mnRelocQuery;
     int                     mnRelocWords;
     float                   mRelocScore;
 
     // Variables used by loop closing
     cv::Mat                 mTcwGBA;
     cv::Mat                 mTcwBefGBA;
-    long unsigned int       mnBAGlobalForKF;
+    uint64_t                mnBAGlobalForKF;
 
     // Calibration parameters
     float const                     fx;
@@ -275,7 +270,7 @@ public:
     float const                     mThDepth;
 
     // Number of KeyPoints
-    int const                       N;
+    std::size_t const               m_kf_N;
 
     // KeyPoints, stereo coordinate and descriptors (all associated by an index)
     std::vector<cv::KeyPoint> const mvKeys;

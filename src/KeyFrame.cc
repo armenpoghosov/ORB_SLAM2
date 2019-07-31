@@ -32,10 +32,15 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     :
     mnFrameId(F.m_id),
     mTimeStamp(F.mTimeStamp),
+
+    // TODO: PAE: review these
     mnGridCols(Frame::FRAME_GRID_COLS),
     mnGridRows(Frame::FRAME_GRID_ROWS),
+
+    // TODO: PAE: remove these
     mfGridElementWidthInv(F.mfGridElementWidthInv),
     mfGridElementHeightInv(F.mfGridElementHeightInv),
+
     mnTrackReferenceForFrame(0),
     mnFuseTargetForKF(0),
     mnBALocalForKF(0),
@@ -45,6 +50,8 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mnRelocQuery(0),
     mnRelocWords(0),
     mnBAGlobalForKF(0),
+
+    // TODO: these probably have to be removed too
     fx(F.fx),
     fy(F.fy),
     cx(F.cx),
@@ -54,7 +61,9 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mbf(F.mbf),
     mb(F.mb),
     mThDepth(F.mThDepth),
-    N(F.m_frame_N),
+
+
+    m_kf_N(F.m_frame_N),
     mvKeys(F.mvKeys),
     mvKeysUn(F.mvKeysUn),
     mvuRight(F.mvuRight),
@@ -130,7 +139,7 @@ void KeyFrame::SetPose(cv::Mat const& Tcw_)
 void KeyFrame::AddConnection(KeyFrame* pKF, int weight)
 {
     {
-        unique_lock<mutex> lock(mMutexConnections);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
 
         auto const& pair = mConnectedKeyFrameWeights.emplace(pKF, weight);
 
@@ -161,21 +170,21 @@ void KeyFrame::UpdateBestCovisibles()
     std::vector<KeyFrame*> vkf; vkf.reserve(vPairs.size());
     vector<int> vws; vws.reserve(vPairs.size());
 
-    for (auto it = vPairs.crbegin(), itEnd = vPairs.crend(); it != itEnd; ++it)
+    for (auto const& pair : vPairs)
     {
-        vkf.push_back(it->second);
-        vws.push_back(it->first);
+        vkf.push_back(pair.second);
+        vws.push_back(pair.first);
     }
 
     mvpOrderedConnectedKeyFrames = std::move(vkf);
     mvOrderedWeights = std::move(vws);
 }
 
-std::set<KeyFrame*> KeyFrame::GetConnectedKeyFrames()
+std::unordered_set<KeyFrame*> KeyFrame::GetConnectedKeyFrames() const
 {
-    unique_lock<mutex> lock(mMutexConnections);
+    std::unique_lock<std::mutex> lock(mMutexConnections);
 
-    std::set<KeyFrame*> s;
+    std::unordered_set<KeyFrame*> s;
 
     for (auto const& pair : mConnectedKeyFrameWeights)
         s.insert(pair.first);
@@ -183,24 +192,24 @@ std::set<KeyFrame*> KeyFrame::GetConnectedKeyFrames()
     return s;
 }
 
-std::vector<KeyFrame*> KeyFrame::GetBestCovisibilityKeyFrames(int N)
+std::vector<KeyFrame*> KeyFrame::GetBestCovisibilityKeyFrames(std::size_t N) const
 {
     std::unique_lock<std::mutex> lock(mMutexConnections);
 
-    if (mvpOrderedConnectedKeyFrames.size() < (std::size_t)N)
+    if (mvpOrderedConnectedKeyFrames.size() < N)
         return mvpOrderedConnectedKeyFrames;
 
     return std::vector<KeyFrame*>(mvpOrderedConnectedKeyFrames.begin(), mvpOrderedConnectedKeyFrames.begin() + N);
 }
 
-vector<KeyFrame*> KeyFrame::GetCovisiblesByWeight(int w)
+vector<KeyFrame*> KeyFrame::GetCovisiblesByWeight(int w) const
 {
     unique_lock<mutex> lock(mMutexConnections);
 
     if (mvpOrderedConnectedKeyFrames.empty())
         return vector<KeyFrame*>();
 
-    auto it = std::upper_bound(mvOrderedWeights.begin(), mvOrderedWeights.end(), w, KeyFrame::weightComp);
+    auto it = std::upper_bound(mvOrderedWeights.begin(), mvOrderedWeights.end(), w, std::greater<int>());
     if (it == mvOrderedWeights.end())
         return vector<KeyFrame*>();
 
@@ -215,11 +224,11 @@ void KeyFrame::EraseMapPointMatch(MapPoint* pMP)
         mvpMapPoints[index] = nullptr;
 }
 
-std::set<MapPoint*> KeyFrame::GetMapPoints()
+std::unordered_set<MapPoint*> KeyFrame::GetMapPoints() const
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    std::unique_lock<std::mutex> lock(mMutexFeatures);
 
-    std::set<MapPoint*> s;
+    std::unordered_set<MapPoint*> s;
 
     for (MapPoint* pMP : mvpMapPoints)
     {
@@ -232,9 +241,9 @@ std::set<MapPoint*> KeyFrame::GetMapPoints()
     return s;
 }
 
-int KeyFrame::TrackedMapPoints(int minObservations)
+int KeyFrame::TrackedMapPoints(int minObservations) const
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    std::unique_lock<std::mutex> lock(mMutexFeatures);
 
     int nPoints = 0;
 
@@ -359,7 +368,7 @@ void KeyFrame::AddLoopEdge(KeyFrame *pKF)
 void KeyFrame::SetErase()
 {
     {
-        unique_lock<mutex> lock(mMutexConnections);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
 
         if (mspLoopEdges.empty())
         {
@@ -473,9 +482,9 @@ void KeyFrame::EraseConnection(KeyFrame* pKF)
         UpdateBestCovisibles();
 }
 
-vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const float &r) const
+std::vector<size_t> KeyFrame::GetFeaturesInArea(float x, float y, float r) const
 {
-    vector<size_t> vIndices;
+    std::vector<std::size_t> vIndices;
 
     int const nMinCellX = (std::max)(0, (int)floor((x - mnMinX - r) * mfGridElementWidthInv));
     if (nMinCellX >= mnGridCols)
@@ -493,7 +502,7 @@ vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const
     if (nMaxCellY < 0)
         return vIndices;
 
-    vIndices.reserve(N);
+    vIndices.reserve(m_kf_N);
 
     for (int ix = nMinCellX; ix <= nMaxCellX; ++ix)
     {
@@ -529,36 +538,36 @@ cv::Mat KeyFrame::UnprojectStereo(std::size_t i)
 
     cv::Mat x3Dc = (cv::Mat_<float>(3, 1) << x, y, z);
 
-    unique_lock<mutex> lock(mMutexPose);
+    std::unique_lock<std::mutex> lock(mMutexPose);
     return Twc.rowRange(0, 3).colRange(0, 3) * x3Dc + Twc.rowRange(0, 3).col(3);
 }
 
-float KeyFrame::ComputeSceneMedianDepth(int q)
+float KeyFrame::ComputeSceneMedianDepth(int q) const
 {
-    vector<MapPoint*> vpMapPoints;
+    std::vector<MapPoint*> vpMapPoints;
 
     cv::Mat Tcw_;
     {
-        unique_lock<mutex> lock(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPose);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock2(mMutexPose);
         vpMapPoints = mvpMapPoints;
         Tcw_ = Tcw.clone();
     }
 
-    vector<float> vDepths;
-    vDepths.reserve(N);
+    std::vector<float> vDepths;
+    vDepths.reserve(m_kf_N);
 
     cv::Mat Rcw2 = Tcw_.row(2).colRange(0, 3);
     Rcw2 = Rcw2.t();
     float zcw = Tcw_.at<float>(2, 3);
 
-    for (int i = 0; i < N; ++i)
+    for (std::size_t i = 0; i < m_kf_N; ++i)
     {
         MapPoint* pMP = mvpMapPoints[i];
         if (pMP != nullptr)
         {
             cv::Mat x3Dw = pMP->GetWorldPos();
-            float z = Rcw2.dot(x3Dw) + zcw;
+            float const z = Rcw2.dot(x3Dw) + zcw;
             vDepths.push_back(z);
         }
     }

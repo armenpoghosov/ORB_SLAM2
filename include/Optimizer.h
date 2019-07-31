@@ -37,21 +37,21 @@ class LoopClosing;
 class Optimizer
 {
 public:
-    static void BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP,
-                                 int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0,
-                                 const bool bRobust = true);
-    static void GlobalBundleAdjustemnt(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
-                                       const unsigned long nLoopKF=0, const bool bRobust = true);
+
+    static void BundleAdjustment(std::vector<KeyFrame*> const& vpKF, std::vector<MapPoint*> const& vpMP,
+        int nIterations = 5, bool *pbStopFlag = nullptr, uint64_t nLoopKF = 0, bool bRobust = true);
+
+    static void GlobalBundleAdjustemnt(Map* pMap, int nIterations = 5,
+        bool *pbStopFlag = nullptr, uint64_t nLoopKF = 0, bool bRobust = true);
+
     static void LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);
 
     static int PoseOptimization(Frame* pFrame);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
-    void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
-                                       const LoopClosing::KeyFrameAndPose &NonCorrectedSim3,
-                                       const LoopClosing::KeyFrameAndPose &CorrectedSim3,
-                                       const map<KeyFrame *, set<KeyFrame *> > &LoopConnections,
-                                       const bool &bFixScale);
+    static void OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
+        LoopClosing::KeyFrameAndPose const& NonCorrectedSim3, LoopClosing::KeyFrameAndPose const& CorrectedSim3,
+        std::unordered_map<KeyFrame*, std::unordered_set<KeyFrame*> > const& LoopConnections, bool bFixScale);
 
     // if bFixScale is true, optimize SE3 (stereo,rgbd), Sim3 otherwise (mono)
     static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches1,
