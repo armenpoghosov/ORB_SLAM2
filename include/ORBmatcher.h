@@ -45,7 +45,7 @@ public:
         HISTO_LENGTH    = 30
     };
 
-    ORBmatcher(float nnratio = 0.6, bool checkOri = true);
+    ORBmatcher(float nnratio, bool check_orientation);
 
     // Computes the Hamming distance between two ORB descriptors
     static int DescriptorDistance(cv::Mat const& a, cv::Mat const& b);
@@ -103,7 +103,7 @@ protected:
     void ComputeThreeMaxima(std::vector<int> const* histo, int L, int &ind1, int &ind2, int &ind3);
 
     float   mfNNratio;
-    bool    mbCheckOrientation;
+    bool    m_check_orientation;
 };
 
 }// namespace ORB_SLAM

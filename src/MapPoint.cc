@@ -30,11 +30,11 @@ std::atomic<uint64_t> MapPoint::s_next_id;
 
 mutex MapPoint::mGlobalMutex;
 
-MapPoint::MapPoint(cv::Mat const& Pos, KeyFrame* pRefKF, Map* pMap)
+MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
     :
     mnFirstKFid(pRefKF->mnId),
     mnFirstFrame(pRefKF->mnFrameId),
-    nObs(0),
+    m_observe_count(0),
     mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),
     mnBALocalForKF(0),
@@ -52,7 +52,7 @@ MapPoint::MapPoint(cv::Mat const& Pos, KeyFrame* pRefKF, Map* pMap)
     mfMaxDistance(0),
     mpMap(pMap)
 {
-    Pos.copyTo(mWorldPos);
+    worldPos.copyTo(mWorldPos);
     mNormalVector = cv::Mat::zeros(3, 1, CV_32F);
 
     mnId = s_next_id++;
@@ -62,7 +62,7 @@ MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF)
     :
     mnFirstKFid(-1),
     mnFirstFrame(pFrame->m_id),
-    nObs(0),
+    m_observe_count(0),
     mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),
     mnBALocalForKF(0),
@@ -104,7 +104,6 @@ void MapPoint::SetWorldPos(cv::Mat const& Pos)
     Pos.copyTo(mWorldPos);
 }
 
-
 void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
 {
     std::unique_lock<std::mutex> lock(mMutexFeatures);
@@ -113,9 +112,9 @@ void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
     if (pair.second)
     {
         if (pKF->mvuRight[idx] >= 0.f)
-            nObs += 2;
+            m_observe_count += 2;
         else
-            ++nObs;
+            ++m_observe_count;
     }
 }
 
@@ -129,9 +128,9 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
         if (it != mObservations.end())
         {
             if (pKF->mvuRight[it->second] >= 0)
-                nObs -= 2;
+                m_observe_count -= 2;
             else
-                --nObs;
+                --m_observe_count;
 
             mObservations.erase(it);
 
@@ -139,7 +138,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
                 mpRefKF = mObservations.begin()->first;
 
             // If only 2 observations or less, discard point
-            if (nObs <= 2)
+            if (m_observe_count <= 2)
                 bBad = true;
         }
     }
@@ -210,13 +209,10 @@ void MapPoint::Replace(MapPoint* pMP)
 
 void MapPoint::ComputeDistinctiveDescriptors()
 {
-    // Retrieve all observed descriptors
-    std::vector<cv::Mat> vDescriptors;
-
     std::unordered_map<KeyFrame*, size_t> observations;
 
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
 
         if (mbBad)
             return;
@@ -227,6 +223,8 @@ void MapPoint::ComputeDistinctiveDescriptors()
     if (observations.empty())
         return;
 
+    // Retrieve all observed descriptors
+    std::vector<cv::Mat> vDescriptors;
     vDescriptors.reserve(observations.size());
 
     for (auto const& pair : observations)
@@ -237,7 +235,6 @@ void MapPoint::ComputeDistinctiveDescriptors()
             vDescriptors.push_back(pKF->mDescriptors.row((int)pair.second));
     }
 
-
     if (vDescriptors.empty())
         return;
 
@@ -246,7 +243,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     std::vector<int> Distances(N * N);
 
-    for (size_t i=0; i < N; ++i)
+    for (size_t i = 0; i < N; ++i)
     {
         Distances[i * N + i] = 0;
 
@@ -265,9 +262,10 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     for (std::size_t i = 0; i < N; ++i)
     {
-        vector<int> vDists(&Distances[i * N], &Distances[i * N] + N);
+        std::vector<int> vDists(&Distances[i * N], &Distances[i * N] + N);
 
-        sort(vDists.begin(), vDists.end());
+        std::sort(vDists.begin(), vDists.end());
+
         int median = vDists[(std::size_t)(0.5 * (N - 1))];
 
         if (median < BestMedian)
@@ -329,7 +327,7 @@ void MapPoint::UpdateNormalAndDepth()
     }
 }
 
-int MapPoint::PredictScale(float currentDist, KeyFrame* pKF)
+int MapPoint::PredictScale(float currentDist, KeyFrame* pKF) const
 {
     float ratio;
     {
@@ -346,7 +344,7 @@ int MapPoint::PredictScale(float currentDist, KeyFrame* pKF)
     return nScale;
 }
 
-int MapPoint::PredictScale(float currentDist, Frame* pF)
+int MapPoint::PredictScale(float currentDist, Frame* pF) const
 {
     float ratio;
     {

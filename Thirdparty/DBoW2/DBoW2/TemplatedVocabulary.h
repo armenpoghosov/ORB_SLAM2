@@ -1121,76 +1121,71 @@ void TemplatedVocabulary<TDescriptor,F>::transform(
   if(must) v.normalize(norm);
 }
 
-// --------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 template<class TDescriptor, class F> 
-void TemplatedVocabulary<TDescriptor,F>::transform(
-  const std::vector<TDescriptor>& features,
-  BowVector &v, FeatureVector &fv, int levelsup) const
+void TemplatedVocabulary<TDescriptor, F>::transform(
+    std::vector<TDescriptor> const& features, BowVector& v, FeatureVector& fv, int levelsup) const
 {
-  v.clear();
-  fv.clear();
+    v.clear();
+    fv.clear();
   
-  if(empty()) // safe for subclasses
-  {
-    return;
-  }
+    if (empty()) // safe for subclasses
+        return;
   
-  // normalize 
-  LNorm norm;
-  bool must = m_scoring_object->mustNormalize(norm);
-  
-  typename vector<TDescriptor>::const_iterator fit;
-  
-  if(m_weighting == TF || m_weighting == TF_IDF)
-  {
-    unsigned int i_feature = 0;
-    for(fit = features.begin(); fit < features.end(); ++fit, ++i_feature)
+    // normalize 
+    LNorm norm;
+    bool const must = m_scoring_object->mustNormalize(norm);
+
+    if (m_weighting == TF || m_weighting == TF_IDF)
     {
-      WordId id;
-      NodeId nid;
-      WordValue w; 
-      // w is the idf value if TF_IDF, 1 if TF
+        unsigned int i_feature = 0;
+        for (auto fit = features.begin(); fit < features.end(); ++fit, ++i_feature)
+        {
+            WordId id;
+            NodeId nid;
+            WordValue w; 
+            // w is the idf value if TF_IDF, 1 if TF
       
-      transform(*fit, id, w, &nid, levelsup);
-      
-      if(w > 0) // not stopped
-      { 
-        v.addWeight(id, w);
-        fv.addFeature(nid, i_feature);
-      }
-    }
+            transform(*fit, id, w, &nid, levelsup);
+
+            if (w > 0) // not stopped
+            {
+                v.addWeight(id, w);
+                fv.addFeature(nid, i_feature);
+            }
+        }
     
-    if(!v.empty() && !must)
-    {
-      // unnecessary when normalizing
-      const double nd = v.size();
-      for(BowVector::iterator vit = v.begin(); vit != v.end(); vit++) 
-        vit->second /= nd;
+        if (!v.empty() && !must)
+        {
+            // unnecessary when normalizing
+            double const nd = (double)v.size();
+            for (BowVector::iterator vit = v.begin(); vit != v.end(); ++vit)
+                vit->second /= nd;
+        }
     }
-  
-  }
-  else // IDF || BINARY
-  {
-    unsigned int i_feature = 0;
-    for(fit = features.begin(); fit < features.end(); ++fit, ++i_feature)
+    else // IDF || BINARY
     {
-      WordId id;
-      NodeId nid;
-      WordValue w;
-      // w is idf if IDF, or 1 if BINARY
+        unsigned int i_feature = 0;
+        for (auto fit = features.begin(); fit < features.end(); ++fit, ++i_feature)
+        {
+            WordId id;
+            NodeId nid;
+            WordValue w;
+            // w is idf if IDF, or 1 if BINARY
+
+            transform(*fit, id, w, &nid, levelsup);
       
-      transform(*fit, id, w, &nid, levelsup);
-      
-      if(w > 0) // not stopped
-      {
-        v.addIfNotExist(id, w);
-        fv.addFeature(nid, i_feature);
-      }
-    }
-  } // if m_weighting == ...
+            if (w > 0) // not stopped
+            {
+                v.addIfNotExist(id, w);
+                fv.addFeature(nid, i_feature);
+            }
+        }
+    } // if m_weighting == ...
   
-  if(must) v.normalize(norm);
+    if (must)
+        v.normalize(norm);
 }
 
 // --------------------------------------------------------------------------

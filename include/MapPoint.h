@@ -60,22 +60,22 @@ public:
         return mNormalVector.clone();
     }
 
-    KeyFrame* GetReferenceKeyFrame()
+    KeyFrame* GetReferenceKeyFrame() const
     {
         unique_lock<mutex> lock(mMutexFeatures);
         return mpRefKF;
     }
 
-    std::unordered_map<KeyFrame*, size_t> GetObservations()
+    std::unordered_map<KeyFrame*, size_t> GetObservations() const
     {
         unique_lock<mutex> lock(mMutexFeatures);
         return mObservations;
     }
 
-    std::size_t Observations()
+    std::size_t Observations() const
     {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
-        return nObs;
+        return m_observe_count;
     }
 
     void AddObservation(KeyFrame* pKF,size_t idx);
@@ -149,14 +149,14 @@ public:
         return 0.8f * mfMinDistance;
     }
 
-    float GetMaxDistanceInvariance()
+    float GetMaxDistanceInvariance() const
     {
         std::unique_lock<std::mutex> lock(mMutexPos);
         return 1.2f * mfMaxDistance;
     }
 
-    int PredictScale(float currentDist, KeyFrame* pKF);
-    int PredictScale(float currentDist, Frame* pF);
+    int PredictScale(float currentDist, KeyFrame* pKF) const;
+    int PredictScale(float currentDist, Frame* pF) const;
 
 public:
 
@@ -166,7 +166,7 @@ public:
     uint64_t                        mnFirstKFid;
     uint64_t                        mnFirstFrame;
 
-    std::size_t                     nObs;
+    std::size_t                     m_observe_count;
 
     // Variables used by the tracking
     float                           mTrackProjX;
@@ -198,7 +198,8 @@ protected:
      cv::Mat                        mWorldPos;
 
      // Keyframes observing the point and associated index in keyframe
-     std::unordered_map<KeyFrame*, size_t>  mObservations;
+     std::unordered_map<KeyFrame*, size_t>
+                                    mObservations;
 
      // Mean viewing direction
      cv::Mat                        mNormalVector;

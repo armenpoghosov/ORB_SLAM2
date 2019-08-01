@@ -53,44 +53,45 @@ public:
     cv::Mat GetPose() const
     {
         std::unique_lock<std::mutex> lock(mMutexPose);
-        return Tcw.clone();
+        return m_Tcw.clone();
     }
 
     cv::Mat GetPoseInverse() const
     {
         std::unique_lock<std::mutex> lock(mMutexPose);
-        return Twc.clone();
+        return m_Twc.clone();
     }
 
     cv::Mat GetCameraCenter() const
     {
         std::unique_lock<std::mutex> lock(mMutexPose);
-        return Ow.clone();
+        return m_Twc.rowRange(0, 3).col(3).clone();
     }
 
     cv::Mat GetStereoCenter() const
     {
+        cv::Mat center = (cv::Mat_<float>(4, 1) << (mb / 2.f), 0, 0, 1);
         std::unique_lock<std::mutex> lock(mMutexPose);
-        return Cw.clone();
+        return m_Twc * center;
     }
 
     cv::Mat GetRotation() const
     {
         std::unique_lock<std::mutex> lock(mMutexPose);
-        return Tcw.rowRange(0, 3).colRange(0, 3).clone();
+        return m_Tcw.rowRange(0, 3).colRange(0, 3).clone();
     }
 
     cv::Mat GetTranslation() const
     {
         std::unique_lock<std::mutex> lock(mMutexPose);
-        return Tcw.rowRange(0, 3).col(3).clone();
+        return m_Tcw.rowRange(0, 3).col(3).clone();
     }
 
     // Bag of Words Representation
     void ComputeBoW();
 
     // Covisibility graph functions
-    void AddConnection(KeyFrame* pKF, int weight);
+    void AddConnection(KeyFrame* pKF, std::size_t points);
 
     void EraseConnection(KeyFrame* pKF);
     void UpdateConnections();
@@ -110,7 +111,8 @@ public:
     {
         std::unique_lock<std::mutex> lock(mMutexConnections);
         auto it = mConnectedKeyFrameWeights.find(pKF);
-        return it != mConnectedKeyFrameWeights.end() ? it->second : 0;
+        // PAE: have to look into all the types for counters
+        return it != mConnectedKeyFrameWeights.end() ? (int)it->second : 0;
     }
 
     // Spanning tree functions
@@ -187,7 +189,7 @@ public:
         return mvpMapPoints[idx];
     }
 
-    int TrackedMapPoints(int minObs) const;
+    int TrackedMapPoints(std::size_t minObs) const;
 
     // KeyPoint functions
     std::vector<size_t> GetFeaturesInArea(float x, float y, float r) const;
@@ -306,12 +308,9 @@ public:
     // The following variables need to be accessed trough a mutex to be thread safe.
 protected:
 
-    // SE3 Pose and camera center
-    cv::Mat                     Tcw;
-    cv::Mat                     Twc;
-    cv::Mat                     Ow;
-
-    cv::Mat                     Cw; // Stereo middel point. Only for visualization
+    // SE3 pose and inverse
+    cv::Mat                     m_Tcw;
+    cv::Mat                     m_Twc;
 
     // MapPoints associated to keypoints
     std::vector<MapPoint*>      mvpMapPoints;
@@ -321,12 +320,14 @@ protected:
     ORBVocabulary*              mpORBvocabulary;
 
     // Grid over the image to speed up feature matching
-    std::vector< std::vector <std::vector<size_t> > >   mGrid;
+    std::vector<std::vector<std::vector<size_t> > >
+                                    mGrid;
 
-    std::unordered_map<KeyFrame*, int>    mConnectedKeyFrameWeights;
+    std::unordered_map<KeyFrame*, std::size_t> 
+                                    mConnectedKeyFrameWeights;
 
     std::vector<KeyFrame*>          mvpOrderedConnectedKeyFrames;
-    std::vector<int>                mvOrderedWeights;
+    std::vector<std::size_t>        mvOrderedWeights;
 
     // Spanning Tree and Loop Edges
     bool                            mbFirstConnection;
@@ -338,8 +339,6 @@ protected:
     bool                            mbNotErase;
     bool                            mbToBeErased;
     bool                            mbBad;
-
-    float                           mHalfBaseline; // Only for visualization
 
     Map*                            mpMap;
 

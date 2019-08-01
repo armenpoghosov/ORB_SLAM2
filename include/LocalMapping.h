@@ -155,7 +155,7 @@ public:
 protected:
 
     // Main function
-    void Run();
+    void run();
 
     bool Stop();
 

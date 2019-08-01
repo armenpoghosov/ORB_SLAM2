@@ -570,7 +570,7 @@ void LoopClosing::CorrectLoop()
 
 void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap)
 {
-    ORBmatcher matcher(0.8);
+    ORBmatcher matcher(0.8, true);
 
     for(KeyFrameAndPose::const_iterator mit=CorrectedPosesMap.begin(), mend=CorrectedPosesMap.end(); mit!=mend;mit++)
     {

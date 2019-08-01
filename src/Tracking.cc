@@ -629,14 +629,14 @@ void Tracking::CreateInitialMapMonocular()
 
     // Set median depth to 1
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
-    float invMedianDepth = 1.0f / medianDepth;
-
     if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 100)
     {
         cout << "Wrong initialization, reseting..." << endl;
         Reset();
         return;
     }
+
+    float invMedianDepth = 1.0f / medianDepth;
 
     // Scale initial baseline
     cv::Mat Tc2w = pKFcur->GetPose();
@@ -1074,7 +1074,7 @@ void Tracking::SearchLocalPoints()
 
     if (nToMatch > 0)
     {
-        ORBmatcher matcher(0.8);
+        ORBmatcher matcher(0.8, true);
 
         int th = mSensor == System::RGBD ? 1 : 3;
 

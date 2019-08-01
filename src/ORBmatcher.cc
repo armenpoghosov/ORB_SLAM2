@@ -20,10 +20,10 @@
 
 #include "ORBmatcher.h"
 
-#include<limits.h>
+#include <limits.h>
 
-#include<opencv2/core/core.hpp>
-#include<opencv2/features2d/features2d.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 
@@ -35,13 +35,13 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-ORBmatcher::ORBmatcher(float nnratio, bool checkOri)
+ORBmatcher::ORBmatcher(float nnratio, bool check_orientation)
     :
     mfNNratio(nnratio),
-    mbCheckOrientation(checkOri)
+    m_check_orientation(check_orientation)
 {}
 
-int ORBmatcher::SearchByProjection(Frame& F, vector<MapPoint*> const& vpMapPoints, float th)
+int ORBmatcher::SearchByProjection(Frame& F, std::vector<MapPoint*> const& vpMapPoints, float th)
 {
     int nmatches = 0;
 
@@ -150,7 +150,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
 
     vpMapPointMatches = vector<MapPoint*>(F.m_frame_N);
 
-    std::vector<MapPoint*> const vpMapPointsKF = pKF->GetMapPointMatches();
+    std::vector<MapPoint*> const& vpMapPointsKF = pKF->GetMapPointMatches();
     DBoW2::FeatureVector const& vFeatVecKF = pKF->mFeatVec;
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
@@ -207,7 +207,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
 
                     cv::KeyPoint const& kp = pKF->mvKeysUn[realIdxKF];
 
-                    if (mbCheckOrientation)
+                    if (m_check_orientation)
                     {
                         float rot = kp.angle - F.mvKeys[bestIdxF].angle;
                         if (rot < 0.f)
@@ -234,7 +234,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
             Fit = F.mFeatVec.lower_bound(KFit->first);
     }
 
-    if (mbCheckOrientation)
+    if (m_check_orientation)
     {
         int ind1 = -1;
         int ind2 = -1;
@@ -442,7 +442,7 @@ int ORBmatcher::SearchForInitialization(Frame const& F1, Frame const& F2,
         vMatchedDistance[bestIdx2] = bestDist;
         ++nmatches;
 
-        if (mbCheckOrientation)
+        if (m_check_orientation)
         {
             float rot = F1.mvKeysUn[i1].angle - F2.mvKeysUn[bestIdx2].angle;
 
@@ -458,7 +458,7 @@ int ORBmatcher::SearchForInitialization(Frame const& F1, Frame const& F2,
         }
     }
 
-    if (mbCheckOrientation)
+    if (m_check_orientation)
     {
         int ind1 = -1;
         int ind2 = -1;
@@ -573,7 +573,7 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                     vpMatches12[idx1] = vpMapPoints2[bestIdx2];
                     vbMatched2[bestIdx2] = true;
 
-                    if (mbCheckOrientation)
+                    if (m_check_orientation)
                     {
                         float rot = vKeysUn1[idx1].angle - vKeysUn2[bestIdx2].angle;
                         if (rot < 0.0)
@@ -604,7 +604,7 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         }
     }
 
-    if (mbCheckOrientation)
+    if (m_check_orientation)
     {
         int ind1 = -1;
         int ind2 = -1;
@@ -734,7 +734,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
                     vMatches12[idx1] = bestIdx2;
                     ++nmatches;
 
-                    if (mbCheckOrientation)
+                    if (m_check_orientation)
                     {
                         float rot = kp1.angle - kp2.angle;
                         if (rot < 0.f)
@@ -763,7 +763,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
         }
     }
 
-    if (mbCheckOrientation)
+    if (m_check_orientation)
     {
         int ind1=-1;
         int ind2=-1;
@@ -798,7 +798,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
     return nmatches;
 }
 
-int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, float th)
+int ORBmatcher::Fuse(KeyFrame* pKF, std::vector<MapPoint*> const& vpMapPoints, float th)
 {
     cv::Mat Rcw = pKF->GetRotation();
     cv::Mat tcw = pKF->GetTranslation();
@@ -822,7 +822,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, float
         cv::Mat p3Dc = Rcw*p3Dw + tcw;
 
         // Depth must be positive
-        if(p3Dc.at<float>(2)<0.0f)
+        if (p3Dc.at<float>(2) < 0.f)
             continue;
 
         const float invz = 1/p3Dc.at<float>(2);
@@ -1403,7 +1403,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
         CurrentFrame.mvpMapPoints[bestIdx2] = pMP;
         ++nmatches;
 
-        if (mbCheckOrientation)
+        if (m_check_orientation)
         {
             float rot = LastFrame.mvKeysUn[i].angle - CurrentFrame.mvKeysUn[bestIdx2].angle;
             if (rot < 0.f)
@@ -1420,7 +1420,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
     }
 
     // Apply rotation consistency
-    if (mbCheckOrientation)
+    if (m_check_orientation)
     {
         int ind1 = -1;
         int ind2 = -1;
@@ -1532,7 +1532,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, KeyFrame* pKF,
             CurrentFrame.mvpMapPoints[bestIdx2] = pMP;
             ++nmatches;
 
-            if (mbCheckOrientation)
+            if (m_check_orientation)
             {
                 float rot = pKF->mvKeysUn[i].angle - CurrentFrame.mvKeysUn[bestIdx2].angle;
                 if (rot < 0.f)
@@ -1548,7 +1548,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, KeyFrame* pKF,
         }
     }
 
-    if (mbCheckOrientation)
+    if (m_check_orientation)
     {
         int ind1 = -1;
         int ind2 = -1;
@@ -1620,17 +1620,17 @@ void ORBmatcher::ComputeThreeMaxima(std::vector<int> const* histo, int L, int &i
 // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 int ORBmatcher::DescriptorDistance(cv::Mat const& a, cv::Mat const& b)
 {
-    int const* pa = a.ptr<int32_t>();
-    int const* pb = b.ptr<int32_t>();
+    uint32_t const* const pa = a.ptr<uint32_t>();
+    uint32_t const* const pb = b.ptr<uint32_t>();
 
     int dist = 0;
 
-    for (int i = 0; i < 8; ++i, ++pa, ++pb)
+    for (int i = 0; i < 8; ++i)
     {
-        unsigned int v = *pa ^ *pb;
+        uint32_t v = pa[i] ^ pb[i];
         v = v - ((v >> 1) & 0x55555555);
         v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-        dist += (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
+        dist += (int)((((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24);
     }
 
     return dist;

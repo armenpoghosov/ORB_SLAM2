@@ -41,7 +41,7 @@ LocalMapping::LocalMapping(Map *pMap, bool bMonocular)
 
     m_state(eState_Stopped)
 {
-    m_thread = std::thread(&LocalMapping::Run, this);
+    m_thread = std::thread(&LocalMapping::run, this);
 
     // TODO: PAE: review exception safety here
     {
@@ -60,7 +60,7 @@ LocalMapping::~LocalMapping()
         m_thread.join();
 }
 
-void LocalMapping::Run()
+void LocalMapping::run()
 {
     // TODO: PAE: review exception safety here!
 
@@ -194,7 +194,7 @@ void LocalMapping::ProcessNewKeyFrame()
     mpCurrentKeyFrame->ComputeBoW();
 
     // Associate MapPoints to the new keyframe and update normal and descriptor
-    std::vector<MapPoint*> const vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+    std::vector<MapPoint*> const& vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
     for (size_t i = 0; i < vpMapPointMatches.size(); ++i)
     {
@@ -254,17 +254,18 @@ void LocalMapping::CreateNewMapPoints()
     // Retrieve neighbor keyframes in covisibility graph
     int nn = mbMonocular ? 20 : 10;
 
-    std::vector<KeyFrame*> const vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+    std::vector<KeyFrame*> const& vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
     ORBmatcher matcher(0.6f, false);
 
     cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
-    cv::Mat Rwc1 = Rcw1.t();
     cv::Mat tcw1 = mpCurrentKeyFrame->GetTranslation();
 
     cv::Mat Tcw1(3, 4, CV_32F);
     Rcw1.copyTo(Tcw1.colRange(0,3));
     tcw1.copyTo(Tcw1.col(3));
+
+    cv::Mat Rwc1 = Rcw1.t();
 
     cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();
 
@@ -287,19 +288,18 @@ void LocalMapping::CreateNewMapPoints()
 
         // Check first that baseline is not too short
         cv::Mat Ow2 = pKF2->GetCameraCenter();
-        cv::Mat vBaseline = Ow2 - Ow1;
 
-        float const baseline = (float)cv::norm(vBaseline);
+        float const baseline_length = (float)cv::norm(Ow2 - Ow1);
 
         if (!mbMonocular)
         {
-            if (baseline < pKF2->mb)
+            if (baseline_length < pKF2->mb)
                 continue;
         }
         else
         {
             float const medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-            float const ratioBaselineDepth = baseline / medianDepthKF2;
+            float const ratioBaselineDepth = baseline_length / medianDepthKF2;
 
             if (ratioBaselineDepth < 0.01)
                 continue;
@@ -486,7 +486,7 @@ void LocalMapping::CreateNewMapPoints()
                 continue;
 
             // Triangulation is succesfull
-            MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame, mpMap);
+            MapPoint* pMP = new MapPoint(x3D, mpCurrentKeyFrame, mpMap);
 
             pMP->AddObservation(mpCurrentKeyFrame, idx1);
             pMP->AddObservation(pKF2, idx2);
@@ -507,12 +507,11 @@ void LocalMapping::CreateNewMapPoints()
 
 void LocalMapping::SearchInNeighbors()
 {
-    // Retrieve neighbor keyframes
     int nn = mbMonocular ? 20 : 10;
 
     std::vector<KeyFrame*> vpTargetKFs;
 
-    const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+    std::vector<KeyFrame*> const& vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
  
     for (KeyFrame* pKFi : vpNeighKFs)
     {
@@ -520,16 +519,14 @@ void LocalMapping::SearchInNeighbors()
             continue;
 
         vpTargetKFs.push_back(pKFi);
-
         pKFi->mnFuseTargetForKF = mpCurrentKeyFrame->mnId;
 
         // Extend to some second neighbors
-        const vector<KeyFrame*> vpSecondNeighKFs = pKFi->GetBestCovisibilityKeyFrames(5);
-
+        std::vector<KeyFrame*> const& vpSecondNeighKFs = pKFi->GetBestCovisibilityKeyFrames(5);
         for (KeyFrame* pKFi2 : vpSecondNeighKFs)
         {
-            if (pKFi2->isBad() ||
-                pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->mnId || pKFi2->mnId == mpCurrentKeyFrame->mnId)
+            if (pKFi2->isBad() || pKFi2->mnId == mpCurrentKeyFrame->mnId ||
+                pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
                 continue;
 
             vpTargetKFs.push_back(pKFi2);
@@ -537,32 +534,33 @@ void LocalMapping::SearchInNeighbors()
     }
 
     // Search matches by projection from current KF in target KFs
-    ORBmatcher matcher;
+    ORBmatcher matcher(0.6f, true);
 
-    vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+    std::vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
     for (KeyFrame* pKFi : vpTargetKFs)
         matcher.Fuse(pKFi, vpMapPointMatches);
 
     // Search matches by projection from target KFs in current KF
-    vector<MapPoint*> vpFuseCandidates;
-    vpFuseCandidates.reserve(vpTargetKFs.size()*vpMapPointMatches.size());
+    std::vector<MapPoint*> vpFuseCandidates;
+    vpFuseCandidates.reserve(vpTargetKFs.size() * vpMapPointMatches.size());
 
     for (KeyFrame* pKFi : vpTargetKFs)
     {
-        vector<MapPoint*> vpMapPointsKFi = pKFi->GetMapPointMatches();
+        std::vector<MapPoint*> vpMapPointsKFi = pKFi->GetMapPointMatches();
 
         for (MapPoint* pMP : vpMapPointsKFi)
         {
-            if (pMP == nullptr || pMP->isBad() || pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->mnId)
+            if (pMP == nullptr || pMP->isBad() ||
+                pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->mnId)
                 continue;
 
-            pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->mnId;
             vpFuseCandidates.push_back(pMP);
+            pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->mnId;
         }
     }
 
-    matcher.Fuse(mpCurrentKeyFrame,vpFuseCandidates);
+    matcher.Fuse(mpCurrentKeyFrame, vpFuseCandidates);
 
     // Update points
     vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();

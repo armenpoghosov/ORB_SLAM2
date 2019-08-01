@@ -170,7 +170,7 @@ public:
     cv::Mat                     mDescriptors;
     cv::Mat                     mDescriptorsRight;
 
-    // MapPoints associated to keypoints, NULL pointer if no association.
+    // MapPoints associated to keypoints, nullptr if no association.
     std::vector<MapPoint*>      mvpMapPoints;
 
     // Flag to identify outlier associations.
