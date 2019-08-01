@@ -18,25 +18,23 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-#include<iostream>
-#include<algorithm>
-#include<fstream>
-#include<chrono>
-#include<iomanip>
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <chrono>
+#include <iomanip>
 
 #include <mfapi.h>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/videoio.hpp>
 
-
 #include"System.h"
 
 using namespace std;
 
-void LoadImages(const string &strSequence, vector<string> &vstrImageFilenames,
-                vector<double> &vTimestamps);
+void LoadImages(std::string const& strSequence,
+    std::vector<std::string>& vstrImageFilenames, std::vector<double>& vTimestamps);
 
 int main(int argc, char **argv)
 {
@@ -136,34 +134,38 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<double> &vTimestamps)
+void LoadImages(std::string const&  strPathToSequence,
+    std::vector<string>& vstrImageFilenames, std::vector<double>& vTimestamps)
 {
-    ifstream fTimes;
-    string strPathTimeFile = strPathToSequence + "/times.txt";
+    std::ifstream fTimes;
+    std::string strPathTimeFile = strPathToSequence + "/times.txt";
+
     fTimes.open(strPathTimeFile.c_str());
-    while(!fTimes.eof())
+
+    while (!fTimes.eof())
     {
-        string s;
-        getline(fTimes,s);
-        if(!s.empty())
-        {
-            stringstream ss;
-            ss << s;
-            double t;
-            ss >> t;
-            vTimestamps.push_back(t);
-        }
+        std::string s;
+        std::getline(fTimes,s);
+
+        if (s.empty())
+            continue;
+
+        std::stringstream ss;
+        ss << s;
+        double t;
+        ss >> t;
+        vTimestamps.push_back(t);
     }
 
-    string strPrefixLeft = strPathToSequence + "/image_0/";
+    std::string strPrefixLeft = strPathToSequence + "/image_0/";
 
-    const int nTimes = vTimestamps.size();
+    std::size_t const nTimes = vTimestamps.size();
     vstrImageFilenames.resize(nTimes);
 
-    for(int i=0; i<nTimes; i++)
+    for (std::size_t i = 0; i < nTimes; ++i)
     {
-        stringstream ss;
-        ss << setfill('0') << setw(6) << i;
+        std::stringstream ss;
+        ss << setfill('0') << std::setw(6) << i;
         vstrImageFilenames[i] = strPrefixLeft + ss.str() + ".png";
     }
 }
