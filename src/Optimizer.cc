@@ -547,22 +547,22 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
 
-        const std::unordered_map<KeyFrame*,size_t> observations = pMP->GetObservations();
+        std::unordered_map<KeyFrame*, size_t> const& observations = pMP->GetObservations();
 
         //Set edges
-        for (auto mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+        for (auto mit = observations.begin(), mend = observations.end(); mit != mend; ++mit)
         {
             KeyFrame* pKFi = mit->first;
 
             if (pKFi->isBad())
                 continue;
 
-            const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
+            cv::KeyPoint const& kpUn = pKFi->mvKeysUn[mit->second];
 
             // Monocular observation
             if (pKFi->mvuRight[mit->second] < 0)
             {
-                Eigen::Matrix<double,2,1> obs;
+                Eigen::Matrix<double, 2, 1> obs;
                 obs << kpUn.pt.x, kpUn.pt.y;
 
                 g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
@@ -589,8 +589,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             }
             else // Stereo observation
             {
-                Eigen::Matrix<double,3,1> obs;
-                const float kp_ur = pKFi->mvuRight[mit->second];
+                Eigen::Matrix<double, 3, 1> obs;
+                float const kp_ur = pKFi->mvuRight[mit->second];
                 obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
 
                 g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
@@ -637,15 +637,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                 continue;
 
             g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
-            if (e->chi2()>5.991 || !e->isDepthPositive())
-            {
+
+            if (e->chi2() > 5.991 || !e->isDepthPositive())
                 e->setLevel(1);
-            }
 
             e->setRobustKernel(0);
         }
 
-        for(size_t i=0, iend=vpEdgesStereo.size(); i<iend;i++)
+        for (size_t i = 0, iend = vpEdgesStereo.size(); i < iend; ++i)
         {
             MapPoint* pMP = vpMapPointEdgeStereo[i];
 
@@ -654,9 +653,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
             g2o::EdgeStereoSE3ProjectXYZ* e = vpEdgesStereo[i];
             if (e->chi2() > 7.815 || !e->isDepthPositive())
-            {
                 e->setLevel(1);
-            }
 
             e->setRobustKernel(0);
         }

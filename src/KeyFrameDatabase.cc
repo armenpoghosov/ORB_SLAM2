@@ -38,10 +38,9 @@ KeyFrameDatabase::KeyFrameDatabase(ORBVocabulary const& voc)
     mvInvertedFile.resize(voc.size());
 }
 
-
 void KeyFrameDatabase::add(KeyFrame *pKF)
 {
-    unique_lock<mutex> lock(mMutex);
+    std::unique_lock<std::mutex> lock(mMutex);
 
     for (auto const& pair : pKF->mBowVec)
         mvInvertedFile[pair.first].push_back(pKF);
@@ -49,17 +48,17 @@ void KeyFrameDatabase::add(KeyFrame *pKF)
 
 void KeyFrameDatabase::erase(KeyFrame* pKF)
 {
-    unique_lock<mutex> lock(mMutex);
+    std::unique_lock<std::mutex> lock(mMutex);
 
     // Erase elements in the Inverse File for the entry
-    for(DBoW2::BowVector::const_iterator vit=pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit!=vend; vit++)
+    for (auto const& pair : pKF->mBowVec)
     {
         // List of keyframes that share the word
-        list<KeyFrame*> &lKFs =   mvInvertedFile[vit->first];
+        std::list<KeyFrame*>& lKFs = mvInvertedFile[pair.first];
 
-        for(list<KeyFrame*>::iterator lit=lKFs.begin(), lend= lKFs.end(); lit!=lend; lit++)
+        for (auto lit = lKFs.begin(), lend = lKFs.end(); lit != lend; ++lit)
         {
-            if(pKF==*lit)
+            if (pKF == *lit)
             {
                 lKFs.erase(lit);
                 break;
@@ -74,7 +73,6 @@ void KeyFrameDatabase::clear()
     mvInvertedFile.resize(mpVoc->size());
 }
 
-
 std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float minScore)
 {
     std::unordered_set<KeyFrame*> spConnectedKeyFrames = pKF->GetConnectedKeyFrames();
@@ -84,9 +82,9 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, flo
     // Search all keyframes that share a word with current keyframes
     // Discard keyframes connected to the query keyframe
     {
-        unique_lock<mutex> lock(mMutex);
+        std::unique_lock<std::mutex> lock(mMutex);
 
-        for (auto vit = pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit != vend; ++vit)
+        for (auto vit = pKF->mBowVec.begin(), vend = pKF->mBowVec.end(); vit != vend; ++vit)
         {
             std::list<KeyFrame*>& lKFs = mvInvertedFile[vit->first];
 
@@ -295,19 +293,17 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
 
     set<KeyFrame*> spAlreadyAddedKF;
 
-    vector<KeyFrame*> vpRelocCandidates;
+    std::vector<KeyFrame*> vpRelocCandidates;
     vpRelocCandidates.reserve(lAccScoreAndMatch.size());
 
     for (auto const& pair : lAccScoreAndMatch)
     {
-        if (pair.first > minScoreToRetain)
-        {
-            auto const& pair_set = spAlreadyAddedKF.insert(pair.second);
-            if (pair_set.second)
-            {
-                vpRelocCandidates.push_back(pair.second);
-            }
-        }
+        if (pair.first <= minScoreToRetain)
+            continue;
+
+        auto const& pair_set = spAlreadyAddedKF.insert(pair.second);
+        if (pair_set.second)
+            vpRelocCandidates.push_back(pair.second);
     }
 
     return vpRelocCandidates;

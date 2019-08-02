@@ -38,15 +38,15 @@ void LoadImages(std::string const& strSequence,
 
 int main(int argc, char **argv)
 {
-    if(argc != 4)
+    std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
+
+    if (argc != 4)
     {
         cerr << endl << "Usage: ./mono_kitti path_to_vocabulary path_to_settings path_to_sequence" << endl;
         return 1;
     }
 
-    cv::VideoCapture capture;
-
-    capture.open(argv[3]);
+    cv::VideoCapture capture(argv[3]);
     if (!capture.isOpened())
     {
         cerr << "could not open video file" << endl;
@@ -76,6 +76,7 @@ int main(int argc, char **argv)
 
     double tframe = 0;
 
+
     //for(int ni = 0; ni < nImages; ++ni)
     for (;;)
     {
@@ -92,14 +93,14 @@ int main(int argc, char **argv)
             break;
         }
 
-        std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+        //std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
         // Pass the image to the SLAM system
         SLAM.TrackMonocular(im, tframe += 25);
 
-        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+        //std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 
-        double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+        //double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
 
         //vTimesTrack[ni]=ttrack;
 
@@ -130,6 +131,11 @@ int main(int argc, char **argv)
 
     // Save camera trajectory
     SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");    
+
+    std::chrono::seconds seconds = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - t0);
+
+    printf("time = %u\n", (uint32_t)seconds.count());
 
     return 0;
 }

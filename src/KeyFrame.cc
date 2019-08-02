@@ -570,14 +570,13 @@ float KeyFrame::ComputeSceneMedianDepth(int q) const
             continue;
 
         cv::Mat x3Dw = pMP->GetWorldPos();
-        float const z = (float)(Rcw2.dot(x3Dw) + zcw);
-        vDepths.push_back(z);
+        vDepths.push_back((float)Rcw2.dot(x3Dw));
     }
 
     // TODO: PAE: what if it is empty!?
     std::size_t const index = (vDepths.size() - 1) / q;
     std::nth_element(vDepths.begin(), vDepths.begin() + index, vDepths.end());
-    return vDepths[index];
+    return vDepths[index] + zcw;
 }
 
 } //namespace ORB_SLAM

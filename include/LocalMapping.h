@@ -168,8 +168,7 @@ protected:
     void KeyFrameCulling();
 
     static cv::Mat ComputeF12(KeyFrame* pKF1, KeyFrame* pKF2);
-
-    static cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
+    static cv::Mat SkewSymmetricMatrix(cv::Mat const& v);
 
     void ResetIfRequested();
 

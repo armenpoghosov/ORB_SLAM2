@@ -78,12 +78,13 @@ public:
         std::vector<cv::Point2f>& vbPrevMatched, std::vector<int>& vnMatches12, int windowSize = 10);
 
     // Matching to triangulate new MapPoints. Check Epipolar Constraint.
-    int SearchForTriangulation(KeyFrame *pKF1, KeyFrame* pKF2, cv::Mat F12,
-        std::vector<pair<size_t, size_t> > &vMatchedPairs, bool bOnlyStereo);
+    std::size_t SearchForTriangulation(KeyFrame *pKF1, KeyFrame* pKF2, cv::Mat const& F12,
+        std::vector<std::pair<size_t, size_t> >& vMatchedPairs, bool bOnlyStereo);
 
     // Search matches between MapPoints seen in KF1 and KF2 transforming by a Sim3 [s12*R12|t12]
     // In the stereo and RGB-D case, s12=1
-    int SearchBySim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches12, const float &s12, const cv::Mat &R12, const cv::Mat &t12, const float th);
+    int SearchBySim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches12,
+        const float &s12, const cv::Mat &R12, const cv::Mat &t12, const float th);
 
     // Project MapPoints into KeyFrame and search for duplicated MapPoints.
     int Fuse(KeyFrame* pKF, vector<MapPoint*> const& vpMapPoints, float th = 3.0);
@@ -93,7 +94,8 @@ public:
 
 protected:
 
-    bool CheckDistEpipolarLine(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &F12, const KeyFrame *pKF);
+    bool CheckDistEpipolarLine(cv::KeyPoint const& kp1, cv::KeyPoint const& kp2,
+        cv::Mat const& F12, KeyFrame const* pKF);
 
     static float RadiusByViewingCos(float viewCos)
     {

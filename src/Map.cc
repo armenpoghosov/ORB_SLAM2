@@ -31,7 +31,7 @@ void Map::AddKeyFrame(KeyFrame *pKF)
     std::unique_lock<std::mutex> lock(mMutexMap);
 
     auto const& pair = mspKeyFrames.insert(pKF);
-    assert(pair.second);
+    //assert(pair.second);
     (void)pair; // make compiler happy in release ...
 
     if (pKF->mnId > mnMaxKFid)

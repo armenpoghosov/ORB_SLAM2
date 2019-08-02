@@ -105,16 +105,16 @@ void LocalMapping::run()
             // Triangulate new MapPoints
             CreateNewMapPoints();
 
-            if (queued_key_frames() == 0)
+            // PAE: if (queued_key_frames() == 0)
             {
                 // Find more matches in neighbor keyframes and fuse point duplications
                 SearchInNeighbors();
 
-                if (queued_key_frames() == 0)
+                // PAE: if (queued_key_frames() == 0)
                 {
                     // Local BA
                     if (mpMap->KeyFramesInMap() > 2)
-                        Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
+                        Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, nullptr/*&mbAbortBA*/, mpMap);
 
                     // Check redundant local Keyframes
                     KeyFrameCulling();
@@ -271,8 +271,10 @@ void LocalMapping::CreateNewMapPoints()
 
     float const fx1 = mpCurrentKeyFrame->fx;
     float const fy1 = mpCurrentKeyFrame->fy;
+    
     float const cx1 = mpCurrentKeyFrame->cx;
     float const cy1 = mpCurrentKeyFrame->cy;
+
     float const invfx1 = mpCurrentKeyFrame->invfx;
     float const invfy1 = mpCurrentKeyFrame->invfy;
 
@@ -322,8 +324,10 @@ void LocalMapping::CreateNewMapPoints()
 
         float const fx2 = pKF2->fx;
         float const fy2 = pKF2->fy;
+
         float const cx2 = pKF2->cx;
         float const cy2 = pKF2->cy;
+
         float const invfx2 = pKF2->invfx;
         float const invfy2 = pKF2->invfy;
 
@@ -346,8 +350,8 @@ void LocalMapping::CreateNewMapPoints()
             bool const bStereo2 = kp2_ur >= 0;
 
             // Check parallax between rays
-            cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x - cx1) * invfx1, (kp1.pt.y - cy1) * invfy1, 1.f);
-            cv::Mat xn2 = (cv::Mat_<float>(3,1) << (kp2.pt.x - cx2) * invfx2, (kp2.pt.y - cy2) * invfy2, 1.f);
+            cv::Mat xn1 = (cv::Mat_<float>(3, 1) << (kp1.pt.x - cx1) * invfx1, (kp1.pt.y - cy1) * invfy1, 1.f);
+            cv::Mat xn2 = (cv::Mat_<float>(3, 1) << (kp2.pt.x - cx2) * invfx2, (kp2.pt.y - cy2) * invfy2, 1.f);
 
             cv::Mat ray1 = Rwc1 * xn1;
             cv::Mat ray2 = Rwc2 * xn2;
@@ -365,38 +369,39 @@ void LocalMapping::CreateNewMapPoints()
             cosParallaxStereo = (std::min)(cosParallaxStereo1, cosParallaxStereo2);
 
             cv::Mat x3D;
-            if (cosParallaxRays < cosParallaxStereo && cosParallaxRays > 0.f &&
+            if (cosParallaxRays > 0.f && cosParallaxRays < cosParallaxStereo &&
                 (bStereo1 || bStereo2 || cosParallaxRays < 0.9998))
             {
                 // Linear Triangulation Method
-                cv::Mat A(4,4,CV_32F);
-                A.row(0) = xn1.at<float>(0)*Tcw1.row(2)-Tcw1.row(0);
-                A.row(1) = xn1.at<float>(1)*Tcw1.row(2)-Tcw1.row(1);
-                A.row(2) = xn2.at<float>(0)*Tcw2.row(2)-Tcw2.row(0);
-                A.row(3) = xn2.at<float>(1)*Tcw2.row(2)-Tcw2.row(1);
+                cv::Mat A(4, 4, CV_32F);
+                A.row(0) = xn1.at<float>(0) * Tcw1.row(2) - Tcw1.row(0);
+                A.row(1) = xn1.at<float>(1) * Tcw1.row(2) - Tcw1.row(1);
+                A.row(2) = xn2.at<float>(0) * Tcw2.row(2) - Tcw2.row(0);
+                A.row(3) = xn2.at<float>(1) * Tcw2.row(2) - Tcw2.row(1);
 
-                cv::Mat w,u,vt;
-                cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
+                cv::Mat w;
+                cv::Mat u;
+                cv::Mat vt;
+                cv::SVD::compute(A, w, u, vt, cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
 
                 x3D = vt.row(3).t();
 
-                if(x3D.at<float>(3)==0)
+                if (x3D.at<float>(3)==0)
                     continue;
 
                 // Euclidean coordinates
                 x3D = x3D.rowRange(0,3) / x3D.at<float>(3);
-
             }
-            else if (bStereo1 && cosParallaxStereo1<cosParallaxStereo2)
+            else if (bStereo1 && cosParallaxStereo1 < cosParallaxStereo2)
                 x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);
-            else if (bStereo2 && cosParallaxStereo2<cosParallaxStereo1)
+            else if (bStereo2 && cosParallaxStereo2 < cosParallaxStereo1)
                 x3D = pKF2->UnprojectStereo(idx2);
             else
                 continue; // No stereo and very low parallax
 
             cv::Mat x3Dt = x3D.t();
 
-            //Check triangulation in front of cameras
+            // Check triangulation in front of cameras
             float const z1 = Rcw1.row(2).dot(x3Dt) + tcw1.at<float>(2);
             if (z1 <= 0.f)
                 continue;

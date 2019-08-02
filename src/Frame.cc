@@ -319,8 +319,7 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
     float const u = fx * PcX * invz + cx;
     float const v = fy * PcY * invz + cy;
 
-    if (u < mnMinX || u > mnMaxX ||
-        v < mnMinY || v > mnMaxY)
+    if (u < mnMinX || u > mnMaxX || v < mnMinY || v > mnMaxY)
         return false;
 
     // Check distance is in the scale invariance region of the MapPoint
@@ -445,40 +444,41 @@ void Frame::UndistortKeyPoints()
     for (int i = 0; i < m_frame_N; ++i)
     {
         cv::KeyPoint kp = mvKeys[i];
-
         kp.pt.x = mat.at<float>(i, 0);
         kp.pt.y = mat.at<float>(i, 1);
-
         mvKeysUn[i] = kp;
     }
 }
 
 void Frame::ComputeImageBounds(const cv::Mat &imLeft)
 {
-    if(mDistCoef.at<float>(0)!=0.0)
+    if (mDistCoef.at<float>(0) != 0.)
     {
-        cv::Mat mat(4,2,CV_32F);
-        mat.at<float>(0,0)=0.0; mat.at<float>(0,1)=0.0;
-        mat.at<float>(1,0)=imLeft.cols; mat.at<float>(1,1)=0.0;
-        mat.at<float>(2,0)=0.0; mat.at<float>(2,1)=imLeft.rows;
-        mat.at<float>(3,0)=imLeft.cols; mat.at<float>(3,1)=imLeft.rows;
+        cv::Mat mat(4, 2, CV_32F);
+        mat.at<float>(0, 0) = 0.;
+        mat.at<float>(0, 1) = 0.;
+        mat.at<float>(1, 0) = imLeft.cols;
+        mat.at<float>(1, 1) = 0.;
+        mat.at<float>(2, 0) = 0.;
+        mat.at<float>(2, 1) = imLeft.rows;
+        mat.at<float>(3, 0) = imLeft.cols;
+        mat.at<float>(3, 1) = imLeft.rows;
 
         // Undistort corners
-        mat=mat.reshape(2);
-        cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);
-        mat=mat.reshape(1);
+        mat = mat.reshape(2);
+        cv::undistortPoints(mat, mat, mK, mDistCoef, cv::Mat(), mK);
+        mat = mat.reshape(1);
 
-        mnMinX = min(mat.at<float>(0,0),mat.at<float>(2,0));
-        mnMaxX = max(mat.at<float>(1,0),mat.at<float>(3,0));
-        mnMinY = min(mat.at<float>(0,1),mat.at<float>(1,1));
-        mnMaxY = max(mat.at<float>(2,1),mat.at<float>(3,1));
-
+        mnMinX = (std::min)(mat.at<float>(0, 0), mat.at<float>(2, 0));
+        mnMaxX = (std::max)(mat.at<float>(1, 0), mat.at<float>(3, 0));
+        mnMinY = (std::min)(mat.at<float>(0, 1), mat.at<float>(1, 1));
+        mnMaxY = (std::max)(mat.at<float>(2, 1), mat.at<float>(3, 1));
     }
     else
     {
-        mnMinX = 0.0f;
+        mnMinX = 0.f;
         mnMaxX = imLeft.cols;
-        mnMinY = 0.0f;
+        mnMinY = 0.f;
         mnMaxY = imLeft.rows;
     }
 }
@@ -655,21 +655,21 @@ void Frame::ComputeStereoMatches()
     }
 }
 
-void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth)
+void Frame::ComputeStereoFromRGBD(cv::Mat const& imDepth)
 {
-    mvuRight = vector<float>(m_frame_N,-1);
-    mvDepth = vector<float>(m_frame_N,-1);
+    mvuRight = std::vector<float>(m_frame_N, -1.f);
+    mvDepth = std::vector<float>(m_frame_N, -1.f);
 
-    for(int i=0; i<m_frame_N; i++)
+    for (int i = 0; i < m_frame_N; ++i)
     {
-        const cv::KeyPoint &kp = mvKeys[i];
-        const cv::KeyPoint &kpU = mvKeysUn[i];
+        cv::KeyPoint const& kp = mvKeys[i];
+        cv::KeyPoint const& kpU = mvKeysUn[i];
 
         float const d = imDepth.at<float>((int)kp.pt.y, (int)kp.pt.x);
-        if (d > 0)
+        if (d > 0.)
         {
             mvDepth[i] = d;
-            mvuRight[i] = kpU.pt.x-mbf/d;
+            mvuRight[i] = kpU.pt.x - mbf / d;
         }
     }
 }
