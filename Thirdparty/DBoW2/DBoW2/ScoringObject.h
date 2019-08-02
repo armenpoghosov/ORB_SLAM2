@@ -12,33 +12,35 @@
 
 #include "BowVector.h"
 
-namespace DBoW2 {
+namespace DBoW2
+{
 
 /// Base class of scoring functions
 class GeneralScoring
 {
 public:
-  /**
-   * Computes the score between two vectors. Vectors must be sorted and 
-   * normalized if necessary
-   * @param v (in/out)
-   * @param w (in/out)
-   * @return score
-   */
-  virtual double score(const BowVector &v, const BowVector &w) const = 0;
 
-  /**
-   * Returns whether a vector must be normalized before scoring according
-   * to the scoring scheme
-   * @param norm norm to use
-   * @return true iff must normalize
-   */
-  virtual bool mustNormalize(LNorm &norm) const = 0;
+    /**
+    * Computes the score between two vectors. Vectors must be sorted and 
+    * normalized if necessary
+    * @param v (in/out)
+    * @param w (in/out)
+    * @return score
+    */
+    virtual double score(BowVector const& v, BowVector const& w) const = 0;
 
-  /// Log of epsilon
-	static const double LOG_EPS; 
-  // If you change the type of WordValue, make sure you change also the
-	// epsilon value (this is needed by the KL method)
+    /**
+    * Returns whether a vector must be normalized before scoring according
+    * to the scoring scheme
+    * @param norm norm to use
+    * @return true iff must normalize
+    */
+    virtual bool mustNormalize(LNorm &norm) const = 0;
+
+    /// Log of epsilon
+    static const double LOG_EPS; 
+    // If you change the type of WordValue, make sure you change also the
+    // epsilon value (this is needed by the KL method)
 
   virtual ~GeneralScoring() {} //!< Required for virtual base classes
 	

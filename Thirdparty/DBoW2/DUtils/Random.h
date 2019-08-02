@@ -15,7 +15,8 @@
 #include <cstdlib>
 #include <vector>
 
-namespace DUtils {
+namespace DUtils
+{
 
 /// Functions to generate pseudo-random numbers
 class Random
@@ -119,13 +120,12 @@ public:
    * @param max
    */
   UnrepeatedRandomizer(int min, int max);
-  ~UnrepeatedRandomizer(){}
   
   /**
    * Copies a randomizer
    * @param rnd
    */
-  UnrepeatedRandomizer(const UnrepeatedRandomizer& rnd);
+  UnrepeatedRandomizer(UnrepeatedRandomizer const& rnd);
   
   /**
    * Copies a randomizer
@@ -146,13 +146,13 @@ public:
    * is the same than after creating the randomizer
    * @return true iff all the values were returned
    */
-  inline bool empty() const { return m_values.empty(); }
+  bool empty() const { return m_values.empty(); }
   
   /**
    * Returns the number of values still to be returned
    * @return amount of values to return
    */
-  inline unsigned int left() const { return (unsigned int)m_values.size(); }
+  unsigned int left() const { return (unsigned int)m_values.size(); }
   
   /**
    * Resets the randomizer as it were just created

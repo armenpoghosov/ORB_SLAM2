@@ -39,259 +39,255 @@ namespace DBoW2 {
 
 /// @param TDescriptor class of descriptor
 /// @param F class of descriptor functions
-template<class TDescriptor, class F>
+
 /// Generic Vocabulary
+template <class TDescriptor, class F>
 class TemplatedVocabulary
-{		
+{
 public:
   
-  /**
-   * Initiates an empty vocabulary
-   * @param k branching factor
-   * @param L depth levels
-   * @param weighting weighting type
-   * @param scoring scoring type
-   */
-  TemplatedVocabulary(int k = 10, int L = 5, 
-    WeightingType weighting = TF_IDF, ScoringType scoring = L1_NORM);
+    /**
+    * Initiates an empty vocabulary
+    * @param k branching factor
+    * @param L depth levels
+    * @param weighting weighting type
+    * @param scoring scoring type
+    */
+    TemplatedVocabulary(int k = 10, int L = 5, 
+        WeightingType weighting = TF_IDF, ScoringType scoring = L1_NORM);
   
-  /**
-   * Creates the vocabulary by loading a file
-   * @param filename
-   */
-  TemplatedVocabulary(const std::string &filename);
+    /**
+    * Creates the vocabulary by loading a file
+    * @param filename
+    */
+    TemplatedVocabulary(std::string const& filename);
   
-  /**
-   * Creates the vocabulary by loading a file
-   * @param filename
-   */
-  TemplatedVocabulary(const char *filename);
+    /**
+    * Creates the vocabulary by loading a file
+    * @param filename
+    */
+    TemplatedVocabulary(char const* filename);
   
-  /** 
-   * Copy constructor
-   * @param voc
-   */
-  TemplatedVocabulary(const TemplatedVocabulary<TDescriptor, F> &voc);
+    /** 
+    * Copy constructor
+    * @param voc
+    */
+    TemplatedVocabulary(TemplatedVocabulary const& voc);
   
-  /**
-   * Destructor
-   */
-  virtual ~TemplatedVocabulary();
+    /**
+    * Destructor
+    */
+    virtual ~TemplatedVocabulary();
   
-  /** 
-   * Assigns the given vocabulary to this by copying its data and removing
-   * all the data contained by this vocabulary before
-   * @param voc
-   * @return reference to this vocabulary
-   */
-  TemplatedVocabulary<TDescriptor, F>& operator=(
-    const TemplatedVocabulary<TDescriptor, F> &voc);
+    /** 
+    * Assigns the given vocabulary to this by copying its data and removing
+    * all the data contained by this vocabulary before
+    * @param voc
+    * @return reference to this vocabulary
+    */
+    TemplatedVocabulary& operator = (TemplatedVocabulary const& voc);
   
-  /** 
-   * Creates a vocabulary from the training features with the already
-   * defined parameters
-   * @param training_features
-   */
-  virtual void create
-    (const std::vector<std::vector<TDescriptor> > &training_features);
+    /** 
+    * Creates a vocabulary from the training features with the already
+    * defined parameters
+    * @param training_features
+    */
+    virtual void create(std::vector<std::vector<TDescriptor> > const& training_features);
   
-  /**
-   * Creates a vocabulary from the training features, setting the branching
-   * factor and the depth levels of the tree
-   * @param training_features
-   * @param k branching factor
-   * @param L depth levels
-   */
-  virtual void create
-    (const std::vector<std::vector<TDescriptor> > &training_features, 
-      int k, int L);
+    /**
+    * Creates a vocabulary from the training features, setting the branching
+    * factor and the depth levels of the tree
+    * @param training_features
+    * @param k branching factor
+    * @param L depth levels
+    */
+    virtual void create(std::vector<std::vector<TDescriptor> > const& training_features,
+        int k, int L);
 
-  /**
-   * Creates a vocabulary from the training features, setting the branching
-   * factor nad the depth levels of the tree, and the weighting and scoring
-   * schemes
-   */
-  virtual void create
-    (const std::vector<std::vector<TDescriptor> > &training_features,
-      int k, int L, WeightingType weighting, ScoringType scoring);
+    /**
+    * Creates a vocabulary from the training features, setting the branching
+    * factor nad the depth levels of the tree, and the weighting and scoring
+    * schemes
+    */
+    virtual void create(std::vector<std::vector<TDescriptor> > const& training_features,
+        int k, int L, WeightingType weighting, ScoringType scoring);
 
-  /**
-   * Returns the number of words in the vocabulary
-   * @return number of words
-   */
-  virtual inline unsigned int size() const;
+    /**
+    * Returns the number of words in the vocabulary
+    * @return number of words
+    */
+    virtual unsigned int size() const;
   
-  /**
-   * Returns whether the vocabulary is empty (i.e. it has not been trained)
-   * @return true iff the vocabulary is empty
-   */
-  virtual inline bool empty() const;
+    /**
+    * Returns whether the vocabulary is empty (i.e. it has not been trained)
+    * @return true iff the vocabulary is empty
+    */
+    virtual bool empty() const;
 
-  /**
-   * Transforms a set of descriptores into a bow vector
-   * @param features
-   * @param v (out) bow vector of weighted words
-   */
-  virtual void transform(const std::vector<TDescriptor>& features, BowVector &v) 
-    const;
+    /**
+    * Transforms a set of descriptores into a bow vector
+    * @param features
+    * @param v (out) bow vector of weighted words
+    */
+    virtual void transform(std::vector<TDescriptor> const& features, BowVector &v) const;
   
-  /**
-   * Transform a set of descriptors into a bow vector and a feature vector
-   * @param features
-   * @param v (out) bow vector
-   * @param fv (out) feature vector of nodes and feature indexes
-   * @param levelsup levels to go up the vocabulary tree to get the node index
-   */
-  virtual void transform(const std::vector<TDescriptor>& features,
-    BowVector &v, FeatureVector &fv, int levelsup) const;
+    /**
+    * Transform a set of descriptors into a bow vector and a feature vector
+    * @param features
+    * @param v (out) bow vector
+    * @param fv (out) feature vector of nodes and feature indexes
+    * @param levelsup levels to go up the vocabulary tree to get the node index
+    */
+    virtual void transform(std::vector<TDescriptor> const& features,
+        BowVector &v, FeatureVector &fv, int levelsup) const;
 
-  /**
-   * Transforms a single feature into a word (without weight)
-   * @param feature
-   * @return word id
-   */
-  virtual WordId transform(const TDescriptor& feature) const;
+    /**
+    * Transforms a single feature into a word (without weight)
+    * @param feature
+    * @return word id
+    */
+    virtual WordId transform(TDescriptor const& feature) const;
   
-  /**
-   * Returns the score of two vectors
-   * @param a vector
-   * @param b vector
-   * @return score between vectors
-   * @note the vectors must be already sorted and normalized if necessary
-   */
-  inline double score(const BowVector &a, const BowVector &b) const;
+    /**
+    * Returns the score of two vectors
+    * @param a vector
+    * @param b vector
+    * @return score between vectors
+    * @note the vectors must be already sorted and normalized if necessary
+    */
+    inline double score(const BowVector &a, const BowVector &b) const;
   
-  /**
-   * Returns the id of the node that is "levelsup" levels from the word given
-   * @param wid word id
-   * @param levelsup 0..L
-   * @return node id. if levelsup is 0, returns the node id associated to the
-   *   word id
-   */
-  virtual NodeId getParentNode(WordId wid, int levelsup) const;
+    /**
+    * Returns the id of the node that is "levelsup" levels from the word given
+    * @param wid word id
+    * @param levelsup 0..L
+    * @return node id. if levelsup is 0, returns the node id associated to the
+    *   word id
+    */
+    virtual NodeId getParentNode(WordId wid, int levelsup) const;
   
-  /**
-   * Returns the ids of all the words that are under the given node id,
-   * by traversing any of the branches that goes down from the node
-   * @param nid starting node id
-   * @param words ids of words
-   */
-  void getWordsFromNode(NodeId nid, std::vector<WordId> &words) const;
+    /**
+    * Returns the ids of all the words that are under the given node id,
+    * by traversing any of the branches that goes down from the node
+    * @param nid starting node id
+    * @param words ids of words
+    */
+    void getWordsFromNode(NodeId nid, std::vector<WordId> &words) const;
   
-  /**
-   * Returns the branching factor of the tree (k)
-   * @return k
-   */
-  inline int getBranchingFactor() const { return m_k; }
+    /**
+    * Returns the branching factor of the tree (k)
+    * @return k
+    */
+    inline int getBranchingFactor() const { return m_k; }
   
-  /** 
-   * Returns the depth levels of the tree (L)
-   * @return L
-   */
-  inline int getDepthLevels() const { return m_L; }
+    /** 
+    * Returns the depth levels of the tree (L)
+    * @return L
+    */
+    inline int getDepthLevels() const { return m_L; }
   
-  /**
-   * Returns the real depth levels of the tree on average
-   * @return average of depth levels of leaves
-   */
-  float getEffectiveLevels() const;
+    /**
+    * Returns the real depth levels of the tree on average
+    * @return average of depth levels of leaves
+    */
+    float getEffectiveLevels() const;
   
-  /**
-   * Returns the descriptor of a word
-   * @param wid word id
-   * @return descriptor
-   */
-  virtual inline TDescriptor getWord(WordId wid) const;
+    /**
+    * Returns the descriptor of a word
+    * @param wid word id
+    * @return descriptor
+    */
+    virtual inline TDescriptor getWord(WordId wid) const;
   
-  /**
-   * Returns the weight of a word
-   * @param wid word id
-   * @return weight
-   */
-  virtual inline WordValue getWordWeight(WordId wid) const;
+    /**
+    * Returns the weight of a word
+    * @param wid word id
+    * @return weight
+    */
+    virtual inline WordValue getWordWeight(WordId wid) const;
   
-  /** 
-   * Returns the weighting method
-   * @return weighting method
-   */
-  inline WeightingType getWeightingType() const { return m_weighting; }
+    /** 
+    * Returns the weighting method
+    * @return weighting method
+    */
+    inline WeightingType getWeightingType() const { return m_weighting; }
   
-  /** 
-   * Returns the scoring method
-   * @return scoring method
-   */
-  inline ScoringType getScoringType() const { return m_scoring; }
+    /** 
+    * Returns the scoring method
+    * @return scoring method
+    */
+    inline ScoringType getScoringType() const { return m_scoring; }
   
-  /**
-   * Changes the weighting method
-   * @param type new weighting type
-   */
-  inline void setWeightingType(WeightingType type);
+    /**
+    * Changes the weighting method
+    * @param type new weighting type
+    */
+    inline void setWeightingType(WeightingType type);
   
-  /**
-   * Changes the scoring method
-   * @param type new scoring type
-   */
-  void setScoringType(ScoringType type);
+    /**
+    * Changes the scoring method
+    * @param type new scoring type
+    */
+    void setScoringType(ScoringType type);
 
-  /**
-   * Loads the vocabulary from a text file
-   * @param filename
-   */
-  bool loadFromTextFile(const std::string &filename);
+    /**
+    * Loads the vocabulary from a text file
+    * @param filename
+    */
+    bool loadFromTextFile(const std::string &filename);
 
-  /**
-   * Saves the vocabulary into a text file
-   * @param filename
-   */
-  void saveToTextFile(const std::string &filename) const;  
+    /**
+    * Saves the vocabulary into a text file
+    * @param filename
+    */
+    void saveToTextFile(const std::string &filename) const;  
 
-  /**
-   * Saves the vocabulary into a file
-   * @param filename
-   */
-  void save(const std::string &filename) const;
+    /**
+    * Saves the vocabulary into a file
+    * @param filename
+    */
+    void save(const std::string &filename) const;
   
-  /**
-   * Loads the vocabulary from a file
-   * @param filename
-   */
-  void load(const std::string &filename);
+    /**
+    * Loads the vocabulary from a file
+    * @param filename
+    */
+    void load(const std::string &filename);
   
-  /** 
-   * Saves the vocabulary to a file storage structure
-   * @param fn node in file storage
-   */
-  virtual void save(cv::FileStorage &fs, 
+    /** 
+    * Saves the vocabulary to a file storage structure
+    * @param fn node in file storage
+    */
+    virtual void save(cv::FileStorage &fs, 
     const std::string &name = "vocabulary") const;
   
-  /**
-   * Loads the vocabulary from a file storage node
-   * @param fn first node
-   * @param subname name of the child node of fn where the tree is stored.
-   *   If not given, the fn node is used instead
-   */  
-  virtual void load(const cv::FileStorage &fs, 
+    /**
+    * Loads the vocabulary from a file storage node
+    * @param fn first node
+    * @param subname name of the child node of fn where the tree is stored.
+    *   If not given, the fn node is used instead
+    */  
+    virtual void load(const cv::FileStorage &fs, 
     const std::string &name = "vocabulary");
   
-  /** 
-   * Stops those words whose weight is below minWeight.
-   * Words are stopped by setting their weight to 0. There are not returned
-   * later when transforming image features into vectors.
-   * Note that when using IDF or TF_IDF, the weight is the idf part, which
-   * is equivalent to -log(f), where f is the frequency of the word
-   * (f = Ni/N, Ni: number of training images where the word is present, 
-   * N: number of training images).
-   * Note that the old weight is forgotten, and subsequent calls to this 
-   * function with a lower minWeight have no effect.
-   * @return number of words stopped now
-   */
-  virtual int stopWords(double minWeight);
+    /** 
+    * Stops those words whose weight is below minWeight.
+    * Words are stopped by setting their weight to 0. There are not returned
+    * later when transforming image features into vectors.
+    * Note that when using IDF or TF_IDF, the weight is the idf part, which
+    * is equivalent to -log(f), where f is the frequency of the word
+    * (f = Ni/N, Ni: number of training images where the word is present, 
+    * N: number of training images).
+    * Note that the old weight is forgotten, and subsequent calls to this 
+    * function with a lower minWeight have no effect.
+    * @return number of words stopped now
+    */
+    virtual int stopWords(double minWeight);
 
 protected:
 
-  /// Pointer to descriptor
-  typedef const TDescriptor *pDescriptor;
+    /// Pointer to descriptor
+    typedef const TDescriptor *pDescriptor;
 
   /// Tree node
   struct Node 
@@ -1271,8 +1267,8 @@ NodeId TemplatedVocabulary<TDescriptor,F>::getParentNode
 // --------------------------------------------------------------------------
 
 template<class TDescriptor, class F>
-void TemplatedVocabulary<TDescriptor,F>::getWordsFromNode
-  (NodeId nid, std::vector<WordId> &words) const
+void TemplatedVocabulary<TDescriptor, F>::getWordsFromNode(
+    NodeId nid, std::vector<WordId> &words) const
 {
   words.clear();
   
