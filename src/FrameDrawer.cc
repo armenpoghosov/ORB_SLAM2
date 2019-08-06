@@ -174,7 +174,7 @@ void FrameDrawer::Update(Tracking *pTracker)
     std::unique_lock<std::mutex> lock(mMutex);
 
     // PAE: TODO: pTracker->mImGray.copyTo(mIm);
-    pTracker->get_current_frame().mpORBextractorLeft->mvImagePyramid[7].copyTo(mIm);
+    pTracker->get_current_frame().mpORBextractorLeft->mvImagePyramid[0].copyTo(mIm);
 
 
     mvCurrentKeys = pTracker->get_current_frame().mvKeys;

@@ -26,8 +26,7 @@
 #include "KeyFrame.h"
 #include "ORBextractor.h"
 
-
-#include <thread>
+#include <future>
 
 namespace ORB_SLAM2
 {
@@ -117,10 +116,9 @@ Frame::Frame(cv::Mat const& imLeft, cv::Mat const& imRight,
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
-    thread threadLeft(&Frame::ExtractORB, this, 0, imLeft);
+    auto future = std::async(&Frame::ExtractORB, this, 0, imLeft);
     ExtractORB(1, imRight);
-
-    threadLeft.join();
+    future.get();
 
     m_frame_N = mvKeys.size();
 
@@ -254,8 +252,8 @@ void Frame::ensure_initial_computations(cv::Mat const& img_first, cv::Mat const&
         cx = K.at<float>(0, 2);
         cy = K.at<float>(1, 2);
 
-        invfx = 1.0f / fx;
-        invfy = 1.0f / fy;
+        invfx = 1.f / fx;
+        invfy = 1.f / fy;
 
         mbInitialComputations = false;
     }
@@ -282,9 +280,9 @@ void Frame::AssignFeaturesToGrid()
 void Frame::ExtractORB(int flag, cv::Mat const& im)
 {
     if (flag == 0)
-        (*mpORBextractorLeft)(im, cv::Mat(), mvKeys, mDescriptors);
+        (*mpORBextractorLeft)(im, mvKeys, mDescriptors);
     else
-        (*mpORBextractorRight)(im, cv::Mat(), mvKeysRight, mDescriptorsRight);
+        (*mpORBextractorRight)(im, mvKeysRight, mDescriptorsRight);
 }
 
 void Frame::SetPose(cv::Mat Tcw)
