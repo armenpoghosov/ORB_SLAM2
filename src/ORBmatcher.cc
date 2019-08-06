@@ -146,30 +146,34 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
     int nmatches = 0;
 
     std::vector<int> rotHist[HISTO_LENGTH];
-    for (int i = 0; i < HISTO_LENGTH; ++i)
-        rotHist[i].reserve(500);
+    if (m_check_orientation)
+    {
+        for (int i = 0; i < HISTO_LENGTH; ++i)
+            rotHist[i].reserve(500);
+    }
 
-    vpMapPointMatches = vector<MapPoint*>(F.m_frame_N);
+    vpMapPointMatches = std::vector<MapPoint*>(F.m_frame_N);
 
     std::vector<MapPoint*> const& vpMapPointsKF = pKF->GetMapPointMatches();
     DBoW2::FeatureVector const& vFeatVecKF = pKF->mFeatVec;
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
     DBoW2::FeatureVector::const_iterator KFit = vFeatVecKF.begin();
-    DBoW2::FeatureVector::const_iterator Fit = F.mFeatVec.begin();
     DBoW2::FeatureVector::const_iterator KFend = vFeatVecKF.end();
+
+    DBoW2::FeatureVector::const_iterator Fit = F.mFeatVec.begin();
     DBoW2::FeatureVector::const_iterator Fend = F.mFeatVec.end();
 
     while (KFit != KFend && Fit != Fend)
     {
         if (KFit->first == Fit->first)
         {
-            std::vector<unsigned int> const& vIndicesKF = KFit->second;
-            std::vector<unsigned int> const& vIndicesF = Fit->second;
+            std::vector<uint32_t> const& vIndicesKF = KFit->second;
+            std::vector<uint32_t> const& vIndicesF = Fit->second;
 
             for (size_t iKF = 0; iKF < vIndicesKF.size(); ++iKF)
             {
-                unsigned int const realIdxKF = vIndicesKF[iKF];
+                uint32_t const realIdxKF = vIndicesKF[iKF];
 
                 MapPoint* pMP = vpMapPointsKF[realIdxKF];
 
@@ -182,7 +186,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
                 int bestIdxF = -1;
                 int bestDist2 = 256;
 
-                for (unsigned int realIdxF : vIndicesF)
+                for (uint32_t realIdxF : vIndicesF)
                 {
                     if (vpMapPointMatches[realIdxF])
                         continue;
@@ -498,22 +502,24 @@ int ORBmatcher::SearchForInitialization(Frame const& F1, Frame const& F2,
     return nmatches;
 }
 
-int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &vpMatches12)
+int ORBmatcher::SearchByBoW(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint*>& vpMatches12)
 {
     std::vector<cv::KeyPoint> const& vKeysUn1 = pKF1->mvKeysUn;
-    DBoW2::FeatureVector const& vFeatVec1 = pKF1->mFeatVec;
-    std::vector<MapPoint*> const vpMapPoints1 = pKF1->GetMapPointMatches();
-    cv::Mat const& Descriptors1 = pKF1->mDescriptors;
-
     std::vector<cv::KeyPoint> const& vKeysUn2 = pKF2->mvKeysUn;
+
+    DBoW2::FeatureVector const& vFeatVec1 = pKF1->mFeatVec;
     DBoW2::FeatureVector const& vFeatVec2 = pKF2->mFeatVec;
+
+    std::vector<MapPoint*> const vpMapPoints1 = pKF1->GetMapPointMatches();
     vector<MapPoint*> const vpMapPoints2 = pKF2->GetMapPointMatches();
+
+    cv::Mat const& Descriptors1 = pKF1->mDescriptors;
     cv::Mat const& Descriptors2 = pKF2->mDescriptors;
 
     vpMatches12 = std::vector<MapPoint*>(vpMapPoints1.size());
-    vector<bool> vbMatched2(vpMapPoints2.size());
+    std::vector<bool> vbMatched2(vpMapPoints2.size());
 
-    vector<int> rotHist[HISTO_LENGTH];
+    std::vector<int> rotHist[HISTO_LENGTH];
     for (int i = 0; i < HISTO_LENGTH; ++i)
         rotHist[i].reserve(500);
 
@@ -521,6 +527,7 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
     DBoW2::FeatureVector::const_iterator f1it = vFeatVec1.begin();
     DBoW2::FeatureVector::const_iterator f2it = vFeatVec2.begin();
+
     DBoW2::FeatureVector::const_iterator f1end = vFeatVec1.end();
     DBoW2::FeatureVector::const_iterator f2end = vFeatVec2.end();
 
@@ -597,13 +604,9 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
             ++f2it;
         }
         else if (f1it->first < f2it->first)
-        {
             f1it = vFeatVec1.lower_bound(f2it->first);
-        }
         else
-        {
             f2it = vFeatVec2.lower_bound(f1it->first);
-        }
     }
 
     if (m_check_orientation)
@@ -793,15 +796,14 @@ std::size_t ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
 
 int ORBmatcher::Fuse(KeyFrame* pKF, std::vector<MapPoint*> const& vpMapPoints, float th)
 {
-    cv::Mat Rcw = pKF->GetRotation();
-    cv::Mat tcw = pKF->GetTranslation();
-
     float const fx = pKF->fx;
     float const fy = pKF->fy;
     float const cx = pKF->cx;
     float const cy = pKF->cy;
     float const bf = pKF->mbf;
 
+    cv::Mat Rcw = pKF->GetRotation();
+    cv::Mat tcw = pKF->GetTranslation();
     cv::Mat Ow = pKF->GetCameraCenter();
 
     int nFused = 0;

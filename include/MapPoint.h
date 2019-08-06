@@ -21,15 +21,11 @@
 #ifndef MAPPOINT_H
 #define MAPPOINT_H
 
-#include "KeyFrame.h"
-#include "Frame.h"
-#include "Map.h"
-
 #include <opencv2/core/core.hpp>
 
-#include <mutex>
-#include <cstdint>
 #include <atomic>
+#include <cstdint>
+#include <mutex>
 #include <unordered_map>
 
 namespace ORB_SLAM2
@@ -62,13 +58,13 @@ public:
 
     KeyFrame* GetReferenceKeyFrame() const
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mpRefKF;
     }
 
     std::unordered_map<KeyFrame*, size_t> GetObservations() const
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mObservations;
     }
 
@@ -83,7 +79,7 @@ public:
 
     std::size_t GetIndexInKeyFrame(KeyFrame *pKF) const
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         auto it = mObservations.find(pKF);
         return it != mObservations.end() ? it->second : (std::size_t) - 1;
     }
@@ -98,8 +94,8 @@ public:
 
     bool isBad() const
     {
-        unique_lock<mutex> lock(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPos);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock2(mMutexPos);
         return mbBad;
     }
 
@@ -107,26 +103,26 @@ public:
 
     MapPoint* GetReplaced() const
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPos);
+        std::unique_lock<std::mutex> lock1(mMutexFeatures);
+        std::unique_lock<std::mutex> lock2(mMutexPos);
         return mpReplaced;
     }
 
     void IncreaseVisible(int n = 1)
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         mnVisible += n;
     }
 
     void IncreaseFound(int n = 1)
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         mnFound += n;
     }
 
     float GetFoundRatio() const
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         return (float)mnFound / mnVisible;
     }
 

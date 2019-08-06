@@ -130,13 +130,7 @@ cv::Mat System::TrackStereo(cv::Mat const& imLeft, cv::Mat const& imRight, doubl
         locked_handle_reset();
     }
 
-    cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft,imRight,timestamp);
-
-    unique_lock<mutex> lock2(mMutexState);
-    mTrackingState = mpTracker->mState;
-    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
-    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-    return Tcw;
+    return mpTracker->GrabImageStereo(imLeft,imRight,timestamp);
 }
 
 cv::Mat System::TrackRGBD(cv::Mat const& im, cv::Mat const& depthmap, double timestamp)
@@ -156,13 +150,7 @@ cv::Mat System::TrackRGBD(cv::Mat const& im, cv::Mat const& depthmap, double tim
         locked_handle_reset();
     }
 
-    cv::Mat Tcw = mpTracker->GrabImageRGBD(im,depthmap,timestamp);
-
-    unique_lock<mutex> lock2(mMutexState);
-    mTrackingState = mpTracker->mState;
-    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
-    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-    return Tcw;
+    return mpTracker->GrabImageRGBD(im,depthmap,timestamp);
 }
 
 cv::Mat System::TrackMonocular(cv::Mat const& im, double timestamp)
@@ -182,29 +170,7 @@ cv::Mat System::TrackMonocular(cv::Mat const& im, double timestamp)
         locked_handle_reset();
     }
 
-    cv::Mat Tcw = mpTracker->GrabImageMonocular(im, timestamp);
-
-    std::unique_lock<std::mutex> lock2(mMutexState);
-
-    mTrackingState = mpTracker->mState;
-    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
-    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-
-    return Tcw;
-}
-
-bool System::MapChanged()
-{
-    static int n = 0;
-
-    int curn = mpMap->GetLastBigChangeIdx();
-    if (n < curn)
-    {
-        n = curn;
-        return true;
-    }
-
-    return false;
+    return mpTracker->GrabImageMonocular(im, timestamp);
 }
 
 void System::Shutdown()
@@ -253,14 +219,21 @@ void System::SaveTrajectoryTUM(const string &filename)
 
     // For each frame we have a reference keyframe (lRit), the timestamp (lT) and a flag
     // which is true when tracking failed (lbL).
-    list<ORB_SLAM2::KeyFrame*>::iterator lRit = mpTracker->mlpReferences.begin();
-    list<double>::iterator lT = mpTracker->mlFrameTimes.begin();
-    list<bool>::iterator lbL = mpTracker->mlbLost.begin();
+    std::list<KeyFrame*> const& frame_ref_key_frames = mpTracker->get_frame_reference_key_frames();
+    auto lRit = frame_ref_key_frames.begin();
 
-    for (auto lit=mpTracker->mlRelativeFramePoses.begin(), lend=mpTracker->mlRelativeFramePoses.end();
+    std::list<double> const& frame_times = mpTracker->get_frame_times();
+    auto lT = frame_times.begin();
+
+    std::list<bool> const& frame_lost_flags = mpTracker->get_frame_lost_flags();
+    auto lbL = frame_lost_flags.begin();
+
+    std::list<cv::Mat> const& frame_relative_poses = mpTracker->get_frame_relative_poses();
+
+    for (auto lit = frame_relative_poses.begin(), lend = frame_relative_poses.end();
         lit != lend; ++lit, ++lRit, ++lT, ++lbL)
     {
-        if(*lbL)
+        if (*lbL)
             continue;
 
         KeyFrame* pKF = *lRit;
@@ -351,10 +324,15 @@ void System::SaveTrajectoryKITTI(const string &filename)
 
     // For each frame we have a reference keyframe (lRit), the timestamp (lT) and a flag
     // which is true when tracking failed (lbL).
-    auto lRit = mpTracker->mlpReferences.begin();
-    auto lT = mpTracker->mlFrameTimes.begin();
+    std::list<KeyFrame*> const& frame_reference_key_frames = mpTracker->get_frame_reference_key_frames();
+    auto lRit = frame_reference_key_frames.begin();
 
-    for (auto lit = mpTracker->mlRelativeFramePoses.begin(), lend = mpTracker->mlRelativeFramePoses.end();
+    std::list<double> const& frame_times = mpTracker->get_frame_times();
+    auto lT = frame_times.begin();
+
+    std::list<cv::Mat> const& frame_relative_poses = mpTracker->get_frame_relative_poses();
+
+    for (auto lit = frame_relative_poses.begin(), lend = frame_relative_poses.end();
         lit != lend; ++lit, ++lRit, ++lT)
     {
         KeyFrame* pKF = *lRit;
@@ -387,13 +365,6 @@ void System::locked_handle_activate_localization()
     if (mbActivateLocalizationMode)
     {
         mpLocalMapper->pause();
-
-        // Wait until Local Mapping has effectively stopped
-        while (!mpLocalMapper->is_paused())
-        {
-            std::this_thread::sleep_for(std::chrono::microseconds(1000));
-        }
-
         mpTracker->InformOnlyTracking(true);
         mbActivateLocalizationMode = false;
     }
@@ -404,7 +375,7 @@ void System::locked_handle_deactivate_localization()
     if (mbDeactivateLocalizationMode)
     {
         mpTracker->InformOnlyTracking(false);
-        mpLocalMapper->Release();
+        mpLocalMapper->resume();
         mbDeactivateLocalizationMode = false;
     }
 }

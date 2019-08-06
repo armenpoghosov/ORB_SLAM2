@@ -21,15 +21,12 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-#include "MapPoint.h"
-#include "ORBVocabulary.h"
-#include "KeyFrame.h"
-#include "ORBextractor.h"
+#include <opencv2/opencv.hpp>
 
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 
-#include <opencv2/opencv.hpp>
+#include "ORBVocabulary.h"
 
 #include <cstdint>
 #include <vector>
@@ -39,6 +36,7 @@ namespace ORB_SLAM2
 
 class MapPoint;
 class KeyFrame;
+class ORBextractor;
 
 class Frame
 {
@@ -97,7 +95,7 @@ public:
     // Compute the cell of a keypoint (return false if outside the grid)
     bool PosInGrid(cv::KeyPoint const& kp, int& posX, int& posY);
 
-    vector<size_t> GetFeaturesInArea(float x, float y, float r,
+    std::vector<std::size_t> GetFeaturesInArea(float x, float y, float r,
         int minLevel = -1, int maxLevel = -1) const;
 
     // Search a match for each keypoint in the left image to a keypoint in the right image.
@@ -108,7 +106,7 @@ public:
     void ComputeStereoFromRGBD(const cv::Mat &imDepth);
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
-    cv::Mat UnprojectStereo(const int &i);
+    cv::Mat UnprojectStereo(std::size_t kp_index);
 
 public:
 
@@ -196,10 +194,10 @@ public:
     int                         mnScaleLevels;
     float                       mfScaleFactor;
     float                       mfLogScaleFactor;
-    vector<float>               mvScaleFactors;
-    vector<float>               mvInvScaleFactors;
-    vector<float>               mvLevelSigma2;
-    vector<float>               mvInvLevelSigma2;
+    std::vector<float>          mvScaleFactors;
+    std::vector<float>          mvInvScaleFactors;
+    std::vector<float>          mvLevelSigma2;
+    std::vector<float>          mvInvLevelSigma2;
 
     // Undistorted Image Bounds (computed once).
     static float mnMinX;

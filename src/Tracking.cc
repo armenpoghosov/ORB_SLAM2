@@ -34,13 +34,6 @@
 #include"Optimizer.h"
 #include"PnPsolver.h"
 
-#include<iostream>
-
-#include<mutex>
-
-
-using namespace std;
-
 namespace ORB_SLAM2
 {
 
@@ -164,20 +157,20 @@ cv::Mat Tracking::GrabImageStereo(cv::Mat const& imRectLeft, cv::Mat const& imRe
     mImGray = imRectLeft;
     cv::Mat imGrayRight = imRectRight;
 
-    if(mImGray.channels()==3)
+    if (mImGray.channels() == 3)
     {
-        if(mbRGB)
+        if (mbRGB)
         {
-            cvtColor(mImGray,mImGray,CV_RGB2GRAY);
-            cvtColor(imGrayRight,imGrayRight, CV_RGB2GRAY);
+            cvtColor(mImGray, mImGray, CV_RGB2GRAY);
+            cvtColor(imGrayRight, imGrayRight, CV_RGB2GRAY);
         }
         else
         {
-            cvtColor(mImGray,mImGray, CV_BGR2GRAY);
-            cvtColor(imGrayRight,imGrayRight, CV_BGR2GRAY);
+            cvtColor(mImGray, mImGray, CV_BGR2GRAY);
+            cvtColor(imGrayRight, imGrayRight, CV_BGR2GRAY);
         }
     }
-    else if(mImGray.channels()==4)
+    else if (mImGray.channels() == 4)
     {
         if(mbRGB)
         {
@@ -197,7 +190,6 @@ cv::Mat Tracking::GrabImageStereo(cv::Mat const& imRectLeft, cv::Mat const& imRe
 
     return mCurrentFrame.mTcw.clone();
 }
-
 
 cv::Mat Tracking::GrabImageRGBD(cv::Mat const& imRGB, cv::Mat const& imD, double timestamp)
 {
@@ -219,7 +211,7 @@ cv::Mat Tracking::GrabImageRGBD(cv::Mat const& imRGB, cv::Mat const& imD, double
             cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
     }
 
-    if((fabs(mDepthMapFactor-1.0f)>1e-5) || imDepth.type()!=CV_32F)
+    if ((fabs(mDepthMapFactor-1.0f)>1e-5) || imDepth.type()!=CV_32F)
         imDepth.convertTo(imDepth,CV_32F,mDepthMapFactor);
 
     mCurrentFrame = Frame(mImGray,imDepth,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
@@ -228,7 +220,6 @@ cv::Mat Tracking::GrabImageRGBD(cv::Mat const& imRGB, cv::Mat const& imD, double
 
     return mCurrentFrame.mTcw.clone();
 }
-
 
 cv::Mat Tracking::GrabImageMonocular(cv::Mat const& im, double timestamp)
 {
@@ -697,7 +688,7 @@ bool Tracking::TrackReferenceKeyFrame()
 
     // We perform first an ORB matching with the reference keyframe
     // If enough matches are found we setup a PnP solver
-    ORBmatcher matcher(0.7, true);
+    ORBmatcher matcher(0.7f, true);
 
     std::vector<MapPoint*> vpMapPointMatches;
     if (matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches) < 15)
@@ -787,7 +778,7 @@ void Tracking::UpdateLastFrame()
 
 bool Tracking::TrackWithMotionModel()
 {
-    ORBmatcher matcher(0.9, true);
+    ORBmatcher matcher(0.9f, true);
 
     // Update last frame pose according to its reference keyframe
     // Create "visual odometry" points if in Localization Mode
@@ -796,7 +787,7 @@ bool Tracking::TrackWithMotionModel()
     mCurrentFrame.SetPose(mVelocity * mLastFrame.mTcw);
 
     // Project points seen in previous frame
-    int th = mSensor != System::STEREO ? 15 : 7;
+    float th = mSensor != System::STEREO ? 15.f : 7.f;
 
     // If few matches, uses a wider window search
     std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), nullptr);
@@ -804,7 +795,7 @@ bool Tracking::TrackWithMotionModel()
     if (nmatches < 20)
     {
         std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), nullptr);
-        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th, mSensor == System::MONOCULAR);
+        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2.f * th, mSensor == System::MONOCULAR);
     }
 
     if (nmatches < 20)
@@ -889,7 +880,7 @@ bool Tracking::NeedNewKeyFrame()
     if (mbOnlyTracking || mpLocalMapper->is_paused() || mpLocalMapper->is_pause_requested())
         return false;
 
-    int const nKFs = mpMap->KeyFramesInMap();
+    std::size_t const nKFs = mpMap->KeyFramesInMap();
 
     // Do not insert keyframes if not enough frames have passed from last relocalisation
     if (mCurrentFrame.m_id < mnLastRelocFrameId + mMaxFrames && nKFs > mMaxFrames)
@@ -950,7 +941,6 @@ bool Tracking::NeedNewKeyFrame()
             return true;
         }
 
-        mpLocalMapper->InterruptBA();
         return mSensor != System::MONOCULAR && mpLocalMapper->queued_key_frames() < 3;
     }
 
@@ -959,9 +949,6 @@ bool Tracking::NeedNewKeyFrame()
 
 void Tracking::CreateNewKeyFrame()
 {
-    if (!mpLocalMapper->SetNotStop(true))
-        return;
-
     KeyFrame* pKF = new KeyFrame(mCurrentFrame, mpMap, mpKeyFrameDB);
 
     mpReferenceKF = pKF;
@@ -1031,8 +1018,6 @@ void Tracking::CreateNewKeyFrame()
 
     mpLocalMapper->enqueue_key_frame(pKF);
 
-    mpLocalMapper->SetNotStop(false);
-
     mnLastKeyFrameId = mCurrentFrame.m_id;
     mpLastKeyFrame = pKF;
 }
@@ -1074,7 +1059,7 @@ void Tracking::SearchLocalPoints()
 
     if (nToMatch > 0)
     {
-        ORBmatcher matcher(0.8, true);
+        ORBmatcher matcher(0.8f, true);
 
         int th = mSensor == System::RGBD ? 1 : 3;
 
@@ -1082,7 +1067,7 @@ void Tracking::SearchLocalPoints()
         if (mCurrentFrame.m_id < mnLastRelocFrameId + 2)
             th = 5;
 
-        matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th);
+        matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, (float)th);
     }
 }
 
@@ -1142,7 +1127,7 @@ void Tracking::UpdateLocalKeyFrames()
     if (keyframeCounter.empty())
         return;
 
-    int max = 0;
+    std::size_t max = 0;
     KeyFrame* pKFmax = nullptr;
 
     mvpLocalKeyFrames.clear();
@@ -1227,11 +1212,11 @@ bool Tracking::Relocalization()
     if (vpCandidateKFs.empty())
         return false;
 
-    int const nKFs = vpCandidateKFs.size();
+    std::size_t const nKFs = vpCandidateKFs.size();
 
     // We perform first an ORB matching with each candidate
     // If enough matches are found we setup a PnP solver
-    ORBmatcher matcher(0.75,true);
+    ORBmatcher matcher(0.75f, true);
 
     vector<PnPsolver*> vpPnPsolvers;
     vpPnPsolvers.resize(nKFs);
@@ -1244,7 +1229,7 @@ bool Tracking::Relocalization()
 
     int nCandidates = 0;
 
-    for (int i = 0; i < nKFs; ++i)
+    for (std::size_t i = 0; i < nKFs; ++i)
     {
         KeyFrame* pKF = vpCandidateKFs[i];
 
@@ -1262,7 +1247,7 @@ bool Tracking::Relocalization()
         }
 
         PnPsolver* pSolver = new PnPsolver(mCurrentFrame, vvpMapPointMatches[i]);
-        pSolver->SetRansacParameters(0.99, 10, 300, 4, 0.5, 5.991);
+        pSolver->SetRansacParameters(0.99, 10, 300, 4, 0.5f, 5.991f);
         vpPnPsolvers[i] = pSolver;
         ++nCandidates;
     }
@@ -1270,11 +1255,11 @@ bool Tracking::Relocalization()
     // Alternatively perform some iterations of P4P RANSAC
     // Until we found a camera pose supported by enough inliers
     bool bMatch = false;
-    ORBmatcher matcher2(0.9, true);
+    ORBmatcher matcher2(0.9f, true);
 
     while (nCandidates > 0 && !bMatch)
     {
-        for (int i = 0; i < nKFs; ++i)
+        for (std::size_t i = 0; i < nKFs; ++i)
         {
             if(vbDiscarded[i])
                 continue;
@@ -1369,7 +1354,6 @@ bool Tracking::Relocalization()
     mnLastRelocFrameId = mCurrentFrame.m_id;
 
     return true;
-
 }
 
 void Tracking::Reset()

@@ -106,7 +106,7 @@ protected:
 
     bool DetectLoop();
     bool ComputeSim3();
-    void SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap);
+    void SearchAndFuse(KeyFrameAndPose const& CorrectedPosesMap);
     void CorrectLoop();
 
     void ResetIfRequested();

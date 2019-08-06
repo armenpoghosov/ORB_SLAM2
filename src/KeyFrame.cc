@@ -19,9 +19,10 @@
 */
 
 #include "KeyFrame.h"
+
 #include "Converter.h"
+#include "Map.h"
 #include "ORBmatcher.h"
-#include<mutex>
 
 namespace ORB_SLAM2
 {
@@ -387,7 +388,7 @@ void KeyFrame::SetErase()
 void KeyFrame::SetBadFlag()
 {
     {
-        unique_lock<mutex> lock(mMutexConnections);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
 
         if (mnId == 0)
             return;
@@ -407,8 +408,8 @@ void KeyFrame::SetBadFlag()
             pMP->EraseObservation(this);
 
     {
-        unique_lock<mutex> lock(mMutexConnections);
-        unique_lock<mutex> lock1(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexConnections);
+        std::unique_lock<std::mutex> lock1(mMutexFeatures);
 
         mConnectedKeyFrameWeights.clear();
         mvpOrderedConnectedKeyFrames.clear();
@@ -467,6 +468,7 @@ void KeyFrame::SetBadFlag()
 
         mpParent->EraseChild(this);
         mTcp = m_Tcw * mpParent->GetPoseInverse();
+
         mbBad = true;
     }
 

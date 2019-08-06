@@ -397,12 +397,6 @@ void LoopClosing::CorrectLoop()
     // Avoid new keyframes to be inserted while correcting the loop
     mpLocalMapper->pause();
 
-    // Wait until Local Mapping has effectively stopped
-    while (!mpLocalMapper->is_paused())
-    {
-        std::this_thread::sleep_for(std::chrono::microseconds(1000));
-    }
-
     // If a Global Bundle Adjustment is running, abort it
     if (isRunningGBA())
     {
@@ -563,35 +557,34 @@ void LoopClosing::CorrectLoop()
     mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->mnId);
 
     // Loop closed. Release Local Mapping.
-    mpLocalMapper->Release();
+    mpLocalMapper->resume();
 
     mLastLoopKFid = mpCurrentKF->mnId;
 }
 
-void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap)
+void LoopClosing::SearchAndFuse(KeyFrameAndPose const& CorrectedPosesMap)
 {
     ORBmatcher matcher(0.8, true);
 
-    for(KeyFrameAndPose::const_iterator mit=CorrectedPosesMap.begin(), mend=CorrectedPosesMap.end(); mit!=mend;mit++)
+    for (auto const& pair : CorrectedPosesMap)
     {
-        KeyFrame* pKF = mit->first;
+        KeyFrame* pKF = pair.first;
+        g2o::Sim3 g2oScw = pair.second;
 
-        g2o::Sim3 g2oScw = mit->second;
         cv::Mat cvScw = Converter::toCvMat(g2oScw);
 
-        vector<MapPoint*> vpReplacePoints(mvpLoopMapPoints.size(),static_cast<MapPoint*>(NULL));
-        matcher.Fuse(pKF,cvScw,mvpLoopMapPoints,4,vpReplacePoints);
+        std::vector<MapPoint*> vpReplacePoints(mvpLoopMapPoints.size());
+        matcher.Fuse(pKF, cvScw, mvpLoopMapPoints, 4, vpReplacePoints);
 
         // Get Map Mutex
-        unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
-        const int nLP = mvpLoopMapPoints.size();
-        for(int i=0; i<nLP;i++)
+        std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
+
+        std::size_t const nLP = mvpLoopMapPoints.size();
+        for (std::size_t i = 0; i < nLP; ++i)
         {
             MapPoint* pRep = vpReplacePoints[i];
-            if(pRep)
-            {
+            if (pRep != nullptr)
                 pRep->Replace(mvpLoopMapPoints[i]);
-            }
         }
     }
 }
@@ -651,12 +644,6 @@ void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
             cout << "Updating map ..." << endl;
 
             mpLocalMapper->pause();
-
-            // Wait until Local Mapping has effectively stopped
-            while (!mpLocalMapper->is_paused() && !mpLocalMapper->isFinished())
-            {
-                std::this_thread::sleep_for(std::chrono::microseconds(1000));
-            }
 
             // Get Map Mutex
             std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
@@ -730,7 +717,7 @@ void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
 
             mpMap->InformNewBigChange();
 
-            mpLocalMapper->Release();
+            mpLocalMapper->resume();
 
             cout << "Map updated!" << endl;
         }

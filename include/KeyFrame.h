@@ -226,39 +226,39 @@ public:
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
 
-    static uint64_t         s_next_id;
+    static uint64_t                 s_next_id;
 
-    uint64_t                mnId;
-    uint64_t const          mnFrameId;
+    uint64_t                        mnId;
+    uint64_t const                  mnFrameId;
 
-    double const            mTimeStamp;
+    double const                    mTimeStamp;
 
     // Grid (to speed up feature matching)
-    int const               mnGridCols;
-    int const               mnGridRows;
-    float const             mfGridElementWidthInv;
-    float const             mfGridElementHeightInv;
+    int const                       mnGridCols;
+    int const                       mnGridRows;
+    float const                     mfGridElementWidthInv;
+    float const                     mfGridElementHeightInv;
 
     // Variables used by the tracking
-    uint64_t                mnTrackReferenceForFrame;
-    uint64_t                mnFuseTargetForKF;
+    uint64_t                        mnTrackReferenceForFrame;
+    uint64_t                        mnFuseTargetForKF;
 
     // Variables used by the local mapping
-    uint64_t                mnBALocalForKF;
-    uint64_t                mnBAFixedForKF;
+    uint64_t                        mnBALocalForKF;
+    uint64_t                        mnBAFixedForKF;
 
     // Variables used by the keyframe database
-    uint64_t                mnLoopQuery;
-    int                     mnLoopWords;
-    float                   mLoopScore;
-    uint64_t                mnRelocQuery;
-    int                     mnRelocWords;
-    float                   mRelocScore;
+    uint64_t                        mnLoopQuery;
+    int                             mnLoopWords;
+    float                           mLoopScore;
+    uint64_t                        mnRelocQuery;
+    int                             mnRelocWords;
+    float                           mRelocScore;
 
     // Variables used by loop closing
-    cv::Mat                 mTcwGBA;
-    cv::Mat                 mTcwBefGBA;
-    uint64_t                mnBAGlobalForKF;
+    cv::Mat                         mTcwGBA;
+    cv::Mat                         mTcwBefGBA;
+    uint64_t                        mnBAGlobalForKF;
 
     // Calibration parameters
     float const                     fx;
@@ -309,15 +309,15 @@ public:
 protected:
 
     // SE3 pose and inverse
-    cv::Mat                     m_Tcw;
-    cv::Mat                     m_Twc;
+    cv::Mat                         m_Tcw;
+    cv::Mat                         m_Twc;
 
     // MapPoints associated to keypoints
-    std::vector<MapPoint*>      mvpMapPoints;
+    std::vector<MapPoint*>          mvpMapPoints;
 
     // BoW
-    KeyFrameDatabase*           mpKeyFrameDB;
-    ORBVocabulary*              mpORBvocabulary;
+    KeyFrameDatabase*               mpKeyFrameDB;
+    ORBVocabulary*                  mpORBvocabulary;
 
     // Grid over the image to speed up feature matching
     std::vector<std::vector<std::vector<size_t> > >

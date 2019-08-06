@@ -41,14 +41,14 @@ FrameDrawer::FrameDrawer(Map* pMap)
 cv::Mat FrameDrawer::DrawFrame()
 {
     cv::Mat im;
-    vector<cv::KeyPoint> vIniKeys; // Initialization: KeyPoints in reference frame
-    vector<int> vMatches; // Initialization: correspondeces with reference keypoints
-    vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
-    vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
+    std::vector<cv::KeyPoint> vIniKeys; // Initialization: KeyPoints in reference frame
+    std::vector<int> vMatches; // Initialization: correspondeces with reference keypoints
+    std::vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
+    std::vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
     int state; // Tracking state
 
     {
-        unique_lock<mutex> lock(mMutex);
+        std::unique_lock<std::mutex> lock(mMutex);
 
         state = mState;
         if (mState == Tracking::SYSTEM_NOT_READY)
@@ -113,19 +113,16 @@ cv::Mat FrameDrawer::DrawFrame()
             pt2.x = vCurrentKeys[i].pt.x + r;
             pt2.y = vCurrentKeys[i].pt.y + r;
 
+            cv::Scalar color = vbMap[i] ? cv::Scalar(0, 255, 0) : cv::Scalar(255, 0, 0);
+
+            cv::rectangle(im, pt1, pt2, color);
+            cv::circle(im, vCurrentKeys[i].pt, 2, color, -1);
+
             // This is a match to a MapPoint in the map
             if (vbMap[i])
-            {
-                cv::rectangle(im, pt1, pt2, cv::Scalar(0, 255, 0));
-                cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 255, 0), -1);
                 ++mnTracked;
-            }
             else // This is match to a "visual odometry" MapPoint created in the last frame
-            {
-                cv::rectangle(im, pt1, pt2, cv::Scalar(255, 0, 0));
-                cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(255, 0, 0), -1);
                 ++mnTrackedVO;
-            }
         }
     }
 
@@ -150,21 +147,18 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
         else
             s << "LOCALIZATION | ";
 
-        int nKFs = mpMap->KeyFramesInMap();
-        int nMPs = mpMap->MapPointsInMap();
+        std::size_t nKFs = mpMap->KeyFramesInMap();
+        std::size_t nMPs = mpMap->MapPointsInMap();
 
         s << "KFs: " << nKFs << ", MPs: " << nMPs << ", Matches: " << mnTracked;
-        if (mnTrackedVO>0)
+
+        if (mnTrackedVO > 0)
             s << ", + VO matches: " << mnTrackedVO;
     }
     else if (nState == Tracking::LOST)
-    {
         s << " TRACK LOST. TRYING TO RELOCALIZE ";
-    }
-    else if(nState==Tracking::SYSTEM_NOT_READY)
-    {
+    else if (nState==Tracking::SYSTEM_NOT_READY)
         s << " LOADING ORB VOCABULARY. PLEASE WAIT...";
-    }
 
     int baseline = 0;
     cv::Size textSize = cv::getTextSize(s.str(), cv::FONT_HERSHEY_PLAIN, 1, 1, &baseline);
@@ -177,30 +171,32 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
 void FrameDrawer::Update(Tracking *pTracker)
 {
-    unique_lock<mutex> lock(mMutex);
+    std::unique_lock<std::mutex> lock(mMutex);
 
-    pTracker->mImGray.copyTo(mIm);
+    // PAE: TODO: pTracker->mImGray.copyTo(mIm);
+    pTracker->get_current_frame().mpORBextractorLeft->mvImagePyramid[7].copyTo(mIm);
 
-    mvCurrentKeys = pTracker->mCurrentFrame.mvKeys;
+
+    mvCurrentKeys = pTracker->get_current_frame().mvKeys;
     N = mvCurrentKeys.size();
 
     mvbVO = vector<bool>(N);
     mvbMap = vector<bool>(N);
 
-    mbOnlyTracking = pTracker->mbOnlyTracking;
+    mbOnlyTracking = pTracker->is_only_tracking();
 
-    if (pTracker->mLastProcessedState == Tracking::NOT_INITIALIZED)
+    if (pTracker->get_last_state() == Tracking::NOT_INITIALIZED)
     {
-        mvIniKeys = pTracker->mInitialFrame.mvKeys;
-        mvIniMatches = pTracker->mvIniMatches;
+        mvIniKeys = pTracker->get_initial_frame().mvKeys;
+        mvIniMatches = pTracker->get_ini_matches();
     }
-    else if (pTracker->mLastProcessedState == Tracking::OK)
+    else if (pTracker->get_last_state() == Tracking::OK)
     {
-        for (int i = 0; i < N; ++i)
+        for (std::size_t i = 0; i < N; ++i)
         {
-            MapPoint* pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
+            MapPoint* pMP = pTracker->get_current_frame().mvpMapPoints[i];
 
-            if (pMP == nullptr || pTracker->mCurrentFrame.mvbOutlier[i])
+            if (pMP == nullptr || pTracker->get_current_frame().mvbOutlier[i])
                 continue;
 
             if (pMP->Observations() > 0)
@@ -210,7 +206,7 @@ void FrameDrawer::Update(Tracking *pTracker)
         }
     }
 
-    mState = (int)pTracker->mLastProcessedState;
+    mState = (int)pTracker->get_last_state();
 }
 
 } //namespace ORB_SLAM

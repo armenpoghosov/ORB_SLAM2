@@ -19,9 +19,9 @@
 */
 
 #include "MapPoint.h"
-#include "ORBmatcher.h"
 
-#include<mutex>
+#include "Map.h"
+#include "ORBmatcher.h"
 
 namespace ORB_SLAM2
 {
@@ -84,13 +84,13 @@ MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF)
     mNormalVector = mNormalVector / cv::norm(mNormalVector);
 
     cv::Mat PC = Pos - Ow;
-    const float dist = (float)cv::norm(PC);
-    const int level = pFrame->mvKeysUn[idxF].octave;
-    const float levelScaleFactor =  pFrame->mvScaleFactors[level];
-    const int nLevels = pFrame->mnScaleLevels;
+    float const dist = (float)cv::norm(PC);
+    int const level = pFrame->mvKeysUn[idxF].octave;
+    float const levelScaleFactor =  pFrame->mvScaleFactors[level];
+    int const nLevels = pFrame->mnScaleLevels;
 
     mfMaxDistance = dist*levelScaleFactor;
-    mfMinDistance = mfMaxDistance/pFrame->mvScaleFactors[nLevels-1];
+    mfMinDistance = mfMaxDistance / pFrame->mvScaleFactors[nLevels - 1];
 
     pFrame->mDescriptors.row(idxF).copyTo(mDescriptor);
 
@@ -122,7 +122,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 {
     bool bBad = false;
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
 
         auto it = mObservations.find(pKF);
         if (it != mObservations.end())
@@ -151,8 +151,8 @@ void MapPoint::SetBadFlag()
 {
     std::unordered_map<KeyFrame*, size_t> obs;
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPos);
+        std::unique_lock<std::mutex> lock1(mMutexFeatures);
+        std::unique_lock<std::mutex> lock2(mMutexPos);
         mbBad = true;
         obs.swap(mObservations);
     }
@@ -173,8 +173,8 @@ void MapPoint::Replace(MapPoint* pMP)
     std::unordered_map<KeyFrame*, size_t> obs;
 
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPos);
+        std::unique_lock<std::mutex> lock1(mMutexFeatures);
+        std::unique_lock<std::mutex> lock2(mMutexPos);
 
         obs.swap(mObservations);
         mbBad = true;
@@ -267,7 +267,6 @@ void MapPoint::ComputeDistinctiveDescriptors()
         std::sort(vDists.begin(), vDists.end());
 
         int median = vDists[(std::size_t)(0.5 * (N - 1))];
-
         if (median < BestMedian)
         {
             BestMedian = median;
@@ -276,7 +275,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
     }
 
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         mDescriptor = vDescriptors[BestIdx].clone();
     }
 }
@@ -285,11 +284,11 @@ void MapPoint::UpdateNormalAndDepth()
 {
     cv::Mat Pos;
     KeyFrame* pRefKF;
-    std::unordered_map<KeyFrame*, size_t> observations;
+    std::unordered_map<KeyFrame*, std::size_t> observations;
 
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPos);
+        std::unique_lock<std::mutex> lock1(mMutexFeatures);
+        std::unique_lock<std::mutex> lock2(mMutexPos);
 
         if (mbBad)
             return;
@@ -320,7 +319,7 @@ void MapPoint::UpdateNormalAndDepth()
     int const nLevels = pRefKF->mnScaleLevels;
 
     {
-        unique_lock<mutex> lock3(mMutexPos);
+        std::unique_lock<std::mutex> lock3(mMutexPos);
         mfMaxDistance = dist * levelScaleFactor;
         mfMinDistance = mfMaxDistance / pRefKF->mvScaleFactors[nLevels - 1];
         mNormalVector = normal / (double)n;
@@ -331,7 +330,7 @@ int MapPoint::PredictScale(float currentDist, KeyFrame* pKF) const
 {
     float ratio;
     {
-        unique_lock<mutex> lock(mMutexPos);
+        std::unique_lock<std::mutex> lock(mMutexPos);
         ratio = mfMaxDistance / currentDist;
     }
 
@@ -348,7 +347,7 @@ int MapPoint::PredictScale(float currentDist, Frame* pF) const
 {
     float ratio;
     {
-        unique_lock<mutex> lock(mMutexPos);
+        std::unique_lock<std::mutex> lock(mMutexPos);
         ratio = mfMaxDistance / currentDist;
     }
 

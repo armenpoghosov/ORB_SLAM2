@@ -35,7 +35,8 @@
 
 using namespace std;
 
-namespace DBoW2 {
+namespace DBoW2
+{
 
 /// @param TDescriptor class of descriptor
 /// @param F class of descriptor functions
@@ -203,8 +204,7 @@ public:
 
         for (ret = m_words[wid]->id; levelsup > 0 && ret != 0;
             --levelsup, ret = m_nodes[ret].parent)
-        {
-        }
+        {}
 
         return ret;
     }
@@ -242,15 +242,17 @@ public:
     * @param wid word id
     * @return descriptor
     */
-    virtual TDescriptor getWord(WordId wid) const;
+    virtual TDescriptor getWord(WordId wid) const
+        { return m_words[wid]->descriptor; }
   
     /**
     * Returns the weight of a word
     * @param wid word id
     * @return weight
     */
-    virtual WordValue getWordWeight(WordId wid) const;
-  
+    virtual WordValue getWordWeight(WordId wid) const
+        { return m_words[wid]->weight; }
+
     /** 
     * Returns the weighting method
     * @return weighting method
@@ -817,85 +819,73 @@ void TemplatedVocabulary<TDescriptor, F>::initiateClusters
 
 template<class TDescriptor, class F>
 void TemplatedVocabulary<TDescriptor,F>::initiateClustersKMpp(
-  const vector<pDescriptor> &pfeatures, vector<TDescriptor> &clusters) const
+    std::vector<pDescriptor> const& pfeatures, std::vector<TDescriptor>& clusters) const
 {
-  // Implements kmeans++ seeding algorithm
-  // Algorithm:
-  // 1. Choose one center uniformly at random from among the data points.
-  // 2. For each data point x, compute D(x), the distance between x and the nearest 
-  //    center that has already been chosen.
-  // 3. Add one new data point as a center. Each point x is chosen with probability 
-  //    proportional to D(x)^2.
-  // 4. Repeat Steps 2 and 3 until k centers have been chosen.
-  // 5. Now that the initial centers have been chosen, proceed using standard k-means 
-  //    clustering.
+    // Implements kmeans++ seeding algorithm
+    // Algorithm:
+    // 1. Choose one center uniformly at random from among the data points.
+    // 2. For each data point x, compute D(x), the distance between x and the nearest 
+    //    center that has already been chosen.
+    // 3. Add one new data point as a center. Each point x is chosen with probability 
+    //    proportional to D(x)^2.
+    // 4. Repeat Steps 2 and 3 until k centers have been chosen.
+    // 5. Now that the initial centers have been chosen, proceed using standard k-means 
+    //    clustering.
 
-  DUtils::Random::SeedRandOnce();
+    DUtils::Random::SeedRandOnce();
 
-  clusters.resize(0);
-  clusters.reserve(m_k);
-  vector<double> min_dists(pfeatures.size(), std::numeric_limits<double>::max());
+    clusters.resize(0);
+    clusters.reserve(m_k);
+    std::vector<double> min_dists(pfeatures.size(), std::numeric_limits<double>::max());
   
-  // 1.
-  
-  std::size_t ifeature = DUtils::Random::RandomInt(0, pfeatures.size() - 1);
-  
-  // create first cluster
-  clusters.push_back(*pfeatures[ifeature]);
+    // 1.
+    std::size_t ifeature = DUtils::Random::RandomInt(0, (int)(pfeatures.size() - 1));
 
-  // compute the initial distances
-  typename vector<pDescriptor>::const_iterator fit;
-  vector<double>::iterator dit;
-  dit = min_dists.begin();
-  for(fit = pfeatures.begin(); fit != pfeatures.end(); ++fit, ++dit)
-  {
-    *dit = F::distance(*(*fit), clusters.back());
-  }  
+    // create first cluster
+    clusters.push_back(*pfeatures[ifeature]);
 
-  while((int)clusters.size() < m_k)
-  {
-    // 2.
-    dit = min_dists.begin();
-    for(fit = pfeatures.begin(); fit != pfeatures.end(); ++fit, ++dit)
+    // compute the initial distances
+    typename vector<pDescriptor>::const_iterator fit;
+  
+    vector<double>::iterator dit = min_dists.begin();
+    for (fit = pfeatures.begin(); fit != pfeatures.end(); ++fit, ++dit)
+        *dit = F::distance(*(*fit), clusters.back());
+
+    while (clusters.size() < (std::size_t)m_k)
     {
-      if(*dit > 0)
-      {
-        double dist = F::distance(*(*fit), clusters.back());
-        if(dist < *dit) *dit = dist;
-      }
-    }
+        // 2.
+        dit = min_dists.begin();
+        for(fit = pfeatures.begin(); fit != pfeatures.end(); ++fit, ++dit)
+        {
+            if(*dit > 0)
+            {
+                double dist = F::distance(*(*fit), clusters.back());
+                if (dist < *dit)
+                    *dit = dist;
+            }
+        }
     
-    // 3.
-    double dist_sum = std::accumulate(min_dists.begin(), min_dists.end(), 0.0);
+        // 3.
+        double dist_sum = std::accumulate(min_dists.begin(), min_dists.end(), 0.0);
+        if (dist_sum <= 0.)
+            break;
 
-    if(dist_sum > 0)
-    {
-      double cut_d;
-      do
-      {
-        cut_d = DUtils::Random::RandomValue<double>(0, dist_sum);
-      } while(cut_d == 0.0);
+        double cut_d;
+        do
+            cut_d = DUtils::Random::RandomValue<double>(0, dist_sum);
+        while (cut_d == 0.);
 
-      double d_up_now = 0;
-      for(dit = min_dists.begin(); dit != min_dists.end(); ++dit)
-      {
-        d_up_now += *dit;
-        if(d_up_now >= cut_d) break;
-      }
+        double d_up_now = 0;
+        for (dit = min_dists.begin(); dit != min_dists.end() && (d_up_now += *dit) < cut_d; ++dit)
+        {}
       
-      if(dit == min_dists.end()) 
-        ifeature = pfeatures.size()-1;
-      else
-        ifeature = dit - min_dists.begin();
+        if (dit == min_dists.end()) 
+            ifeature = pfeatures.size() - 1;
+        else
+            ifeature = dit - min_dists.begin();
       
-      clusters.push_back(*pfeatures[ifeature]);
-
-    } // if dist_sum > 0
-    else
-      break;
-      
-  } // while(used_clusters < m_k)
-
+        clusters.push_back(*pfeatures[ifeature]);
+    }
 }
 
 // --------------------------------------------------------------------------
@@ -975,15 +965,13 @@ void TemplatedVocabulary<TDescriptor, F>::setNodeWeights(
 // --------------------------------------------------------------------------
 
 template<class TDescriptor, class F>
-float TemplatedVocabulary<TDescriptor,F>::getEffectiveLevels() const
+float TemplatedVocabulary<TDescriptor, F>::getEffectiveLevels() const
 {
-  long sum = 0;
-  typename std::vector<Node*>::const_iterator wit;
-  for(wit = m_words.begin(); wit != m_words.end(); ++wit)
-  {
-    const Node *p = *wit;
-    
-    for(; p->id != 0; sum++) p = &m_nodes[p->parent];
+    long sum = 0;
+    for (auto wit = m_words.begin(); wit != m_words.end(); ++wit)
+    {
+        for (Node const* p = *wit; p->id != 0; ++sum, p = &m_nodes[p->parent])
+        {}
   }
   
   return (float)((double)sum / (double)m_words.size());
@@ -992,94 +980,68 @@ float TemplatedVocabulary<TDescriptor,F>::getEffectiveLevels() const
 // --------------------------------------------------------------------------
 
 template<class TDescriptor, class F>
-TDescriptor TemplatedVocabulary<TDescriptor,F>::getWord(WordId wid) const
+WordId TemplatedVocabulary<TDescriptor, F>::transform(TDescriptor const& feature) const
 {
-  return m_words[wid]->descriptor;
-}
+    if(empty())
+        return 0;
 
-// --------------------------------------------------------------------------
-
-template<class TDescriptor, class F>
-WordValue TemplatedVocabulary<TDescriptor, F>::getWordWeight(WordId wid) const
-{
-  return m_words[wid]->weight;
-}
-
-// --------------------------------------------------------------------------
-
-template<class TDescriptor, class F>
-WordId TemplatedVocabulary<TDescriptor, F>::transform
-  (const TDescriptor& feature) const
-{
-  if(empty())
-  {
-    return 0;
-  }
-  
-  WordId wid;
-  transform(feature, wid);
-  return wid;
+    WordId wid;
+    transform(feature, wid);
+    return wid;
 }
 
 // --------------------------------------------------------------------------
 
 template<class TDescriptor, class F>
 void TemplatedVocabulary<TDescriptor,F>::transform(
-  const std::vector<TDescriptor>& features, BowVector &v) const
+    std::vector<TDescriptor> const& features, BowVector& v) const
 {
-  v.clear();
+    v.clear();
   
-  if(empty())
-  {
-    return;
-  }
+    if (empty())
+        return;
 
-  // normalize 
-  LNorm norm;
-  bool must = m_scoring_object->mustNormalize(norm);
+    // normalize 
+    LNorm norm;
+    bool const must = m_scoring_object->mustNormalize(norm);
 
-	typename vector<TDescriptor>::const_iterator fit;
-
-  if(m_weighting == TF || m_weighting == TF_IDF)
-  {
-    for(fit = features.begin(); fit < features.end(); ++fit)
+    if (m_weighting == TF || m_weighting == TF_IDF)
     {
-      WordId id;
-      WordValue w; 
-      // w is the idf value if TF_IDF, 1 if TF
-      
-      transform(*fit, id, w);
-      
-      // not stopped
-      if(w > 0) v.addWeight(id, w);
+        for (auto fit = features.begin(); fit < features.end(); ++fit)
+        {
+            // w is the idf value if TF_IDF, 1 if TF
+            WordId id; WordValue w;
+            transform(*fit, id, w);
+
+            // not stopped
+            if (w > 0)
+                v.addWeight(id, w);
+        }
+
+        if (!v.empty() && !must)
+        {
+            // unnecessary when normalizing
+            double const nd = (double)v.size();
+            for (auto vit = v.begin(); vit != v.end(); ++vit) 
+                vit->second /= nd;
+        }
     }
-    
-    if(!v.empty() && !must)
+    else // IDF || BINARY
     {
-      // unnecessary when normalizing
-      const double nd = (double)v.size();
-      for(BowVector::iterator vit = v.begin(); vit != v.end(); vit++) 
-        vit->second /= nd;
-    }
-    
-  }
-  else // IDF || BINARY
-  {
-    for(fit = features.begin(); fit < features.end(); ++fit)
-    {
-      WordId id;
-      WordValue w;
-      // w is idf if IDF, or 1 if BINARY
-      
-      transform(*fit, id, w);
-      
-      // not stopped
-      if(w > 0) v.addIfNotExist(id, w);
-      
-    } // if add_features
-  } // if m_weighting == ...
-  
-  if(must) v.normalize(norm);
+        for (auto fit = features.begin(); fit < features.end(); ++fit)
+        {
+            // w is idf if IDF, or 1 if BINARY
+            WordId id; WordValue w;
+            transform(*fit, id, w);
+
+            // not stopped
+            if (w > 0)
+                v.addIfNotExist(id, w);
+        } // if add_features
+    } // if m_weighting == ...
+
+    if(must)
+        v.normalize(norm);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1090,7 +1052,7 @@ void TemplatedVocabulary<TDescriptor, F>::transform(
 {
     v.clear();
     fv.clear();
-  
+
     if (empty()) // safe for subclasses
         return;
   
@@ -1217,57 +1179,53 @@ void TemplatedVocabulary<TDescriptor,F>::transform(TDescriptor const& feature,
 template<class TDescriptor, class F>
 void TemplatedVocabulary<TDescriptor, F>::getWordsFromNode(NodeId nid, std::vector<WordId> &words) const
 {
-  words.clear();
-  
-  if(m_nodes[nid].isLeaf())
-  {
-    words.push_back(m_nodes[nid].word_id);
-  }
-  else
-  {
-    words.reserve(m_k); // ^1, ^2, ...
-    
-    vector<NodeId> parents;
-    parents.push_back(nid);
-    
-    while(!parents.empty())
+    words.clear();
+
+    if (m_nodes[nid].isLeaf())
     {
-      NodeId parentid = parents.back();
-      parents.pop_back();
-      
-      const vector<NodeId> &child_ids = m_nodes[parentid].children;
-      vector<NodeId>::const_iterator cit;
-      
-      for(cit = child_ids.begin(); cit != child_ids.end(); ++cit)
-      {
-        const Node &child_node = m_nodes[*cit];
-        
-        if(child_node.isLeaf())
-          words.push_back(child_node.word_id);
-        else
-          parents.push_back(*cit);
-        
-      } // for each child
-    } // while !parents.empty
-  }
+        words.push_back(m_nodes[nid].word_id);
+    }
+    else
+    {
+        words.reserve(m_k); // ^1, ^2, ...
+
+        vector<NodeId> parents;
+        parents.push_back(nid);
+
+        while (!parents.empty())
+        {
+            NodeId parentid = parents.back();
+            parents.pop_back();
+
+            std::vector<NodeId> const& child_ids = m_nodes[parentid].children;
+
+            for (auto cit = child_ids.begin(); cit != child_ids.end(); ++cit)
+            {
+                Node const& child_node = m_nodes[*cit];
+                if (child_node.isLeaf())
+                    words.push_back(child_node.word_id);
+                else
+                    parents.push_back(*cit);
+            } // for each child
+        } // while !parents.empty
+    }
 }
 
 // --------------------------------------------------------------------------
 
 template<class TDescriptor, class F>
-int TemplatedVocabulary<TDescriptor,F>::stopWords(double minWeight)
+int TemplatedVocabulary<TDescriptor, F>::stopWords(double minWeight)
 {
-  int c = 0;
-  typename vector<Node*>::iterator wit;
-  for(wit = m_words.begin(); wit != m_words.end(); ++wit)
-  {
-    if((*wit)->weight < minWeight)
+    int c = 0;
+    for (auto wit = m_words.begin(); wit != m_words.end(); ++wit)
     {
-      ++c;
-      (*wit)->weight = 0;
+        if((*wit)->weight < minWeight)
+        {
+            ++c;
+            (*wit)->weight = 0;
+        }
     }
-  }
-  return c;
+    return c;
 }
 
 // --------------------------------------------------------------------------

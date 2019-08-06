@@ -71,13 +71,15 @@ public:
     //
     //
 
-    bool pause()
+    // PAE: TODO: temp routine
+    void wait_while_running()
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        mbStopRequested = true;
-        mbAbortBA = true;
-        return true;
+        while (m_state == eState_Running) // TODO: wait for idle just to handle one by one
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
+
+
+    bool pause();
 
     bool is_paused() const
     {
@@ -91,30 +93,13 @@ public:
         return m_state == eState_Pausing;
     }
 
+    void resume();
+
 
 
 
     void RequestReset();
 
-    void Release();
-
-    bool SetNotStop(bool flag)
-    {
-        std::unique_lock<std::mutex> lock(m_mutex);
-
-        if (flag && m_state == eState_Paused)
-            return false;
-
-        mbNotStop = flag;
-
-        return true;
-    }
-
-    void InterruptBA()
-    {
-        // TODO: think about it!
-        mbAbortBA = true;
-    }
 
     void RequestFinish()
     {
@@ -157,8 +142,6 @@ protected:
     // Main function
     void run();
 
-    bool Stop();
-
     void ProcessNewKeyFrame();
     void CreateNewMapPoints();
 
@@ -169,8 +152,6 @@ protected:
 
     static cv::Mat ComputeF12(KeyFrame* pKF1, KeyFrame* pKF2);
     static cv::Mat SkewSymmetricMatrix(cv::Mat const& v);
-
-    void ResetIfRequested();
 
     bool CheckFinish() const
     {
@@ -185,22 +166,18 @@ protected:
         eState_Running,
         eState_Stopping,
         eState_Pausing,
-        eState_Paused
+        eState_Paused,
+        eState_Reset
+
     };
 
-    bool                    mbResetRequested;
-    bool                    mbMonocular;
+    bool const              mbMonocular;
     Map*                    mpMap;
     LoopClosing*            mpLoopCloser;
     Tracking*               mpTracker;
     KeyFrame*               mpCurrentKeyFrame;
     std::list<KeyFrame*>    mlNewKeyFrames;
     std::list<MapPoint*>    mlpRecentAddedMapPoints;
-    bool                    mbAbortBA;
-    bool                    mbStopped;
-    bool                    mbStopRequested;
-    bool                    mbNotStop;
-
 
     eStates                 m_state;
     std::mutex mutable      m_mutex;

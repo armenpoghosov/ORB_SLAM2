@@ -31,14 +31,7 @@ namespace ORB_SLAM2
 LocalMapping::LocalMapping(Map *pMap, bool bMonocular)
     :
     mbMonocular(bMonocular),
-    mbResetRequested(false),
     mpMap(pMap),
-    mbAbortBA(false),
-    mbStopped(false),
-    mbStopRequested(false),
-    mbNotStop(false),
-
-
     m_state(eState_Stopped)
 {
     m_thread = std::thread(&LocalMapping::run, this);
@@ -79,6 +72,7 @@ void LocalMapping::run()
         }
         break;
         case eState_Idle:
+        case eState_Paused:
             m_kick_condition.wait(lock);
         break;
         case eState_Running:
@@ -86,12 +80,15 @@ void LocalMapping::run()
             if (mlNewKeyFrames.empty())
             {
                 m_state = eState_Idle;
+                lock.unlock();
+                m_kick_condition.notify_all();
+                lock.lock();
+
                 continue;
             }
 
             mpCurrentKeyFrame = mlNewKeyFrames.front();
             mlNewKeyFrames.pop_front();
-            mbAbortBA = false;
 
             // we run our processing in unlocked region ...
             lock.unlock();
@@ -131,35 +128,29 @@ void LocalMapping::run()
             m_state = eState_Stopped;
             lock.unlock();
             m_kick_condition.notify_all();
+            lock.lock();
         }
         return; // we quit here ...
         case eState_Pausing:
         {
-
-
-
-
+            m_state = eState_Paused;
+            lock.unlock();
+            m_kick_condition.notify_all();
+            lock.lock();
         }
-        // TODO:
+        break;
+        case eState_Reset:
+        {
+            mlNewKeyFrames.clear();
+            mlpRecentAddedMapPoints.clear();
+            m_state = eState_Idle;
+            lock.unlock();
+            m_kick_condition.notify_all();
+            lock.lock();
+        }
         break;
         }
     }
-
-        /*
-        else if (Stop())
-        {
-            // Safe area to stop
-            while (isStopped() && !CheckFinish())
-            {
-                std::this_thread::sleep_for(std::chrono::microseconds(3000));
-            }
-
-            if (CheckFinish())
-                break;
-        }
-
-        ResetIfRequested();
-        */
 }
 
 void LocalMapping::enqueue_key_frame(KeyFrame *pKF)
@@ -167,7 +158,6 @@ void LocalMapping::enqueue_key_frame(KeyFrame *pKF)
     std::unique_lock<std::mutex> lock(m_mutex);
 
     mlNewKeyFrames.push_back(pKF);
-    mbAbortBA = true; // TODO: PAE: why is that here?
 
     switch (m_state)
     {
@@ -184,6 +174,7 @@ void LocalMapping::enqueue_key_frame(KeyFrame *pKF)
     break;
     case eState_Stopping:
     case eState_Pausing:
+    case eState_Paused:
     break;
     }
 }
@@ -514,10 +505,10 @@ void LocalMapping::SearchInNeighbors()
 {
     int nn = mbMonocular ? 20 : 10;
 
-    std::vector<KeyFrame*> vpTargetKFs;
-
     std::vector<KeyFrame*> const& vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
  
+    std::vector<KeyFrame*> vpTargetKFs;
+
     for (KeyFrame* pKFi : vpNeighKFs)
     {
         if (pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
@@ -602,52 +593,6 @@ cv::Mat LocalMapping::ComputeF12(KeyFrame* pKF1, KeyFrame* pKF2)
     return K1.t().inv() * t12x * R12 * K2.inv();
 }
 
-bool LocalMapping::Stop()
-{
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    if (mbStopRequested && !mbNotStop)
-    {
-        mbStopped = true;
-        cout << "Local Mapping STOP" << endl;
-        return true;
-    }
-
-    return false;
-}
-
-void LocalMapping::Release()
-{
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    // TODO: implement it
-    switch (m_state)
-    {
-    case eState_Stopped:
-    break;
-    case eState_Idle:
-    case eState_Running:
-    case eState_Stopping:
-    case eState_Pausing:
-    case eState_Paused:
-    break;
-    }
-
-    if (m_state == eState_Stopped)
-        return;
-
-
-    mbStopped = false;
-    mbStopRequested = false;
-
-    for (KeyFrame* entry : mlNewKeyFrames)
-        delete entry;
-
-    mlNewKeyFrames.clear();
-
-    cout << "Local Mapping RELEASE" << endl;
-}
-
 void LocalMapping::KeyFrameCulling()
 {
     // Check redundant keyframes (only local keyframes)
@@ -681,7 +626,7 @@ void LocalMapping::KeyFrameCulling()
             if (pMP->Observations() <= thObs)
                 continue;
 
-            int const scaleLevel = pKF->mvKeysUn[i].octave;
+            int const octave = pKF->mvKeysUn[i].octave;
 
             std::unordered_map<KeyFrame*, size_t> observations = pMP->GetObservations();
 
@@ -694,9 +639,9 @@ void LocalMapping::KeyFrameCulling()
                 if (pKFi == pKF)
                     continue;
 
-                int const scaleLeveli = pKFi->mvKeysUn[mit->second].octave;
+                int const octave_key_frame = pKFi->mvKeysUn[mit->second].octave;
 
-                if (scaleLeveli <= scaleLevel + 1 && ++nObs >= thObs)
+                if (octave_key_frame <= octave + 1 && ++nObs >= thObs)
                     break;
             }
 
@@ -717,36 +662,66 @@ cv::Mat LocalMapping::SkewSymmetricMatrix(cv::Mat const& v)
         -v.at<float>(1),    v.at<float>(0),     0);
 }
 
-void LocalMapping::RequestReset()
+bool LocalMapping::pause()
 {
-    {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        mbResetRequested = true;
-    }
-
-    while (true)
-    {
-        {
-            std::unique_lock<std::mutex> lock2(m_mutex);
-
-            if (!mbResetRequested)
-                break;
-        }
-
-        std::this_thread::sleep_for(std::chrono::microseconds(3000));
-    }
-}
-
-void LocalMapping::ResetIfRequested()
-{
+    // TODO: PAE: quick and dirty ... has to be rewritten
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    if (mbResetRequested)
+    if (m_state != eState_Running || m_state != eState_Idle)
+        return false;
+
+    m_state = eState_Pausing;
+
+    do
+        m_kick_condition.wait(lock);
+    while (m_state == eState_Pausing);
+
+    return true;
+}
+
+void LocalMapping::resume()
+{
+    // TODO: PAE: quick and dirty ... has to be rewritten
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    switch (m_state)
     {
-        mlNewKeyFrames.clear();
-        mlpRecentAddedMapPoints.clear();
-        mbResetRequested = false;
+    case eState_Stopped:
+        return;
+    case eState_Idle:
+    case eState_Running:
+    case eState_Stopping:
+    case eState_Pausing:
+        break;
+    case eState_Paused:
+    {
+        m_state = eState_Idle;
+        m_kick_condition.notify_all();
     }
+    break;
+    }
+
+    for (KeyFrame* entry : mlNewKeyFrames)
+        delete entry;
+
+    mlNewKeyFrames.clear();
+
+    cout << "Local Mapping RESUME" << endl;
+}
+
+void LocalMapping::RequestReset()
+{
+    // PAE quick and dirty ... has to be rewritten
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    if (m_state != eState_Running)
+        return;
+
+    m_state = eState_Reset;
+
+    do
+        m_kick_condition.wait(lock);
+    while (m_state == eState_Reset);
 }
 
 } //namespace ORB_SLAM

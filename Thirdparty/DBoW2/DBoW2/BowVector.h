@@ -19,13 +19,13 @@ namespace DBoW2
 {
 
 /// Id of words
-typedef uint32_t WordId;
+typedef std::size_t WordId;
 
 /// Value of a word
 typedef double WordValue;
 
 /// Id of nodes in the vocabulary treee
-typedef uint32_t NodeId;
+typedef std::size_t NodeId;
 
 /// L-norms for normalization
 enum LNorm

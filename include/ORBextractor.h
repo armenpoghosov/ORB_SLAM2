@@ -114,9 +114,7 @@ protected:
     int                     minThFAST;
     std::vector<int>        mnFeaturesPerLevel;
     std::vector<float>      mvScaleFactor;
-    std::vector<float>      mvInvScaleFactor;
     std::vector<float>      mvLevelSigma2;
-    std::vector<float>      mvInvLevelSigma2;
 };
 
 } //namespace ORB_SLAM

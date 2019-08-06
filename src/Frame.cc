@@ -21,6 +21,12 @@
 #include "Frame.h"
 #include "Converter.h"
 #include "ORBmatcher.h"
+
+#include "MapPoint.h"
+#include "KeyFrame.h"
+#include "ORBextractor.h"
+
+
 #include <thread>
 
 namespace ORB_SLAM2
@@ -43,7 +49,6 @@ float Frame::mnMaxY;
 float Frame::mfGridElementWidthInv;
 float Frame::mfGridElementHeightInv;
 
-//Copy Constructor
 Frame::Frame(Frame const& frame)
     :
     mpORBvocabulary(frame.mpORBvocabulary),
@@ -77,7 +82,7 @@ Frame::Frame(Frame const& frame)
     mvLevelSigma2(frame.mvLevelSigma2),
     mvInvLevelSigma2(frame.mvInvLevelSigma2)
 {
-    for(int i = 0; i < FRAME_GRID_COLS; ++i)
+    for (int i = 0; i < FRAME_GRID_COLS; ++i)
         for (int j = 0; j < FRAME_GRID_ROWS; ++j)
             mGrid[i][j] = frame.mGrid[i][j];
 
@@ -184,7 +189,6 @@ Frame::Frame(cv::Mat const& imGray, cv::Mat const& imDepth, double timeStamp,
 
     AssignFeaturesToGrid();
 }
-
 
 Frame::Frame(cv::Mat const& imGray, double timeStamp, ORBextractor* extractor,
         ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, float bf, float thDepth)
@@ -403,8 +407,8 @@ std::vector<size_t> Frame::GetFeaturesInArea(float x, float y, float r, int minL
 
 bool Frame::PosInGrid(cv::KeyPoint const& kp, int& posX, int& posY)
 {
-    posX = round((kp.pt.x - mnMinX) * mfGridElementWidthInv);
-    posY = round((kp.pt.y - mnMinY) * mfGridElementHeightInv);
+    posX = (int)std::round((kp.pt.x - mnMinX) * mfGridElementWidthInv);
+    posY = (int)std::round((kp.pt.y - mnMinY) * mfGridElementHeightInv);
     // Keypoint's coordinates are undistorted, which could cause to go out of the image
     return posX >= 0 && posX < FRAME_GRID_COLS && posY >= 0 && posY < FRAME_GRID_ROWS;
 }
@@ -674,20 +678,17 @@ void Frame::ComputeStereoFromRGBD(cv::Mat const& imDepth)
     }
 }
 
-cv::Mat Frame::UnprojectStereo(const int &i)
+cv::Mat Frame::UnprojectStereo(std::size_t kp_index)
 {
-    const float z = mvDepth[i];
-    if(z <= 0)
+    float const z = mvDepth[kp_index];
+    if (z <= 0)
         return cv::Mat();
 
-    float const u = mvKeysUn[i].pt.x;
-    float const v = mvKeysUn[i].pt.y;
+    cv::KeyPoint const kp = mvKeysUn[kp_index];
+    float const x = (kp.pt.x - cx) * z * invfx;
+    float const y = (kp.pt.y - cy) * z * invfy;
 
-    float const x = (u-cx) * z * invfx;
-    float const y = (v-cy) * z * invfy;
-
-    cv::Mat x3Dc = (cv::Mat_<float>(3,1) << x, y, z);
-
+    cv::Mat x3Dc = (cv::Mat_<float>(3, 1) << x, y, z);
     return mRwc * x3Dc + mOw;
 }
 

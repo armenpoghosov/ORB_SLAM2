@@ -63,9 +63,6 @@
 
 #include "ORBextractor.h"
 
-using namespace cv;
-using namespace std;
-
 namespace ORB_SLAM2
 {
 
@@ -93,7 +90,7 @@ static int init_umax(int (&u_max)[ORBextractor::HALF_PATCH_SIZE + 1])
     return 0;
 }
 
-static float IC_Angle(Mat const& image, Point2f const& pt)
+static float IC_Angle(cv::Mat const& image, cv::Point2f const& pt)
 {
     static int u_max[ORBextractor::HALF_PATCH_SIZE + 1];
     static int const init = init_umax(u_max);
@@ -127,275 +124,275 @@ static float IC_Angle(Mat const& image, Point2f const& pt)
         m_01 += v * v_sum;
     }
 
-    return fastAtan2((float)m_01, (float)m_10);
+    return cv::fastAtan2((float)m_01, (float)m_10);
 }
 
-static void computeOrientation(Mat const& image, std::vector<KeyPoint>& keypoints)
+static void computeOrientation(cv::Mat const& image, std::vector<cv::KeyPoint>& keypoints)
 {
-    for (KeyPoint& keypoint : keypoints)
+    for (cv::KeyPoint& keypoint : keypoints)
         keypoint.angle = IC_Angle(image, keypoint.pt);
 }
 
-static void computeOrbDescriptor(KeyPoint const& kpt, Mat const& img, uchar* desc)
+static void computeOrbDescriptor(cv::KeyPoint const& kpt, cv::Mat const& img, uchar* desc)
 {
-    static Point const pattern_array[512] =
+    static cv::Point const pattern_array[512] =
     {
-        Point(8,-3), Point(9,5),// mean (0), correlation (0)
-        Point(4,2), Point(7,-12),// mean (1.12461e-05), correlation (0.0437584)
-        Point(-11,9), Point(-8,2),// mean (3.37382e-05), correlation (0.0617409)
-        Point(7,-12), Point(12,-13),// mean (5.62303e-05), correlation (0.0636977)
-        Point(2,-13), Point(2,12),// mean (0.000134953), correlation (0.085099)
-        Point(1,-7), Point(1,6),// mean (0.000528565), correlation (0.0857175)
-        Point(-2,-10), Point(-2,-4),// mean (0.0188821), correlation (0.0985774)
-        Point(-13,-13), Point(-11,-8),// mean (0.0363135), correlation (0.0899616)
-        Point(-13,-3), Point(-12,-9),// mean (0.121806), correlation (0.099849)
-        Point(10,4), Point(11,9),// mean (0.122065), correlation (0.093285)
-        Point(-13,-8), Point(-8,-9),// mean (0.162787), correlation (0.0942748)
-        Point(-11,7), Point(-9,12),// mean (0.21561), correlation (0.0974438)
-        Point(7,7), Point(12,6),// mean (0.160583), correlation (0.130064)
-        Point(-4,-5), Point(-3,0),// mean (0.228171), correlation (0.132998)
-        Point(-13,2), Point(-12,-3),// mean (0.00997526), correlation (0.145926)
-        Point(-9,0), Point(-7,5),// mean (0.198234), correlation (0.143636)
-        Point(12,-6), Point(12,-1),// mean (0.0676226), correlation (0.16689)
-        Point(-3,6), Point(-2,12),// mean (0.166847), correlation (0.171682)
-        Point(-6,-13), Point(-4,-8),// mean (0.101215), correlation (0.179716)
-        Point(11,-13), Point(12,-8),// mean (0.200641), correlation (0.192279)
-        Point(4,7), Point(5,1),// mean (0.205106), correlation (0.186848)
-        Point(5,-3), Point(10,-3),// mean (0.234908), correlation (0.192319)
-        Point(3,-7), Point(6,12),// mean (0.0709964), correlation (0.210872)
-        Point(-8,-7), Point(-6,-2),// mean (0.0939834), correlation (0.212589)
-        Point(-2,11), Point(-1,-10),// mean (0.127778), correlation (0.20866)
-        Point(-13,12), Point(-8,10),// mean (0.14783), correlation (0.206356)
-        Point(-7,3), Point(-5,-3),// mean (0.182141), correlation (0.198942)
-        Point(-4,2), Point(-3,7),// mean (0.188237), correlation (0.21384)
-        Point(-10,-12), Point(-6,11),// mean (0.14865), correlation (0.23571)
-        Point(5,-12), Point(6,-7),// mean (0.222312), correlation (0.23324)
-        Point(5,-6), Point(7,-1),// mean (0.229082), correlation (0.23389)
-        Point(1,0), Point(4,-5),// mean (0.241577), correlation (0.215286)
-        Point(9,11), Point(11,-13),// mean (0.00338507), correlation (0.251373)
-        Point(4,7), Point(4,12),// mean (0.131005), correlation (0.257622)
-        Point(2,-1), Point(4,4),// mean (0.152755), correlation (0.255205)
-        Point(-4,-12), Point(-2,7),// mean (0.182771), correlation (0.244867)
-        Point(-8,-5), Point(-7,-10),// mean (0.186898), correlation (0.23901)
-        Point(4,11), Point(9,12),// mean (0.226226), correlation (0.258255)
-        Point(0,-8), Point(1,-13),// mean (0.0897886), correlation (0.274827)
-        Point(-13,-2), Point(-8,2),// mean (0.148774), correlation (0.28065)
-        Point(-3,-2), Point(-2,3),// mean (0.153048), correlation (0.283063)
-        Point(-6,9), Point(-4,-9),// mean (0.169523), correlation (0.278248)
-        Point(8,12), Point(10,7),// mean (0.225337), correlation (0.282851)
-        Point(0,9), Point(1,3),// mean (0.226687), correlation (0.278734)
-        Point(7,-5), Point(11,-10),// mean (0.00693882), correlation (0.305161)
-        Point(-13,-6), Point(-11,0),// mean (0.0227283), correlation (0.300181)
-        Point(10,7), Point(12,1),// mean (0.125517), correlation (0.31089)
-        Point(-6,-3), Point(-6,12),// mean (0.131748), correlation (0.312779)
-        Point(10,-9), Point(12,-4),// mean (0.144827), correlation (0.292797)
-        Point(-13,8), Point(-8,-12),// mean (0.149202), correlation (0.308918)
-        Point(-13,0), Point(-8,-4),// mean (0.160909), correlation (0.310013)
-        Point(3,3), Point(7,8),// mean (0.177755), correlation (0.309394)
-        Point(5,7), Point(10,-7),// mean (0.212337), correlation (0.310315)
-        Point(-1,7), Point(1,-12),// mean (0.214429), correlation (0.311933)
-        Point(3,-10), Point(5,6),// mean (0.235807), correlation (0.313104)
-        Point(2,-4), Point(3,-10),// mean (0.00494827), correlation (0.344948)
-        Point(-13,0), Point(-13,5),// mean (0.0549145), correlation (0.344675)
-        Point(-13,-7), Point(-12,12),// mean (0.103385), correlation (0.342715)
-        Point(-13,3), Point(-11,8),// mean (0.134222), correlation (0.322922)
-        Point(-7,12), Point(-4,7),// mean (0.153284), correlation (0.337061)
-        Point(6,-10), Point(12,8),// mean (0.154881), correlation (0.329257)
-        Point(-9,-1), Point(-7,-6),// mean (0.200967), correlation (0.33312)
-        Point(-2,-5), Point(0,12),// mean (0.201518), correlation (0.340635)
-        Point(-12,5), Point(-7,5),// mean (0.207805), correlation (0.335631)
-        Point(3,-10), Point(8,-13),// mean (0.224438), correlation (0.34504)
-        Point(-7,-7), Point(-4,5),// mean (0.239361), correlation (0.338053)
-        Point(-3,-2), Point(-1,-7),// mean (0.240744), correlation (0.344322)
-        Point(2,9), Point(5,-11),// mean (0.242949), correlation (0.34145)
-        Point(-11,-13), Point(-5,-13),// mean (0.244028), correlation (0.336861)
-        Point(-1,6), Point(0,-1),// mean (0.247571), correlation (0.343684)
-        Point(5,-3), Point(5,2),// mean (0.000697256), correlation (0.357265)
-        Point(-4,-13), Point(-4,12),// mean (0.00213675), correlation (0.373827)
-        Point(-9,-6), Point(-9,6),// mean (0.0126856), correlation (0.373938)
-        Point(-12,-10), Point(-8,-4),// mean (0.0152497), correlation (0.364237)
-        Point(10,2), Point(12,-3),// mean (0.0299933), correlation (0.345292)
-        Point(7,12), Point(12,12),// mean (0.0307242), correlation (0.366299)
-        Point(-7,-13), Point(-6,5),// mean (0.0534975), correlation (0.368357)
-        Point(-4,9), Point(-3,4),// mean (0.099865), correlation (0.372276)
-        Point(7,-1), Point(12,2),// mean (0.117083), correlation (0.364529)
-        Point(-7,6), Point(-5,1),// mean (0.126125), correlation (0.369606)
-        Point(-13,11), Point(-12,5),// mean (0.130364), correlation (0.358502)
-        Point(-3,7), Point(-2,-6),// mean (0.131691), correlation (0.375531)
-        Point(7,-8), Point(12,-7),// mean (0.160166), correlation (0.379508)
-        Point(-13,-7), Point(-11,-12),// mean (0.167848), correlation (0.353343)
-        Point(1,-3), Point(12,12),// mean (0.183378), correlation (0.371916)
-        Point(2,-6), Point(3,0),// mean (0.228711), correlation (0.371761)
-        Point(-4,3), Point(-2,-13),// mean (0.247211), correlation (0.364063)
-        Point(-1,-13), Point(1,9),// mean (0.249325), correlation (0.378139)
-        Point(7,1), Point(8,-6),// mean (0.000652272), correlation (0.411682)
-        Point(1,-1), Point(3,12),// mean (0.00248538), correlation (0.392988)
-        Point(9,1), Point(12,6),// mean (0.0206815), correlation (0.386106)
-        Point(-1,-9), Point(-1,3),// mean (0.0364485), correlation (0.410752)
-        Point(-13,-13), Point(-10,5),// mean (0.0376068), correlation (0.398374)
-        Point(7,7), Point(10,12),// mean (0.0424202), correlation (0.405663)
-        Point(12,-5), Point(12,9),// mean (0.0942645), correlation (0.410422)
-        Point(6,3), Point(7,11),// mean (0.1074), correlation (0.413224)
-        Point(5,-13), Point(6,10),// mean (0.109256), correlation (0.408646)
-        Point(2,-12), Point(2,3),// mean (0.131691), correlation (0.416076)
-        Point(3,8), Point(4,-6),// mean (0.165081), correlation (0.417569)
-        Point(2,6), Point(12,-13),// mean (0.171874), correlation (0.408471)
-        Point(9,-12), Point(10,3),// mean (0.175146), correlation (0.41296)
-        Point(-8,4), Point(-7,9),// mean (0.183682), correlation (0.402956)
-        Point(-11,12), Point(-4,-6),// mean (0.184672), correlation (0.416125)
-        Point(1,12), Point(2,-8),// mean (0.191487), correlation (0.386696)
-        Point(6,-9), Point(7,-4),// mean (0.192668), correlation (0.394771)
-        Point(2,3), Point(3,-2),// mean (0.200157), correlation (0.408303)
-        Point(6,3), Point(11,0),// mean (0.204588), correlation (0.411762)
-        Point(3,-3), Point(8,-8),// mean (0.205904), correlation (0.416294)
-        Point(7,8), Point(9,3),// mean (0.213237), correlation (0.409306)
-        Point(-11,-5), Point(-6,-4),// mean (0.243444), correlation (0.395069)
-        Point(-10,11), Point(-5,10),// mean (0.247672), correlation (0.413392)
-        Point(-5,-8), Point(-3,12),// mean (0.24774), correlation (0.411416)
-        Point(-10,5), Point(-9,0),// mean (0.00213675), correlation (0.454003)
-        Point(8,-1), Point(12,-6),// mean (0.0293635), correlation (0.455368)
-        Point(4,-6), Point(6,-11),// mean (0.0404971), correlation (0.457393)
-        Point(-10,12), Point(-8,7),// mean (0.0481107), correlation (0.448364)
-        Point(4,-2), Point(6,7),// mean (0.050641), correlation (0.455019)
-        Point(-2,0), Point(-2,12),// mean (0.0525978), correlation (0.44338)
-        Point(-5,-8), Point(-5,2),// mean (0.0629667), correlation (0.457096)
-        Point(7,-6), Point(10,12),// mean (0.0653846), correlation (0.445623)
-        Point(-9,-13), Point(-8,-8),// mean (0.0858749), correlation (0.449789)
-        Point(-5,-13), Point(-5,-2),// mean (0.122402), correlation (0.450201)
-        Point(8,-8), Point(9,-13),// mean (0.125416), correlation (0.453224)
-        Point(-9,-11), Point(-9,0),// mean (0.130128), correlation (0.458724)
-        Point(1,-8), Point(1,-2),// mean (0.132467), correlation (0.440133)
-        Point(7,-4), Point(9,1),// mean (0.132692), correlation (0.454)
-        Point(-2,1), Point(-1,-4),// mean (0.135695), correlation (0.455739)
-        Point(11,-6), Point(12,-11),// mean (0.142904), correlation (0.446114)
-        Point(-12,-9), Point(-6,4),// mean (0.146165), correlation (0.451473)
-        Point(3,7), Point(7,12),// mean (0.147627), correlation (0.456643)
-        Point(5,5), Point(10,8),// mean (0.152901), correlation (0.455036)
-        Point(0,-4), Point(2,8),// mean (0.167083), correlation (0.459315)
-        Point(-9,12), Point(-5,-13),// mean (0.173234), correlation (0.454706)
-        Point(0,7), Point(2,12),// mean (0.18312), correlation (0.433855)
-        Point(-1,2), Point(1,7),// mean (0.185504), correlation (0.443838)
-        Point(5,11), Point(7,-9),// mean (0.185706), correlation (0.451123)
-        Point(3,5), Point(6,-8),// mean (0.188968), correlation (0.455808)
-        Point(-13,-4), Point(-8,9),// mean (0.191667), correlation (0.459128)
-        Point(-5,9), Point(-3,-3),// mean (0.193196), correlation (0.458364)
-        Point(-4,-7), Point(-3,-12),// mean (0.196536), correlation (0.455782)
-        Point(6,5), Point(8,0),// mean (0.1972), correlation (0.450481)
-        Point(-7,6), Point(-6,12),// mean (0.199438), correlation (0.458156)
-        Point(-13,6), Point(-5,-2),// mean (0.211224), correlation (0.449548)
-        Point(1,-10), Point(3,10),// mean (0.211718), correlation (0.440606)
-        Point(4,1), Point(8,-4),// mean (0.213034), correlation (0.443177)
-        Point(-2,-2), Point(2,-13),// mean (0.234334), correlation (0.455304)
-        Point(2,-12), Point(12,12),// mean (0.235684), correlation (0.443436)
-        Point(-2,-13), Point(0,-6),// mean (0.237674), correlation (0.452525)
-        Point(4,1), Point(9,3),// mean (0.23962), correlation (0.444824)
-        Point(-6,-10), Point(-3,-5),// mean (0.248459), correlation (0.439621)
-        Point(-3,-13), Point(-1,1),// mean (0.249505), correlation (0.456666)
-        Point(7,5), Point(12,-11),// mean (0.00119208), correlation (0.495466)
-        Point(4,-2), Point(5,-7),// mean (0.00372245), correlation (0.484214)
-        Point(-13,9), Point(-9,-5),// mean (0.00741116), correlation (0.499854)
-        Point(7,1), Point(8,6),// mean (0.0208952), correlation (0.499773)
-        Point(7,-8), Point(7,6),// mean (0.0220085), correlation (0.501609)
-        Point(-7,-4), Point(-7,1),// mean (0.0233806), correlation (0.496568)
-        Point(-8,11), Point(-7,-8),// mean (0.0236505), correlation (0.489719)
-        Point(-13,6), Point(-12,-8),// mean (0.0268781), correlation (0.503487)
-        Point(2,4), Point(3,9),// mean (0.0323324), correlation (0.501938)
-        Point(10,-5), Point(12,3),// mean (0.0399235), correlation (0.494029)
-        Point(-6,-5), Point(-6,7),// mean (0.0420153), correlation (0.486579)
-        Point(8,-3), Point(9,-8),// mean (0.0548021), correlation (0.484237)
-        Point(2,-12), Point(2,8),// mean (0.0616622), correlation (0.496642)
-        Point(-11,-2), Point(-10,3),// mean (0.0627755), correlation (0.498563)
-        Point(-12,-13), Point(-7,-9),// mean (0.0829622), correlation (0.495491)
-        Point(-11,0), Point(-10,-5),// mean (0.0843342), correlation (0.487146)
-        Point(5,-3), Point(11,8),// mean (0.0929937), correlation (0.502315)
-        Point(-2,-13), Point(-1,12),// mean (0.113327), correlation (0.48941)
-        Point(-1,-8), Point(0,9),// mean (0.132119), correlation (0.467268)
-        Point(-13,-11), Point(-12,-5),// mean (0.136269), correlation (0.498771)
-        Point(-10,-2), Point(-10,11),// mean (0.142173), correlation (0.498714)
-        Point(-3,9), Point(-2,-13),// mean (0.144141), correlation (0.491973)
-        Point(2,-3), Point(3,2),// mean (0.14892), correlation (0.500782)
-        Point(-9,-13), Point(-4,0),// mean (0.150371), correlation (0.498211)
-        Point(-4,6), Point(-3,-10),// mean (0.152159), correlation (0.495547)
-        Point(-4,12), Point(-2,-7),// mean (0.156152), correlation (0.496925)
-        Point(-6,-11), Point(-4,9),// mean (0.15749), correlation (0.499222)
-        Point(6,-3), Point(6,11),// mean (0.159211), correlation (0.503821)
-        Point(-13,11), Point(-5,5),// mean (0.162427), correlation (0.501907)
-        Point(11,11), Point(12,6),// mean (0.16652), correlation (0.497632)
-        Point(7,-5), Point(12,-2),// mean (0.169141), correlation (0.484474)
-        Point(-1,12), Point(0,7),// mean (0.169456), correlation (0.495339)
-        Point(-4,-8), Point(-3,-2),// mean (0.171457), correlation (0.487251)
-        Point(-7,1), Point(-6,7),// mean (0.175), correlation (0.500024)
-        Point(-13,-12), Point(-8,-13),// mean (0.175866), correlation (0.497523)
-        Point(-7,-2), Point(-6,-8),// mean (0.178273), correlation (0.501854)
-        Point(-8,5), Point(-6,-9),// mean (0.181107), correlation (0.494888)
-        Point(-5,-1), Point(-4,5),// mean (0.190227), correlation (0.482557)
-        Point(-13,7), Point(-8,10),// mean (0.196739), correlation (0.496503)
-        Point(1,5), Point(5,-13),// mean (0.19973), correlation (0.499759)
-        Point(1,0), Point(10,-13),// mean (0.204465), correlation (0.49873)
-        Point(9,12), Point(10,-1),// mean (0.209334), correlation (0.49063)
-        Point(5,-8), Point(10,-9),// mean (0.211134), correlation (0.503011)
-        Point(-1,11), Point(1,-13),// mean (0.212), correlation (0.499414)
-        Point(-9,-3), Point(-6,2),// mean (0.212168), correlation (0.480739)
-        Point(-1,-10), Point(1,12),// mean (0.212731), correlation (0.502523)
-        Point(-13,1), Point(-8,-10),// mean (0.21327), correlation (0.489786)
-        Point(8,-11), Point(10,-6),// mean (0.214159), correlation (0.488246)
-        Point(2,-13), Point(3,-6),// mean (0.216993), correlation (0.50287)
-        Point(7,-13), Point(12,-9),// mean (0.223639), correlation (0.470502)
-        Point(-10,-10), Point(-5,-7),// mean (0.224089), correlation (0.500852)
-        Point(-10,-8), Point(-8,-13),// mean (0.228666), correlation (0.502629)
-        Point(4,-6), Point(8,5),// mean (0.22906), correlation (0.498305)
-        Point(3,12), Point(8,-13),// mean (0.233378), correlation (0.503825)
-        Point(-4,2), Point(-3,-3),// mean (0.234323), correlation (0.476692)
-        Point(5,-13), Point(10,-12),// mean (0.236392), correlation (0.475462)
-        Point(4,-13), Point(5,-1),// mean (0.236842), correlation (0.504132)
-        Point(-9,9), Point(-4,3),// mean (0.236977), correlation (0.497739)
-        Point(0,3), Point(3,-9),// mean (0.24314), correlation (0.499398)
-        Point(-12,1), Point(-6,1),// mean (0.243297), correlation (0.489447)
-        Point(3,2), Point(4,-8),// mean (0.00155196), correlation (0.553496)
-        Point(-10,-10), Point(-10,9),// mean (0.00239541), correlation (0.54297)
-        Point(8,-13), Point(12,12),// mean (0.0034413), correlation (0.544361)
-        Point(-8,-12), Point(-6,-5),// mean (0.003565), correlation (0.551225)
-        Point(2,2), Point(3,7),// mean (0.00835583), correlation (0.55285)
-        Point(10,6), Point(11,-8),// mean (0.00885065), correlation (0.540913)
-        Point(6,8), Point(8,-12),// mean (0.0101552), correlation (0.551085)
-        Point(-7,10), Point(-6,5),// mean (0.0102227), correlation (0.533635)
-        Point(-3,-9), Point(-3,9),// mean (0.0110211), correlation (0.543121)
-        Point(-1,-13), Point(-1,5),// mean (0.0113473), correlation (0.550173)
-        Point(-3,-7), Point(-3,4),// mean (0.0140913), correlation (0.554774)
-        Point(-8,-2), Point(-8,3),// mean (0.017049), correlation (0.55461)
-        Point(4,2), Point(12,12),// mean (0.01778), correlation (0.546921)
-        Point(2,-5), Point(3,11),// mean (0.0224022), correlation (0.549667)
-        Point(6,-9), Point(11,-13),// mean (0.029161), correlation (0.546295)
-        Point(3,-1), Point(7,12),// mean (0.0303081), correlation (0.548599)
-        Point(11,-1), Point(12,4),// mean (0.0355151), correlation (0.523943)
-        Point(-3,0), Point(-3,6),// mean (0.0417904), correlation (0.543395)
-        Point(4,-11), Point(4,12),// mean (0.0487292), correlation (0.542818)
-        Point(2,-4), Point(2,1),// mean (0.0575124), correlation (0.554888)
-        Point(-10,-6), Point(-8,1),// mean (0.0594242), correlation (0.544026)
-        Point(-13,7), Point(-11,1),// mean (0.0597391), correlation (0.550524)
-        Point(-13,12), Point(-11,-13),// mean (0.0608974), correlation (0.55383)
-        Point(6,0), Point(11,-13),// mean (0.065126), correlation (0.552006)
-        Point(0,-1), Point(1,4),// mean (0.074224), correlation (0.546372)
-        Point(-13,3), Point(-9,-2),// mean (0.0808592), correlation (0.554875)
-        Point(-9,8), Point(-6,-3),// mean (0.0883378), correlation (0.551178)
-        Point(-13,-6), Point(-8,-2),// mean (0.0901035), correlation (0.548446)
-        Point(5,-9), Point(8,10),// mean (0.0949843), correlation (0.554694)
-        Point(2,7), Point(3,-9),// mean (0.0994152), correlation (0.550979)
-        Point(-1,-6), Point(-1,-1),// mean (0.10045), correlation (0.552714)
-        Point(9,5), Point(11,-2),// mean (0.100686), correlation (0.552594)
-        Point(11,-3), Point(12,-8),// mean (0.101091), correlation (0.532394)
-        Point(3,0), Point(3,5),// mean (0.101147), correlation (0.525576)
-        Point(-1,4), Point(0,10),// mean (0.105263), correlation (0.531498)
-        Point(3,-6), Point(4,5),// mean (0.110785), correlation (0.540491)
-        Point(-13,0), Point(-10,5),// mean (0.112798), correlation (0.536582)
-        Point(5,8), Point(12,11),// mean (0.114181), correlation (0.555793)
-        Point(8,9), Point(9,-6),// mean (0.117431), correlation (0.553763)
-        Point(7,-4), Point(8,-12),// mean (0.118522), correlation (0.553452)
-        Point(-10,4), Point(-10,9),// mean (0.12094), correlation (0.554785)
-        Point(7,3), Point(12,4),// mean (0.122582), correlation (0.555825)
-        Point(9,-7), Point(10,-2),// mean (0.124978), correlation (0.549846)
-        Point(7,0), Point(12,-2),// mean (0.127002), correlation (0.537452)
-        Point(-1,-6), Point(0,-11)// mean (0.127148), correlation (0.547401)
+        cv::Point(8,-3), cv::Point(9,5),        // mean (0), correlation (0)
+        cv::Point(4,2), cv::Point(7,-12),       // mean (1.12461e-05), correlation (0.0437584)
+        cv::Point(-11,9), cv::Point(-8,2),      // mean (3.37382e-05), correlation (0.0617409)
+        cv::Point(7,-12), cv::Point(12,-13),    // mean (5.62303e-05), correlation (0.0636977)
+        cv::Point(2,-13), cv::Point(2,12),      // mean (0.000134953), correlation (0.085099)
+        cv::Point(1,-7), cv::Point(1,6),        // mean (0.000528565), correlation (0.0857175)
+        cv::Point(-2,-10), cv::Point(-2,-4),    // mean (0.0188821), correlation (0.0985774)
+        cv::Point(-13,-13), cv::Point(-11,-8),  // mean (0.0363135), correlation (0.0899616)
+        cv::Point(-13,-3), cv::Point(-12,-9),   // mean (0.121806), correlation (0.099849)
+        cv::Point(10,4), cv::Point(11,9),       // mean (0.122065), correlation (0.093285)
+        cv::Point(-13,-8), cv::Point(-8,-9),    // mean (0.162787), correlation (0.0942748)
+        cv::Point(-11,7), cv::Point(-9,12),     // mean (0.21561), correlation (0.0974438)
+        cv::Point(7,7), cv::Point(12,6),        // mean (0.160583), correlation (0.130064)
+        cv::Point(-4,-5), cv::Point(-3,0),      // mean (0.228171), correlation (0.132998)
+        cv::Point(-13,2), cv::Point(-12,-3),    // mean (0.00997526), correlation (0.145926)
+        cv::Point(-9,0), cv::Point(-7,5),       // mean (0.198234), correlation (0.143636)
+        cv::Point(12,-6), cv::Point(12,-1),     // mean (0.0676226), correlation (0.16689)
+        cv::Point(-3,6), cv::Point(-2,12),      // mean (0.166847), correlation (0.171682)
+        cv::Point(-6,-13), cv::Point(-4,-8),    // mean (0.101215), correlation (0.179716)
+        cv::Point(11,-13), cv::Point(12,-8),    // mean (0.200641), correlation (0.192279)
+        cv::Point(4,7), cv::Point(5,1),         // mean (0.205106), correlation (0.186848)
+        cv::Point(5,-3), cv::Point(10,-3),      // mean (0.234908), correlation (0.192319)
+        cv::Point(3,-7), cv::Point(6,12),       // mean (0.0709964), correlation (0.210872)
+        cv::Point(-8,-7), cv::Point(-6,-2),// mean (0.0939834), correlation (0.212589)
+        cv::Point(-2,11), cv::Point(-1,-10),// mean (0.127778), correlation (0.20866)
+        cv::Point(-13,12), cv::Point(-8,10),// mean (0.14783), correlation (0.206356)
+        cv::Point(-7,3), cv::Point(-5,-3),// mean (0.182141), correlation (0.198942)
+        cv::Point(-4,2), cv::Point(-3,7),// mean (0.188237), correlation (0.21384)
+        cv::Point(-10,-12), cv::Point(-6,11),// mean (0.14865), correlation (0.23571)
+        cv::Point(5,-12), cv::Point(6,-7),// mean (0.222312), correlation (0.23324)
+        cv::Point(5,-6), cv::Point(7,-1),// mean (0.229082), correlation (0.23389)
+        cv::Point(1,0), cv::Point(4,-5),// mean (0.241577), correlation (0.215286)
+        cv::Point(9,11), cv::Point(11,-13),// mean (0.00338507), correlation (0.251373)
+        cv::Point(4,7), cv::Point(4,12),// mean (0.131005), correlation (0.257622)
+        cv::Point(2,-1), cv::Point(4,4),// mean (0.152755), correlation (0.255205)
+        cv::Point(-4,-12), cv::Point(-2,7),// mean (0.182771), correlation (0.244867)
+        cv::Point(-8,-5), cv::Point(-7,-10),// mean (0.186898), correlation (0.23901)
+        cv::Point(4,11), cv::Point(9,12),// mean (0.226226), correlation (0.258255)
+        cv::Point(0,-8), cv::Point(1,-13),// mean (0.0897886), correlation (0.274827)
+        cv::Point(-13,-2), cv::Point(-8,2),// mean (0.148774), correlation (0.28065)
+        cv::Point(-3,-2), cv::Point(-2,3),// mean (0.153048), correlation (0.283063)
+        cv::Point(-6,9), cv::Point(-4,-9),// mean (0.169523), correlation (0.278248)
+        cv::Point(8,12), cv::Point(10,7),// mean (0.225337), correlation (0.282851)
+        cv::Point(0,9), cv::Point(1,3),// mean (0.226687), correlation (0.278734)
+        cv::Point(7,-5), cv::Point(11,-10),// mean (0.00693882), correlation (0.305161)
+        cv::Point(-13,-6), cv::Point(-11,0),// mean (0.0227283), correlation (0.300181)
+        cv::Point(10,7), cv::Point(12,1),// mean (0.125517), correlation (0.31089)
+        cv::Point(-6,-3), cv::Point(-6,12),// mean (0.131748), correlation (0.312779)
+        cv::Point(10,-9), cv::Point(12,-4),// mean (0.144827), correlation (0.292797)
+        cv::Point(-13,8), cv::Point(-8,-12),// mean (0.149202), correlation (0.308918)
+        cv::Point(-13,0), cv::Point(-8,-4),// mean (0.160909), correlation (0.310013)
+        cv::Point(3,3), cv::Point(7,8),// mean (0.177755), correlation (0.309394)
+        cv::Point(5,7), cv::Point(10,-7),// mean (0.212337), correlation (0.310315)
+        cv::Point(-1,7), cv::Point(1,-12),// mean (0.214429), correlation (0.311933)
+        cv::Point(3,-10), cv::Point(5,6),// mean (0.235807), correlation (0.313104)
+        cv::Point(2,-4), cv::Point(3,-10),// mean (0.00494827), correlation (0.344948)
+        cv::Point(-13,0), cv::Point(-13,5),// mean (0.0549145), correlation (0.344675)
+        cv::Point(-13,-7), cv::Point(-12,12),// mean (0.103385), correlation (0.342715)
+        cv::Point(-13,3), cv::Point(-11,8),// mean (0.134222), correlation (0.322922)
+        cv::Point(-7,12), cv::Point(-4,7),// mean (0.153284), correlation (0.337061)
+        cv::Point(6,-10), cv::Point(12,8),// mean (0.154881), correlation (0.329257)
+        cv::Point(-9,-1), cv::Point(-7,-6),// mean (0.200967), correlation (0.33312)
+        cv::Point(-2,-5), cv::Point(0,12),// mean (0.201518), correlation (0.340635)
+        cv::Point(-12,5), cv::Point(-7,5),// mean (0.207805), correlation (0.335631)
+        cv::Point(3,-10), cv::Point(8,-13),// mean (0.224438), correlation (0.34504)
+        cv::Point(-7,-7), cv::Point(-4,5),// mean (0.239361), correlation (0.338053)
+        cv::Point(-3,-2), cv::Point(-1,-7),// mean (0.240744), correlation (0.344322)
+        cv::Point(2,9), cv::Point(5,-11),// mean (0.242949), correlation (0.34145)
+        cv::Point(-11,-13), cv::Point(-5,-13),// mean (0.244028), correlation (0.336861)
+        cv::Point(-1,6), cv::Point(0,-1),// mean (0.247571), correlation (0.343684)
+        cv::Point(5,-3), cv::Point(5,2),// mean (0.000697256), correlation (0.357265)
+        cv::Point(-4,-13), cv::Point(-4,12),// mean (0.00213675), correlation (0.373827)
+        cv::Point(-9,-6), cv::Point(-9,6),// mean (0.0126856), correlation (0.373938)
+        cv::Point(-12,-10), cv::Point(-8,-4),// mean (0.0152497), correlation (0.364237)
+        cv::Point(10,2), cv::Point(12,-3),// mean (0.0299933), correlation (0.345292)
+        cv::Point(7,12), cv::Point(12,12),// mean (0.0307242), correlation (0.366299)
+        cv::Point(-7,-13), cv::Point(-6,5),// mean (0.0534975), correlation (0.368357)
+        cv::Point(-4,9), cv::Point(-3,4),// mean (0.099865), correlation (0.372276)
+        cv::Point(7,-1), cv::Point(12,2),// mean (0.117083), correlation (0.364529)
+        cv::Point(-7,6), cv::Point(-5,1),// mean (0.126125), correlation (0.369606)
+        cv::Point(-13,11), cv::Point(-12,5),// mean (0.130364), correlation (0.358502)
+        cv::Point(-3,7), cv::Point(-2,-6),// mean (0.131691), correlation (0.375531)
+        cv::Point(7,-8), cv::Point(12,-7),// mean (0.160166), correlation (0.379508)
+        cv::Point(-13,-7), cv::Point(-11,-12),// mean (0.167848), correlation (0.353343)
+        cv::Point(1,-3), cv::Point(12,12),// mean (0.183378), correlation (0.371916)
+        cv::Point(2,-6), cv::Point(3,0),// mean (0.228711), correlation (0.371761)
+        cv::Point(-4,3), cv::Point(-2,-13),// mean (0.247211), correlation (0.364063)
+        cv::Point(-1,-13), cv::Point(1,9),// mean (0.249325), correlation (0.378139)
+        cv::Point(7,1), cv::Point(8,-6),// mean (0.000652272), correlation (0.411682)
+        cv::Point(1,-1), cv::Point(3,12),// mean (0.00248538), correlation (0.392988)
+        cv::Point(9,1), cv::Point(12,6),// mean (0.0206815), correlation (0.386106)
+        cv::Point(-1,-9), cv::Point(-1,3),// mean (0.0364485), correlation (0.410752)
+        cv::Point(-13,-13), cv::Point(-10,5),// mean (0.0376068), correlation (0.398374)
+        cv::Point(7,7), cv::Point(10,12),// mean (0.0424202), correlation (0.405663)
+        cv::Point(12,-5), cv::Point(12,9),// mean (0.0942645), correlation (0.410422)
+        cv::Point(6,3), cv::Point(7,11),// mean (0.1074), correlation (0.413224)
+        cv::Point(5,-13), cv::Point(6,10),// mean (0.109256), correlation (0.408646)
+        cv::Point(2,-12), cv::Point(2,3),// mean (0.131691), correlation (0.416076)
+        cv::Point(3,8), cv::Point(4,-6),// mean (0.165081), correlation (0.417569)
+        cv::Point(2,6), cv::Point(12,-13),// mean (0.171874), correlation (0.408471)
+        cv::Point(9,-12), cv::Point(10,3),// mean (0.175146), correlation (0.41296)
+        cv::Point(-8,4), cv::Point(-7,9),// mean (0.183682), correlation (0.402956)
+        cv::Point(-11,12), cv::Point(-4,-6),// mean (0.184672), correlation (0.416125)
+        cv::Point(1,12), cv::Point(2,-8),// mean (0.191487), correlation (0.386696)
+        cv::Point(6,-9), cv::Point(7,-4),// mean (0.192668), correlation (0.394771)
+        cv::Point(2,3), cv::Point(3,-2),// mean (0.200157), correlation (0.408303)
+        cv::Point(6,3), cv::Point(11,0),// mean (0.204588), correlation (0.411762)
+        cv::Point(3,-3), cv::Point(8,-8),// mean (0.205904), correlation (0.416294)
+        cv::Point(7,8), cv::Point(9,3),// mean (0.213237), correlation (0.409306)
+        cv::Point(-11,-5), cv::Point(-6,-4),// mean (0.243444), correlation (0.395069)
+        cv::Point(-10,11), cv::Point(-5,10),// mean (0.247672), correlation (0.413392)
+        cv::Point(-5,-8), cv::Point(-3,12),// mean (0.24774), correlation (0.411416)
+        cv::Point(-10,5), cv::Point(-9,0),// mean (0.00213675), correlation (0.454003)
+        cv::Point(8,-1), cv::Point(12,-6),// mean (0.0293635), correlation (0.455368)
+        cv::Point(4,-6), cv::Point(6,-11),// mean (0.0404971), correlation (0.457393)
+        cv::Point(-10,12), cv::Point(-8,7),// mean (0.0481107), correlation (0.448364)
+        cv::Point(4,-2), cv::Point(6,7),// mean (0.050641), correlation (0.455019)
+        cv::Point(-2,0), cv::Point(-2,12),// mean (0.0525978), correlation (0.44338)
+        cv::Point(-5,-8), cv::Point(-5,2),// mean (0.0629667), correlation (0.457096)
+        cv::Point(7,-6), cv::Point(10,12),// mean (0.0653846), correlation (0.445623)
+        cv::Point(-9,-13), cv::Point(-8,-8),// mean (0.0858749), correlation (0.449789)
+        cv::Point(-5,-13), cv::Point(-5,-2),// mean (0.122402), correlation (0.450201)
+        cv::Point(8,-8), cv::Point(9,-13),// mean (0.125416), correlation (0.453224)
+        cv::Point(-9,-11), cv::Point(-9,0),// mean (0.130128), correlation (0.458724)
+        cv::Point(1,-8), cv::Point(1,-2),// mean (0.132467), correlation (0.440133)
+        cv::Point(7,-4), cv::Point(9,1),// mean (0.132692), correlation (0.454)
+        cv::Point(-2,1), cv::Point(-1,-4),// mean (0.135695), correlation (0.455739)
+        cv::Point(11,-6), cv::Point(12,-11),// mean (0.142904), correlation (0.446114)
+        cv::Point(-12,-9), cv::Point(-6,4),// mean (0.146165), correlation (0.451473)
+        cv::Point(3,7), cv::Point(7,12),// mean (0.147627), correlation (0.456643)
+        cv::Point(5,5), cv::Point(10,8),// mean (0.152901), correlation (0.455036)
+        cv::Point(0,-4), cv::Point(2,8),// mean (0.167083), correlation (0.459315)
+        cv::Point(-9,12), cv::Point(-5,-13),// mean (0.173234), correlation (0.454706)
+        cv::Point(0,7), cv::Point(2,12),// mean (0.18312), correlation (0.433855)
+        cv::Point(-1,2), cv::Point(1,7),// mean (0.185504), correlation (0.443838)
+        cv::Point(5,11), cv::Point(7,-9),// mean (0.185706), correlation (0.451123)
+        cv::Point(3,5), cv::Point(6,-8),// mean (0.188968), correlation (0.455808)
+        cv::Point(-13,-4), cv::Point(-8,9),// mean (0.191667), correlation (0.459128)
+        cv::Point(-5,9), cv::Point(-3,-3),// mean (0.193196), correlation (0.458364)
+        cv::Point(-4,-7), cv::Point(-3,-12),// mean (0.196536), correlation (0.455782)
+        cv::Point(6,5), cv::Point(8,0),// mean (0.1972), correlation (0.450481)
+        cv::Point(-7,6), cv::Point(-6,12),// mean (0.199438), correlation (0.458156)
+        cv::Point(-13,6), cv::Point(-5,-2),// mean (0.211224), correlation (0.449548)
+        cv::Point(1,-10), cv::Point(3,10),// mean (0.211718), correlation (0.440606)
+        cv::Point(4,1), cv::Point(8,-4),// mean (0.213034), correlation (0.443177)
+        cv::Point(-2,-2), cv::Point(2,-13),// mean (0.234334), correlation (0.455304)
+        cv::Point(2,-12), cv::Point(12,12),// mean (0.235684), correlation (0.443436)
+        cv::Point(-2,-13), cv::Point(0,-6),// mean (0.237674), correlation (0.452525)
+        cv::Point(4,1), cv::Point(9,3),// mean (0.23962), correlation (0.444824)
+        cv::Point(-6,-10), cv::Point(-3,-5),// mean (0.248459), correlation (0.439621)
+        cv::Point(-3,-13), cv::Point(-1,1),// mean (0.249505), correlation (0.456666)
+        cv::Point(7,5), cv::Point(12,-11),// mean (0.00119208), correlation (0.495466)
+        cv::Point(4,-2), cv::Point(5,-7),// mean (0.00372245), correlation (0.484214)
+        cv::Point(-13,9), cv::Point(-9,-5),// mean (0.00741116), correlation (0.499854)
+        cv::Point(7,1), cv::Point(8,6),// mean (0.0208952), correlation (0.499773)
+        cv::Point(7,-8), cv::Point(7,6),// mean (0.0220085), correlation (0.501609)
+        cv::Point(-7,-4), cv::Point(-7,1),// mean (0.0233806), correlation (0.496568)
+        cv::Point(-8,11), cv::Point(-7,-8),// mean (0.0236505), correlation (0.489719)
+        cv::Point(-13,6), cv::Point(-12,-8),// mean (0.0268781), correlation (0.503487)
+        cv::Point(2,4), cv::Point(3,9),// mean (0.0323324), correlation (0.501938)
+        cv::Point(10,-5), cv::Point(12,3),// mean (0.0399235), correlation (0.494029)
+        cv::Point(-6,-5), cv::Point(-6,7),// mean (0.0420153), correlation (0.486579)
+        cv::Point(8,-3), cv::Point(9,-8),// mean (0.0548021), correlation (0.484237)
+        cv::Point(2,-12), cv::Point(2,8),// mean (0.0616622), correlation (0.496642)
+        cv::Point(-11,-2), cv::Point(-10,3),// mean (0.0627755), correlation (0.498563)
+        cv::Point(-12,-13), cv::Point(-7,-9),// mean (0.0829622), correlation (0.495491)
+        cv::Point(-11,0), cv::Point(-10,-5),// mean (0.0843342), correlation (0.487146)
+        cv::Point(5,-3), cv::Point(11,8),// mean (0.0929937), correlation (0.502315)
+        cv::Point(-2,-13), cv::Point(-1,12),// mean (0.113327), correlation (0.48941)
+        cv::Point(-1,-8), cv::Point(0,9),// mean (0.132119), correlation (0.467268)
+        cv::Point(-13,-11), cv::Point(-12,-5),// mean (0.136269), correlation (0.498771)
+        cv::Point(-10,-2), cv::Point(-10,11),// mean (0.142173), correlation (0.498714)
+        cv::Point(-3,9), cv::Point(-2,-13),// mean (0.144141), correlation (0.491973)
+        cv::Point(2,-3), cv::Point(3,2),// mean (0.14892), correlation (0.500782)
+        cv::Point(-9,-13), cv::Point(-4,0),// mean (0.150371), correlation (0.498211)
+        cv::Point(-4,6), cv::Point(-3,-10),// mean (0.152159), correlation (0.495547)
+        cv::Point(-4,12), cv::Point(-2,-7),// mean (0.156152), correlation (0.496925)
+        cv::Point(-6,-11), cv::Point(-4,9),// mean (0.15749), correlation (0.499222)
+        cv::Point(6,-3), cv::Point(6,11),// mean (0.159211), correlation (0.503821)
+        cv::Point(-13,11), cv::Point(-5,5),// mean (0.162427), correlation (0.501907)
+        cv::Point(11,11), cv::Point(12,6),// mean (0.16652), correlation (0.497632)
+        cv::Point(7,-5), cv::Point(12,-2),// mean (0.169141), correlation (0.484474)
+        cv::Point(-1,12), cv::Point(0,7),// mean (0.169456), correlation (0.495339)
+        cv::Point(-4,-8), cv::Point(-3,-2),// mean (0.171457), correlation (0.487251)
+        cv::Point(-7,1), cv::Point(-6,7),// mean (0.175), correlation (0.500024)
+        cv::Point(-13,-12), cv::Point(-8,-13),// mean (0.175866), correlation (0.497523)
+        cv::Point(-7,-2), cv::Point(-6,-8),// mean (0.178273), correlation (0.501854)
+        cv::Point(-8,5), cv::Point(-6,-9),// mean (0.181107), correlation (0.494888)
+        cv::Point(-5,-1), cv::Point(-4,5),// mean (0.190227), correlation (0.482557)
+        cv::Point(-13,7), cv::Point(-8,10),// mean (0.196739), correlation (0.496503)
+        cv::Point(1,5), cv::Point(5,-13),// mean (0.19973), correlation (0.499759)
+        cv::Point(1,0), cv::Point(10,-13),// mean (0.204465), correlation (0.49873)
+        cv::Point(9,12), cv::Point(10,-1),// mean (0.209334), correlation (0.49063)
+        cv::Point(5,-8), cv::Point(10,-9),// mean (0.211134), correlation (0.503011)
+        cv::Point(-1,11), cv::Point(1,-13),// mean (0.212), correlation (0.499414)
+        cv::Point(-9,-3), cv::Point(-6,2),// mean (0.212168), correlation (0.480739)
+        cv::Point(-1,-10), cv::Point(1,12),// mean (0.212731), correlation (0.502523)
+        cv::Point(-13,1), cv::Point(-8,-10),// mean (0.21327), correlation (0.489786)
+        cv::Point(8,-11), cv::Point(10,-6),// mean (0.214159), correlation (0.488246)
+        cv::Point(2,-13), cv::Point(3,-6),// mean (0.216993), correlation (0.50287)
+        cv::Point(7,-13), cv::Point(12,-9),// mean (0.223639), correlation (0.470502)
+        cv::Point(-10,-10), cv::Point(-5,-7),// mean (0.224089), correlation (0.500852)
+        cv::Point(-10,-8), cv::Point(-8,-13),// mean (0.228666), correlation (0.502629)
+        cv::Point(4,-6), cv::Point(8,5),// mean (0.22906), correlation (0.498305)
+        cv::Point(3,12), cv::Point(8,-13),// mean (0.233378), correlation (0.503825)
+        cv::Point(-4,2), cv::Point(-3,-3),// mean (0.234323), correlation (0.476692)
+        cv::Point(5,-13), cv::Point(10,-12),// mean (0.236392), correlation (0.475462)
+        cv::Point(4,-13), cv::Point(5,-1),// mean (0.236842), correlation (0.504132)
+        cv::Point(-9,9), cv::Point(-4,3),// mean (0.236977), correlation (0.497739)
+        cv::Point(0,3), cv::Point(3,-9),// mean (0.24314), correlation (0.499398)
+        cv::Point(-12,1), cv::Point(-6,1),// mean (0.243297), correlation (0.489447)
+        cv::Point(3,2), cv::Point(4,-8),// mean (0.00155196), correlation (0.553496)
+        cv::Point(-10,-10), cv::Point(-10,9),// mean (0.00239541), correlation (0.54297)
+        cv::Point(8,-13), cv::Point(12,12),// mean (0.0034413), correlation (0.544361)
+        cv::Point(-8,-12), cv::Point(-6,-5),// mean (0.003565), correlation (0.551225)
+        cv::Point(2,2), cv::Point(3,7),// mean (0.00835583), correlation (0.55285)
+        cv::Point(10,6), cv::Point(11,-8),// mean (0.00885065), correlation (0.540913)
+        cv::Point(6,8), cv::Point(8,-12),// mean (0.0101552), correlation (0.551085)
+        cv::Point(-7,10), cv::Point(-6,5),// mean (0.0102227), correlation (0.533635)
+        cv::Point(-3,-9), cv::Point(-3,9),// mean (0.0110211), correlation (0.543121)
+        cv::Point(-1,-13), cv::Point(-1,5),// mean (0.0113473), correlation (0.550173)
+        cv::Point(-3,-7), cv::Point(-3,4),// mean (0.0140913), correlation (0.554774)
+        cv::Point(-8,-2), cv::Point(-8,3),// mean (0.017049), correlation (0.55461)
+        cv::Point(4,2), cv::Point(12,12),// mean (0.01778), correlation (0.546921)
+        cv::Point(2,-5), cv::Point(3,11),// mean (0.0224022), correlation (0.549667)
+        cv::Point(6,-9), cv::Point(11,-13),// mean (0.029161), correlation (0.546295)
+        cv::Point(3,-1), cv::Point(7,12),// mean (0.0303081), correlation (0.548599)
+        cv::Point(11,-1), cv::Point(12,4),// mean (0.0355151), correlation (0.523943)
+        cv::Point(-3,0), cv::Point(-3,6),// mean (0.0417904), correlation (0.543395)
+        cv::Point(4,-11), cv::Point(4,12),// mean (0.0487292), correlation (0.542818)
+        cv::Point(2,-4), cv::Point(2,1),// mean (0.0575124), correlation (0.554888)
+        cv::Point(-10,-6), cv::Point(-8,1),// mean (0.0594242), correlation (0.544026)
+        cv::Point(-13,7), cv::Point(-11,1),// mean (0.0597391), correlation (0.550524)
+        cv::Point(-13,12), cv::Point(-11,-13),// mean (0.0608974), correlation (0.55383)
+        cv::Point(6,0), cv::Point(11,-13),// mean (0.065126), correlation (0.552006)
+        cv::Point(0,-1), cv::Point(1,4),// mean (0.074224), correlation (0.546372)
+        cv::Point(-13,3), cv::Point(-9,-2),// mean (0.0808592), correlation (0.554875)
+        cv::Point(-9,8), cv::Point(-6,-3),// mean (0.0883378), correlation (0.551178)
+        cv::Point(-13,-6), cv::Point(-8,-2),// mean (0.0901035), correlation (0.548446)
+        cv::Point(5,-9), cv::Point(8,10),// mean (0.0949843), correlation (0.554694)
+        cv::Point(2,7), cv::Point(3,-9),// mean (0.0994152), correlation (0.550979)
+        cv::Point(-1,-6), cv::Point(-1,-1),// mean (0.10045), correlation (0.552714)
+        cv::Point(9,5), cv::Point(11,-2),// mean (0.100686), correlation (0.552594)
+        cv::Point(11,-3), cv::Point(12,-8),// mean (0.101091), correlation (0.532394)
+        cv::Point(3,0), cv::Point(3,5),// mean (0.101147), correlation (0.525576)
+        cv::Point(-1,4), cv::Point(0,10),// mean (0.105263), correlation (0.531498)
+        cv::Point(3,-6), cv::Point(4,5),// mean (0.110785), correlation (0.540491)
+        cv::Point(-13,0), cv::Point(-10,5),// mean (0.112798), correlation (0.536582)
+        cv::Point(5,8), cv::Point(12,11),// mean (0.114181), correlation (0.555793)
+        cv::Point(8,9), cv::Point(9,-6),// mean (0.117431), correlation (0.553763)
+        cv::Point(7,-4), cv::Point(8,-12),// mean (0.118522), correlation (0.553452)
+        cv::Point(-10,4), cv::Point(-10,9),// mean (0.12094), correlation (0.554785)
+        cv::Point(7,3), cv::Point(12,4),// mean (0.122582), correlation (0.555825)
+        cv::Point(9,-7), cv::Point(10,-2),// mean (0.124978), correlation (0.549846)
+        cv::Point(7,0), cv::Point(12,-2),// mean (0.127002), correlation (0.537452)
+        cv::Point(-1,-6), cv::Point(0,-11)// mean (0.127148), correlation (0.547401)
     };
 
     float const angle = kpt.angle * (float)(CV_PI / 180.);
@@ -410,7 +407,7 @@ static void computeOrbDescriptor(KeyPoint const& kpt, Mat const& img, uchar* des
     center[cvRound(pattern[idx].x * b + pattern[idx].y * a) * step + \
            cvRound(pattern[idx].x * a - pattern[idx].y * b)]
 
-    Point const* pattern = pattern_array;
+    cv::Point const* pattern = pattern_array;
 
     for (int i = 0; i < 32; ++i, pattern += 16)
     {
@@ -448,11 +445,12 @@ static void computeOrbDescriptor(KeyPoint const& kpt, Mat const& img, uchar* des
 #undef GET_VALUE
 }
 
-static void computeDescriptors(Mat const& image, vector<KeyPoint>& keypoints, Mat& descriptors)
+static void computeDescriptors(cv::Mat const& image,
+    std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
     int count_keypoints = (int)keypoints.size();
 
-    descriptors = Mat::zeros(count_keypoints, 32, CV_8UC1);
+    descriptors = cv::Mat::zeros(count_keypoints, 32, CV_8UC1);
 
     for (int i = 0; i < count_keypoints; ++i)
         computeOrbDescriptor(keypoints[i], image, descriptors.ptr(i));
@@ -478,22 +476,13 @@ ORBextractor::ORBextractor(int _nfeatures, float scaleFactor, int _nlevels, int 
     mvScaleFactor.resize(nlevels);
     mvLevelSigma2.resize(nlevels);
 
-    mvScaleFactor[0] = 1.0f;
-    mvLevelSigma2[0] = 1.0f;
+    mvScaleFactor[0] = 1.f;
+    mvLevelSigma2[0] = 1.f;
 
     for (int i = 1; i < nlevels; ++i)
     {
         mvScaleFactor[i] = (float)(mvScaleFactor[i - 1] * m_scaleFactor); // PAE: what the hack
         mvLevelSigma2[i] = mvScaleFactor[i] * mvScaleFactor[i];
-    }
-
-    mvInvScaleFactor.resize(nlevels);
-    mvInvLevelSigma2.resize(nlevels);
-
-    for (int i = 0; i < nlevels; ++i)
-    {
-        mvInvScaleFactor[i] = 1.f / mvScaleFactor[i];
-        mvInvLevelSigma2[i] = 1.f / mvLevelSigma2[i];
     }
 
     mvImagePyramid.resize(nlevels);
@@ -628,7 +617,7 @@ std::vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
 
     for (ExtractorNode& node : nodes)
     {
-        vector<cv::KeyPoint>& vNodeKeys = node.m_keys;
+        std::vector<cv::KeyPoint>& vNodeKeys = node.m_keys;
 
         std::size_t const size = vNodeKeys.size();
         cv::KeyPoint const* pKP = &vNodeKeys[0];
@@ -647,7 +636,7 @@ std::vector<cv::KeyPoint> ORBextractor::DistributeOctTree(
     return vResultKeys;
 }
 
-void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoints)
+void ORBextractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints)
 {
     allKeypoints.resize(nlevels);
 
@@ -661,7 +650,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
         int const maxBorderX = mvImagePyramid[level].cols - EDGE_THRESHOLD + 3;
         int const maxBorderY = mvImagePyramid[level].rows - EDGE_THRESHOLD + 3;
 
-        vector<cv::KeyPoint> vToDistributeKeys;
+        std::vector<cv::KeyPoint> vToDistributeKeys;
         vToDistributeKeys.reserve(nfeatures * 10);
 
         float const width = maxBorderX - minBorderX;
@@ -695,7 +684,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
                 if (maxX > maxBorderX)
                     maxX = maxBorderX;
 
-                vector<cv::KeyPoint> vKeysCell;
+                std::vector<cv::KeyPoint> vKeysCell;
                 cv::Mat mat_fast = mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX);
                 FAST(mat_fast, vKeysCell, iniThFAST, true);
 
@@ -712,7 +701,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
             }
         }
 
-        vector<KeyPoint>& keypoints = allKeypoints[level];
+        std::vector<cv::KeyPoint>& keypoints = allKeypoints[level];
 
         keypoints = DistributeOctTree(vToDistributeKeys,
             minBorderX, maxBorderX, minBorderY, maxBorderY, mnFeaturesPerLevel[level]);
@@ -720,7 +709,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
         float const scaledPatchSize = PATCH_SIZE * mvScaleFactor[level];
 
         // Add border to coordinates and scale information
-        for (KeyPoint& cp : keypoints)
+        for (cv::KeyPoint& cp : keypoints)
         {
             cp.pt.x += minBorderX;
             cp.pt.y += minBorderY;
@@ -734,26 +723,25 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
         computeOrientation(mvImagePyramid[level], allKeypoints[level]);
 }
 
-void ORBextractor::operator () (InputArray _image, InputArray _mask,
-    std::vector<KeyPoint>& _keypoints, OutputArray _descriptors)
+void ORBextractor::operator () (cv::InputArray _image, cv::InputArray _mask,
+    std::vector<cv::KeyPoint>& _keypoints, cv::OutputArray _descriptors)
 { 
     if (_image.empty())
         return;
 
-    Mat image = _image.getMat();
+    cv::Mat image = _image.getMat();
     assert(image.type() == CV_8UC1);
 
-    // Pre-compute the scale pyramid
     ComputePyramid(image);
 
-    std::vector<std::vector<KeyPoint> > allKeypoints;
+    std::vector<std::vector<cv::KeyPoint> > allKeypoints;
     ComputeKeyPointsOctTree(allKeypoints);
 
     std::size_t nkeypoints = 0;
-    for (std::vector<KeyPoint> const& level_vector : allKeypoints)
+    for (std::vector<cv::KeyPoint> const& level_vector : allKeypoints)
         nkeypoints += level_vector.size();
 
-    Mat descriptors;
+    cv::Mat descriptors;
 
     if (nkeypoints == 0)
         _descriptors.release();
@@ -769,18 +757,18 @@ void ORBextractor::operator () (InputArray _image, InputArray _mask,
     int offset = 0;
     for (int level = 0; level < nlevels; ++level)
     {
-        vector<KeyPoint>& keypoints = allKeypoints[level];
+        std::vector<cv::KeyPoint>& keypoints = allKeypoints[level];
 
         int const nkeypointsLevel = (int)keypoints.size();
         if (nkeypointsLevel == 0)
             continue;
 
         // preprocess the resized image
-        Mat workingMat = mvImagePyramid[level].clone();
-        GaussianBlur(workingMat, workingMat, Size(7, 7), 2, 2, BORDER_REFLECT_101);
+        cv::Mat workingMat = mvImagePyramid[level].clone();
+        cv::GaussianBlur(workingMat, workingMat, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
 
         // Compute the descriptors
-        Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);
+        cv::Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);
         computeDescriptors(workingMat, keypoints, desc);
         offset += nkeypointsLevel;
 
@@ -789,7 +777,7 @@ void ORBextractor::operator () (InputArray _image, InputArray _mask,
         {
             float const scale = mvScaleFactor[level];
 
-            for (KeyPoint& keypoint : keypoints)
+            for (cv::KeyPoint& keypoint : keypoints)
                 keypoint.pt *= scale;
         }
 
@@ -800,34 +788,33 @@ void ORBextractor::operator () (InputArray _image, InputArray _mask,
 
 void ORBextractor::ComputePyramid(cv::Mat image)
 {
-    for (int level = 0; level < nlevels; ++level)
+    float scale = 1.f;
+
+    for (int level = 0; level < nlevels; ++level, scale /= m_scaleFactor)
     {
-        float const scale = mvInvScaleFactor[level];
+        cv::Size sz(cvRound(image.cols * scale), cvRound(image.rows * scale));
+        cv::Size wholeSize(sz.width + EDGE_THRESHOLD * 2, sz.height + EDGE_THRESHOLD * 2);
 
-        Size sz(cvRound((float)image.cols * scale), cvRound((float)image.rows * scale));
-        Size wholeSize(sz.width + EDGE_THRESHOLD * 2, sz.height + EDGE_THRESHOLD * 2);
+        cv::Mat temp(wholeSize, image.type());
 
-        Mat temp(wholeSize, image.type());
-
-        mvImagePyramid[level] = temp(Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
+        mvImagePyramid[level] = temp(cv::Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
 
         // Compute the resized image
         if (level != 0)
         {
-            resize(mvImagePyramid[level - 1], mvImagePyramid[level], sz, 0, 0, INTER_LINEAR);
+            resize(mvImagePyramid[level - 1], mvImagePyramid[level], sz, 0, 0, cv::INTER_LINEAR);
 
-            copyMakeBorder(mvImagePyramid[level], temp,
+            cv::copyMakeBorder(mvImagePyramid[level], temp,
                 EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
-                BORDER_REFLECT_101 + BORDER_ISOLATED);
+                cv::BORDER_REFLECT_101 + cv::BORDER_ISOLATED);
         }
         else
         {
-            copyMakeBorder(image, temp,
+            cv::copyMakeBorder(image, temp,
                 EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
-                BORDER_REFLECT_101);
+                cv::BORDER_REFLECT_101);
         }
     }
-
 }
 
 } //namespace ORB_SLAM
