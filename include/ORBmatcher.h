@@ -70,7 +70,7 @@ public:
     // Search matches between MapPoints in a KeyFrame and ORB in a Frame.
     // Brute force constrained to ORB that belong to the same vocabulary node (at a certain level)
     // Used in Relocalisation and Loop Detection
-    int SearchByBoW(KeyFrame *pKF, Frame &F, std::vector<MapPoint*> &vpMapPointMatches);
+    std::size_t SearchByBoW(KeyFrame *pKF, Frame &F, std::vector<MapPoint*> &vpMapPointMatches);
     int SearchByBoW(KeyFrame *pKF1, KeyFrame* pKF2, std::vector<MapPoint*> &vpMatches12);
 
     // Matching for the Map Initialization (only used in the monocular case)
@@ -98,9 +98,7 @@ protected:
         cv::Mat const& F12, KeyFrame const* pKF);
 
     static float RadiusByViewingCos(float viewCos)
-    {
-        return viewCos > 0.998 ? 2.5f : 4.0f;
-    }
+        { return viewCos > 0.998 ? 2.5f : 4.0f; }
 
     void ComputeThreeMaxima(std::vector<int> const* histo, int L, int &ind1, int &ind2, int &ind3);
 

@@ -152,7 +152,7 @@ public:
     }
 
     int PredictScale(float currentDist, KeyFrame* pKF) const;
-    int PredictScale(float currentDist, Frame* pF) const;
+    int PredictScale(float currentDist, Frame const* pF) const;
 
 public:
 

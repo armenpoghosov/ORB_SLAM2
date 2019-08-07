@@ -149,7 +149,7 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
 
             for (KeyFrame* pCovKF : vCovKFs)
             {
-                if (pCovKF->mnId < vpKFs[i]->mnId)
+                if (pCovKF->mnId < vpKFs[i]->get_id())
                     continue;
 
                 cv::Mat Ow2 = pCovKF->GetCameraCenter();
@@ -170,7 +170,7 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
             std::unordered_set<KeyFrame*> sLoopKFs = vpKFs[i]->GetLoopEdges();
             for (KeyFrame* pLoopKF : sLoopKFs)
             {
-                if (pLoopKF->mnId < vpKFs[i]->mnId)
+                if (pLoopKF->get_id() < vpKFs[i]->get_id())
                     continue;
 
                 cv::Mat Owl = pLoopKF->GetCameraCenter();

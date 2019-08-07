@@ -19,13 +19,15 @@
 */
 
 #include "FrameDrawer.h"
-#include "Tracking.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/types_c.h>
 
-#include<mutex>
+#include "Map.h"
+#include "MapPoint.h"
+#include "Tracking.h"
+#include "ORBExtractor.h"   // TODO: PAE: remove this header from here
 
 namespace ORB_SLAM2
 {
@@ -173,9 +175,7 @@ void FrameDrawer::Update(Tracking *pTracker)
 {
     std::unique_lock<std::mutex> lock(mMutex);
 
-    // PAE: TODO: pTracker->mImGray.copyTo(mIm);
-    pTracker->get_current_frame().mpORBextractorLeft->mvImagePyramid[0].copyTo(mIm);
-
+    pTracker->get_current_frame().get_image_left().copyTo(mIm);
 
     mvCurrentKeys = pTracker->get_current_frame().mvKeys;
     N = mvCurrentKeys.size();

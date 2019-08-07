@@ -117,21 +117,23 @@ public:
 
     void clear();
 
-    std::vector<KeyFrame*>          mvpKeyFrameOrigins;
+    std::vector<KeyFrame*> const& get_key_frame_origins() const
+        { return mvpKeyFrameOrigins; }
+
+    void add_to_key_frame_origins(KeyFrame* pKF)
+        { mvpKeyFrameOrigins.push_back(pKF); }
+
     std::mutex                      mMutexMapUpdate;
 
 protected:
 
     std::unordered_set<MapPoint*>   mspMapPoints;
     std::unordered_set<KeyFrame*>   mspKeyFrames;
-
+    std::vector<KeyFrame*>          mvpKeyFrameOrigins;
     std::vector<MapPoint*>          mvpReferenceMapPoints;
-
     uint64_t                        mnMaxKFid;
-
     // Index related to a big change in the map (loop closure, global BA)
     std::atomic<int>                mnBigChangeIdx;
-
     std::mutex mutable              mMutexMap;
 };
 

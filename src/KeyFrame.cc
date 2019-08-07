@@ -31,8 +31,8 @@ uint64_t KeyFrame::s_next_id = 0;
 
 KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     :
-    mnFrameId(F.m_id),
-    mTimeStamp(F.mTimeStamp),
+    mnFrameId(F.get_id()),
+    mTimeStamp(F.get_time_stamp()),
 
     // TODO: PAE: review these
     mnGridCols(Frame::FRAME_GRID_COLS),
@@ -59,8 +59,8 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     cy(F.cy),
     invfx(F.invfx),
     invfy(F.invfy),
-    mbf(F.mbf),
-    mb(F.mb),
+    mbf(F.get_mbf()),
+    mb(F.get_mb()),
     mThDepth(F.mThDepth),
 
 
@@ -69,7 +69,7 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mvKeysUn(F.mvKeysUn),
     mvuRight(F.mvuRight),
     mvDepth(F.mvDepth),
-    mDescriptors(F.mDescriptors.clone()),
+    mDescriptors(F.get_descriptors().clone()),
     mBowVec(F.mBowVec),
     mFeatVec(F.mFeatVec),
     mnScaleLevels(F.mnScaleLevels),
@@ -84,11 +84,11 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mnMinY(F.mnMinY),
     mnMaxX(F.mnMaxX),
     mnMaxY(F.mnMaxY),
-    mK(F.mK),
+    mK(F.get_K()),
 
     mvpMapPoints(F.mvpMapPoints),
     mpKeyFrameDB(pKFDB),
-    mpORBvocabulary(F.mpORBvocabulary),
+    mpORBvocabulary(F.get_orb_vocabulary()),
     mbFirstConnection(true),
     mpParent(nullptr),
     mbNotErase(false),

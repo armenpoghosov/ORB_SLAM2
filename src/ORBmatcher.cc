@@ -88,7 +88,7 @@ int ORBmatcher::SearchByProjection(Frame& F, std::vector<MapPoint*> const& vpMap
                     continue;
             }
 
-            cv::Mat const& d = F.mDescriptors.row((int)idx);
+            cv::Mat const& d = F.get_descriptor((int)idx);
 
             int const dist = DescriptorDistance(MPdescriptor,d);
 
@@ -141,9 +141,9 @@ bool ORBmatcher::CheckDistEpipolarLine(cv::KeyPoint const& kp1,
     return dsqr < 3.84 * pKF2->mvLevelSigma2[kp2.octave];
 }
 
-int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpMapPointMatches)
+std::size_t ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpMapPointMatches)
 {
-    int nmatches = 0;
+    std::size_t nmatches = 0;
 
     std::vector<int> rotHist[HISTO_LENGTH];
     if (m_check_orientation)
@@ -191,7 +191,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
                     if (vpMapPointMatches[realIdxF])
                         continue;
 
-                    cv::Mat const& dF = F.mDescriptors.row(realIdxF);
+                    cv::Mat const& dF = F.get_descriptor(realIdxF);
 
                     int const dist =  DescriptorDistance(dKF, dF);
                     if (dist < bestDist1)
@@ -357,7 +357,7 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw,
             if (kpLevel < nPredictedLevel - 1 || kpLevel > nPredictedLevel)
                 continue;
 
-            cv::Mat const& dKF = pKF->mDescriptors.row(idx);
+            cv::Mat const& dKF = pKF->mDescriptors.row((int)idx);
 
             int const dist = DescriptorDistance(dMP,dKF);
             if (dist < bestDist)
@@ -407,7 +407,7 @@ int ORBmatcher::SearchForInitialization(Frame const& F1, Frame const& F2,
         if (vIndices2.empty())
             continue;
 
-        cv::Mat d1 = F1.mDescriptors.row(i1);
+        cv::Mat const& d1 = F1.get_descriptor(i1);
 
         int bestDist = std::numeric_limits<int>::max();
         int bestIdx2 = -1;
@@ -415,10 +415,9 @@ int ORBmatcher::SearchForInitialization(Frame const& F1, Frame const& F2,
 
         for (std::size_t i2 : vIndices2)
         {
-            cv::Mat d2 = F2.mDescriptors.row(i2);
+            cv::Mat const& d2 = F2.get_descriptor(i2);
 
             int const dist = DescriptorDistance(d1, d2);
-
             if (vMatchedDistance[i2] <= dist)
                 continue;
 
@@ -535,24 +534,20 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint
     {
         if (f1it->first == f2it->first)
         {
-            for (size_t i1 = 0, iend1 = f1it->second.size(); i1 < iend1; ++i1)
+            for (std::size_t const idx1 : f1it->second)
             {
-                size_t const idx1 = f1it->second[i1];
-
                 MapPoint* pMP1 = vpMapPoints1[idx1];
                 if (pMP1 == nullptr || pMP1->isBad())
                     continue;
 
-                const cv::Mat &d1 = Descriptors1.row(idx1);
+                cv::Mat const& d1 = Descriptors1.row((int)idx1);
 
                 int bestDist1 = 256;
                 int bestIdx2 = -1 ;
                 int bestDist2 = 256;
 
-                for (size_t i2 = 0, iend2 = f2it->second.size(); i2 < iend2; ++i2)
+                for (std::size_t const idx2 : f2it->second)
                 {
-                    size_t const idx2 = f2it->second[i2];
-
                     if (vbMatched2[idx2])
                         continue;
 
@@ -561,10 +556,9 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint
                     if (pMP2 == nullptr || pMP2->isBad())
                         continue;
 
-                    const cv::Mat& d2 = Descriptors2.row(idx2);
+                    cv::Mat const& d2 = Descriptors2.row(idx2);
 
-                    int dist = DescriptorDistance(d1,d2);
-
+                    int dist = DescriptorDistance(d1, d2);
                     if (dist < bestDist1)
                     {
                         bestDist2 = bestDist1;
@@ -897,7 +891,7 @@ int ORBmatcher::Fuse(KeyFrame* pKF, std::vector<MapPoint*> const& vpMapPoints, f
                     continue;
             }
 
-            cv::Mat const& dKF = pKF->mDescriptors.row(idx);
+            cv::Mat const& dKF = pKF->mDescriptors.row((int)idx);
 
             int const dist = DescriptorDistance(dMP,dKF);
             if (dist < bestDist)
@@ -1306,8 +1300,9 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
 
         cv::Mat const twc = -Rcw.t() * tcw;
         cv::Mat const tlc = Rlw * twc + tlw;
-        bForward = tlc.at<float>(2) > CurrentFrame.mb;
-        bBackward = -tlc.at<float>(2) > CurrentFrame.mb;
+
+        bForward = tlc.at<float>(2) > CurrentFrame.get_mb();
+        bBackward = -tlc.at<float>(2) > CurrentFrame.get_mb();
     }
     else
     {
@@ -1371,13 +1366,13 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
 
             if (CurrentFrame.mvuRight[i2] > 0)
             {
-                float const ur = u - CurrentFrame.mbf * invzc;
+                float const ur = u - CurrentFrame.get_mbf() * invzc;
                 float const er = fabs(ur - CurrentFrame.mvuRight[i2]);
                 if (er > radius)
                     continue;
             }
 
-            cv::Mat const& d = CurrentFrame.mDescriptors.row(i2);
+            cv::Mat const& d = CurrentFrame.get_descriptor(i2);
 
             int const dist = DescriptorDistance(dMP, d);
             if (dist < bestDist)
@@ -1490,8 +1485,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, KeyFrame* pKF,
         const float radius = th*CurrentFrame.mvScaleFactors[nPredictedLevel];
 
         const vector<size_t> vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, nPredictedLevel-1, nPredictedLevel+1);
-
-        if(vIndices2.empty())
+        if (vIndices2.empty())
             continue;
 
         const cv::Mat dMP = pMP->GetDescriptor();
@@ -1499,17 +1493,14 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, KeyFrame* pKF,
         int bestDist = 256;
         int bestIdx2 = -1;
 
-        for (auto vit = vIndices2.begin(); vit != vIndices2.end(); ++vit)
+        for (std::size_t const i2 : vIndices2)
         {
-            const size_t i2 = *vit;
-
             if (CurrentFrame.mvpMapPoints[i2])
                 continue;
 
-            const cv::Mat &d = CurrentFrame.mDescriptors.row(i2);
+            cv::Mat const& d = CurrentFrame.get_descriptor(i2);
 
-            const int dist = DescriptorDistance(dMP,d);
-
+            int const dist = DescriptorDistance(dMP, d);
             if (dist < bestDist)
             {
                 bestDist=dist;

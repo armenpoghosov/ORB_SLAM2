@@ -32,7 +32,7 @@ mutex MapPoint::mGlobalMutex;
 
 MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
     :
-    mnFirstKFid(pRefKF->mnId),
+    mnFirstKFid(pRefKF->get_id()),
     mnFirstFrame(pRefKF->mnFrameId),
     m_observe_count(0),
     mnTrackReferenceForFrame(0),
@@ -61,7 +61,7 @@ MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
 MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF)
     :
     mnFirstKFid(-1),
-    mnFirstFrame(pFrame->m_id),
+    mnFirstFrame(pFrame->get_id()),
     m_observe_count(0),
     mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),
@@ -92,7 +92,7 @@ MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF)
     mfMaxDistance = dist*levelScaleFactor;
     mfMinDistance = mfMaxDistance / pFrame->mvScaleFactors[nLevels - 1];
 
-    pFrame->mDescriptors.row(idxF).copyTo(mDescriptor);
+    pFrame->get_descriptor(idxF).copyTo(mDescriptor);
 
     mnId = s_next_id++;
 }
@@ -343,7 +343,7 @@ int MapPoint::PredictScale(float currentDist, KeyFrame* pKF) const
     return nScale;
 }
 
-int MapPoint::PredictScale(float currentDist, Frame* pF) const
+int MapPoint::PredictScale(float currentDist, Frame const* pF) const
 {
     float ratio;
     {

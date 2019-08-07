@@ -90,13 +90,13 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, flo
 
             for (KeyFrame* pKFi : lKFs)
             {
-                if (pKFi->mnLoopQuery != pKF->mnId)
+                if (pKFi->mnLoopQuery != pKF->get_id())
                 {
                     pKFi->mnLoopWords = 0;
 
                     if (spConnectedKeyFrames.count(pKFi) == 0)
                     {
-                        pKFi->mnLoopQuery = pKF->mnId;
+                        pKFi->mnLoopQuery = pKF->get_id();
                         lKFsSharingWords.push_back(pKFi);
                     }
                 }
@@ -150,21 +150,21 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, flo
     for (auto it = lScoreAndMatch.begin(), itend = lScoreAndMatch.end(); it != itend; ++it)
     {
         KeyFrame* pKFi = it->second;
-        vector<KeyFrame*> vpNeighs = pKFi->GetBestCovisibilityKeyFrames(10);
+        std::vector<KeyFrame*> const& vpNeighs = pKFi->GetBestCovisibilityKeyFrames(10);
 
         float bestScore = it->first;
         float accScore = it->first;
         KeyFrame* pBestKF = pKFi;
         
-        for (auto vit = vpNeighs.begin(), vend = vpNeighs.end(); vit != vend; ++vit)
+        for (KeyFrame* pKF2 : vpNeighs)
         {
-            KeyFrame* pKF2 = *vit;
-            if (pKF2->mnLoopQuery==pKF->mnId && pKF2->mnLoopWords>minCommonWords)
+            if (pKF2->mnLoopQuery == pKF->get_id() && pKF2->mnLoopWords > minCommonWords)
             {
-                accScore+=pKF2->mLoopScore;
-                if(pKF2->mLoopScore>bestScore)
+                accScore += pKF2->mLoopScore;
+
+                if (pKF2->mLoopScore > bestScore)
                 {
-                    pBestKF=pKF2;
+                    pBestKF = pKF2;
                     bestScore = pKF2->mLoopScore;
                 }
             }
@@ -204,7 +204,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
 
     // Search all keyframes that share a word with current frame
     {
-        unique_lock<mutex> lock(mMutex);
+        std::unique_lock<std::mutex> lock(mMutex);
 
         for (DBoW2::BowVector::const_iterator vit = F->mBowVec.begin(), vend = F->mBowVec.end(); vit != vend; ++vit)
         {
@@ -212,10 +212,10 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
 
             for (KeyFrame* pKFi : lKFs)
             {
-                if (pKFi->mnRelocQuery != F->m_id)
+                if (pKFi->mnRelocQuery != F->get_id())
                 {
                     pKFi->mnRelocWords = 0;
-                    pKFi->mnRelocQuery = F->m_id;
+                    pKFi->mnRelocQuery = F->get_id();
                     lKFsSharingWords.push_back(pKFi);
                 }
                 pKFi->mnRelocWords++;
@@ -261,7 +261,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     float bestAccScore = 0;
 
     // Lets now accumulate score by covisibility
-    for(list<pair<float,KeyFrame*> >::iterator it=lScoreAndMatch.begin(), itend=lScoreAndMatch.end(); it!=itend; it++)
+    for (auto it = lScoreAndMatch.begin(), itend = lScoreAndMatch.end(); it != itend; ++it)
     {
         KeyFrame* pKFi = it->second;
         vector<KeyFrame*> vpNeighs = pKFi->GetBestCovisibilityKeyFrames(10);
@@ -269,10 +269,11 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
         float bestScore = it->first;
         float accScore = bestScore;
         KeyFrame* pBestKF = pKFi;
-        for(vector<KeyFrame*>::iterator vit=vpNeighs.begin(), vend=vpNeighs.end(); vit!=vend; vit++)
+        for (auto vit=vpNeighs.begin(), vend=vpNeighs.end(); vit!=vend; ++vit)
         {
             KeyFrame* pKF2 = *vit;
-            if(pKF2->mnRelocQuery!=F->m_id)
+
+            if (pKF2->mnRelocQuery != F->get_id())
                 continue;
 
             accScore+=pKF2->mRelocScore;

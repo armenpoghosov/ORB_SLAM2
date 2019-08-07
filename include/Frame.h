@@ -81,19 +81,19 @@ public:
     void UpdatePoseMatrices();
 
     // Returns the camera center.
-    cv::Mat GetCameraCenter()
+    cv::Mat GetCameraCenter() const
         { return mOw.clone(); }
 
     // Returns inverse of rotation
-    cv::Mat GetRotationInverse()
+    cv::Mat GetRotationInverse() const
         { return mRwc.clone(); }
 
     // Check if a MapPoint is in the frustum of the camera
     // and fill variables of the MapPoint to be used by the tracking
-    bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
+    bool isInFrustum(MapPoint* pMP, float viewingCosLimit) const;
 
     // Compute the cell of a keypoint (return false if outside the grid)
-    bool PosInGrid(cv::KeyPoint const& kp, int& posX, int& posY);
+    bool PosInGrid(cv::KeyPoint const& kp, int& posX, int& posY) const;
 
     std::vector<std::size_t> GetFeaturesInArea(float x, float y, float r,
         int minLevel = -1, int maxLevel = -1) const;
@@ -103,43 +103,64 @@ public:
     void ComputeStereoMatches();
 
     // Associate a "right" coordinate to a keypoint if there is valid depth in the depthmap.
-    void ComputeStereoFromRGBD(const cv::Mat &imDepth);
+    void ComputeStereoFromRGBD(cv::Mat const& imDepth);
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
-    cv::Mat UnprojectStereo(std::size_t kp_index);
+    cv::Mat UnprojectStereo(std::size_t kp_index) const;
+
+    cv::Mat const& get_image_left() const
+        { return m_imLeft;  }
+
+    cv::Mat const& get_descriptors() const
+        { return mDescriptors; }
+
+    cv::Mat const get_descriptor(int index) const
+        { return mDescriptors.row(index); }
+
+    ORBVocabulary* get_orb_vocabulary() const
+        { return mpORBvocabulary; }
+
+    cv::Mat const& get_K() const
+        { return mK; }
+
+    double get_time_stamp() const
+        { return mTimeStamp; }
+
+    static void reset_id_counter()
+        { s_next_id = 0; }
+
+    uint64_t get_id() const
+        { return m_id; }
+
+    float get_mbf() const
+        { return mbf; }
+
+    float get_mb() const
+        { return mb; }
 
 public:
 
     // NOTE: PAE: stupid function to be refactored ... just for the sake of reducing code size
     void ensure_initial_computations(cv::Mat const& img_first, cv::Mat const& K);
 
-    // Vocabulary used for relocalization.
-    ORBVocabulary*              mpORBvocabulary;
+    static float                fx;
+    static float                fy;
+    static float                cx;
+    static float                cy;
+    static float                invfx;
+    static float                invfy;
 
-    // Feature extractor. The right is used only in the stereo case.
-    ORBextractor*               mpORBextractorLeft;
-    ORBextractor*               mpORBextractorRight;
+    // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints.
+    static float                mfGridElementWidthInv;
+    static float                mfGridElementHeightInv;
 
-    // Frame timestamp.
-    double                      mTimeStamp;
+    // Undistorted Image Bounds (computed once).
+    static float                mnMinX;
+    static float                mnMaxX;
+    static float                mnMinY;
+    static float                mnMaxY;
 
-    // Calibration matrix and OpenCV distortion parameters.
-    cv::Mat                     mK;
-
-    static float fx;
-    static float fy;
-    static float cx;
-    static float cy;
-    static float invfx;
-    static float invfy;
-
-    cv::Mat                     mDistCoef;
-
-    // Stereo baseline multiplied by fx.
-    float                       mbf;
-
-    // Stereo baseline in meters.
-    float                       mb;
+    static bool                 mbInitialComputations;
 
     // Threshold close/far points. Close points are inserted from 1 view.
     // Far points are inserted as in the monocular case from 2 views.
@@ -165,7 +186,6 @@ public:
     DBoW2::FeatureVector        mFeatVec;
 
     // ORB descriptor, each row associated to a keypoint.
-    cv::Mat                     mDescriptors;
     cv::Mat                     mDescriptorsRight;
 
     // MapPoints associated to keypoints, nullptr if no association.
@@ -174,18 +194,10 @@ public:
     // Flag to identify outlier associations.
     std::vector<bool>           mvbOutlier;
 
-    // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints.
-    static float                mfGridElementWidthInv;
-    static float                mfGridElementHeightInv;
-
     std::vector<std::size_t>    mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
     // Camera pose.
     cv::Mat                     mTcw;
-
-    // Current and Next Frame id.
-    static uint64_t             s_next_id;
-    uint64_t                    m_id;
 
     // Reference Keyframe.
     KeyFrame*                   mpReferenceKF;
@@ -199,14 +211,6 @@ public:
     std::vector<float>          mvLevelSigma2;
     std::vector<float>          mvInvLevelSigma2;
 
-    // Undistorted Image Bounds (computed once).
-    static float mnMinX;
-    static float mnMaxX;
-    static float mnMinY;
-    static float mnMaxY;
-
-    static bool mbInitialComputations;
-
 private:
 
     // Undistort keypoints given OpenCV distortion parameters.
@@ -215,16 +219,46 @@ private:
     void UndistortKeyPoints();
 
     // Computes image bounds for the undistorted image (called in the constructor).
-    void ComputeImageBounds(const cv::Mat &imLeft);
+    void ComputeImageBounds(cv::Mat const& imLeft);
 
     // Assign keypoints to the grid for speed up feature matching (called in the constructor).
     void AssignFeaturesToGrid();
 
+    // Stereo baseline multiplied by fx.
+    float                       mbf;
+
+    // Stereo baseline in meters.
+    float                       mb;
+
+    // Current and Next Frame id.
+    static uint64_t             s_next_id;
+    uint64_t                    m_id;
+
+    // Frame timestamp.
+    double                      mTimeStamp;
+
+    // Calibration matrix and OpenCV distortion parameters.
+    cv::Mat                     mK;
+    cv::Mat                     mDistCoef;
+
+    // Feature extractor. The right is used only in the stereo case.
+    ORBextractor*               mpORBextractorLeft;
+    ORBextractor*               mpORBextractorRight;
+
+    // Vocabulary used for relocalization.
+    ORBVocabulary*              mpORBvocabulary;
+
+    // PAE: added to make it a bit faster
+    cv::Mat                     m_imLeft;
+
+    // ORB descriptor, each row associated to a keypoint.
+    cv::Mat                     mDescriptors;
+
     // Rotation, translation and camera center
-    cv::Mat mRcw;
-    cv::Mat mtcw;
-    cv::Mat mRwc;
-    cv::Mat mOw; //==mtwc
+    cv::Mat                     mRcw;
+    cv::Mat                     mtcw;
+    cv::Mat                     mRwc;
+    cv::Mat                     mOw; //==mtwc
 };
 
 }// namespace ORB_SLAM

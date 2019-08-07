@@ -135,7 +135,7 @@ Frame::Frame(cv::Mat const& imLeft, cv::Mat const& imRight,
     // This is done only for the first Frame (or after a change in the calibration)
     ensure_initial_computations(imLeft, K);
 
-    mb = mbf/fx;
+    mb = mbf / fx;
 
     AssignFeaturesToGrid();
 }
@@ -213,6 +213,7 @@ Frame::Frame(cv::Mat const& imGray, double timeStamp, ORBextractor* extractor,
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
+    m_imLeft = imGray; // PAE: added to make it faster
     ExtractORB(0, imGray);
 
     m_frame_N = mvKeys.size();
@@ -299,7 +300,7 @@ void Frame::UpdatePoseMatrices()
     mOw = -mRwc * mtcw;
 }
 
-bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
+bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit) const
 {
     pMP->mbTrackInView = false;
 
@@ -403,7 +404,7 @@ std::vector<size_t> Frame::GetFeaturesInArea(float x, float y, float r, int minL
     return vIndices;
 }
 
-bool Frame::PosInGrid(cv::KeyPoint const& kp, int& posX, int& posY)
+bool Frame::PosInGrid(cv::KeyPoint const& kp, int& posX, int& posY) const
 {
     posX = (int)std::round((kp.pt.x - mnMinX) * mfGridElementWidthInv);
     posY = (int)std::round((kp.pt.y - mnMinY) * mfGridElementHeightInv);
@@ -415,7 +416,7 @@ void Frame::ComputeBoW()
 {
     if (mBowVec.empty())
     {
-        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
+        std::vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
         mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
     }
 }
@@ -544,7 +545,7 @@ void Frame::ComputeStereoMatches()
         int bestDist = ORBmatcher::TH_HIGH;
         size_t bestIdxR = 0;
 
-        const cv::Mat &dL = mDescriptors.row(iL);
+        cv::Mat const& dL = get_descriptor(iL);
 
         // Compare descriptor to right keypoints
         for(size_t iC=0; iC<vCandidates.size(); iC++)
@@ -676,7 +677,7 @@ void Frame::ComputeStereoFromRGBD(cv::Mat const& imDepth)
     }
 }
 
-cv::Mat Frame::UnprojectStereo(std::size_t kp_index)
+cv::Mat Frame::UnprojectStereo(std::size_t kp_index) const
 {
     float const z = mvDepth[kp_index];
     if (z <= 0)

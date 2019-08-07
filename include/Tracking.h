@@ -25,20 +25,10 @@
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
-#include"Viewer.h"
-#include"FrameDrawer.h"
-#include"Map.h"
-#include"LocalMapping.h"
-#include"LoopClosing.h"
 #include"Frame.h"
-#include "ORBVocabulary.h"
-#include"KeyFrameDatabase.h"
-#include"ORBextractor.h"
-#include "Initializer.h"
-#include "MapDrawer.h"
-#include "System.h"
 
 #include <mutex>
+#include <future>
 
 namespace ORB_SLAM2
 {
@@ -49,6 +39,9 @@ class Map;
 class LocalMapping;
 class LoopClosing;
 class System;
+class MapDrawer;
+class KeyFrameDatabase;
+class Initializer;
 
 class Tracking
 {  
@@ -69,9 +62,9 @@ public:
         KeyFrameDatabase* pKFDB, const string &strSettingPath, int sensor);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    cv::Mat GrabImageStereo(cv::Mat const& imRectLeft, cv::Mat const& imRectRight, double timestamp);
-    cv::Mat GrabImageRGBD(cv::Mat const& imRGB, cv::Mat const& imD, double timestamp);
-    cv::Mat GrabImageMonocular(cv::Mat const& im, double timestamp);
+    void GrabImageStereo(cv::Mat const& imRectLeft, cv::Mat const& imRectRight, double timestamp);
+    void GrabImageRGBD(cv::Mat const& imRGB, cv::Mat const& imD, double timestamp);
+    void GrabImageMonocular(cv::Mat const& im, double timestamp);
 
     void SetLocalMapper(LocalMapping* pLocalMapper)
         { mpLocalMapper = pLocalMapper; }
@@ -122,6 +115,9 @@ public:
 
 protected:
 
+    // TODO: PAE: added to make extraction work faster
+    void track_worker(std::unique_ptr<Frame> frame);
+
     // Main tracking function. It is independent of the input sensor.
     void Track();
 
@@ -164,7 +160,6 @@ protected:
 
     // Current Frame
     Frame                       mCurrentFrame;
-    cv::Mat                     mImGray;
 
     // True if local mapping is deactivated and we are performing only localization
     bool                        mbOnlyTracking;
@@ -247,6 +242,11 @@ protected:
     bool                        mbRGB;
 
     std::list<MapPoint*>        mlpTemporalPoints;
+
+    // TODO: PAE:
+    std::future<void>           m_future;
+
+
 };
 
 } //namespace ORB_SLAM

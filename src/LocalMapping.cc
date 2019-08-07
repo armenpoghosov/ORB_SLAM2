@@ -217,7 +217,7 @@ void LocalMapping::MapPointCulling()
 {
     // Check Recent Added MapPoints
 
-    uint64_t const nCurrentKFid = mpCurrentKeyFrame->mnId;
+    uint64_t const nCurrentKFid = mpCurrentKeyFrame->get_id();
 
     int const cnThObs = mbMonocular ? 2 : 3;
 
@@ -511,18 +511,18 @@ void LocalMapping::SearchInNeighbors()
 
     for (KeyFrame* pKFi : vpNeighKFs)
     {
-        if (pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
+        if (pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->get_id())
             continue;
 
         vpTargetKFs.push_back(pKFi);
-        pKFi->mnFuseTargetForKF = mpCurrentKeyFrame->mnId;
+        pKFi->mnFuseTargetForKF = mpCurrentKeyFrame->get_id();
 
         // Extend to some second neighbors
         std::vector<KeyFrame*> const& vpSecondNeighKFs = pKFi->GetBestCovisibilityKeyFrames(5);
         for (KeyFrame* pKFi2 : vpSecondNeighKFs)
         {
-            if (pKFi2->isBad() || pKFi2->mnId == mpCurrentKeyFrame->mnId ||
-                pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
+            if (pKFi2->isBad() || pKFi2->get_id() == mpCurrentKeyFrame->get_id() ||
+                pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->get_id())
                 continue;
 
             vpTargetKFs.push_back(pKFi2);
@@ -548,11 +548,11 @@ void LocalMapping::SearchInNeighbors()
         for (MapPoint* pMP : vpMapPointsKFi)
         {
             if (pMP == nullptr || pMP->isBad() ||
-                pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->mnId)
+                pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->get_id())
                 continue;
 
             vpFuseCandidates.push_back(pMP);
-            pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->mnId;
+            pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->get_id();
         }
     }
 
@@ -603,7 +603,7 @@ void LocalMapping::KeyFrameCulling()
 
     for (KeyFrame* pKF : vpLocalKeyFrames)
     {
-        if (pKF->mnId == 0)
+        if (pKF->get_id() == 0)
             continue;
 
         std::vector<MapPoint*> const vpMapPoints = pKF->GetMapPointMatches();

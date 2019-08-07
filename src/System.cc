@@ -113,7 +113,7 @@ System::System(string const& strVocFile, string const& strSettingsFile, eSensor 
     mpLoopCloser->SetLocalMapper(mpLocalMapper);
 }
 
-cv::Mat System::TrackStereo(cv::Mat const& imLeft, cv::Mat const& imRight, double timestamp)
+void System::TrackStereo(cv::Mat const& imLeft, cv::Mat const& imRight, double timestamp)
 {
     assert(mSensor == STEREO);
 
@@ -130,10 +130,10 @@ cv::Mat System::TrackStereo(cv::Mat const& imLeft, cv::Mat const& imRight, doubl
         locked_handle_reset();
     }
 
-    return mpTracker->GrabImageStereo(imLeft,imRight,timestamp);
+    mpTracker->GrabImageStereo(imLeft,imRight,timestamp);
 }
 
-cv::Mat System::TrackRGBD(cv::Mat const& im, cv::Mat const& depthmap, double timestamp)
+void System::TrackRGBD(cv::Mat const& im, cv::Mat const& depthmap, double timestamp)
 {
     assert(mSensor == RGBD);
 
@@ -150,10 +150,10 @@ cv::Mat System::TrackRGBD(cv::Mat const& im, cv::Mat const& depthmap, double tim
         locked_handle_reset();
     }
 
-    return mpTracker->GrabImageRGBD(im,depthmap,timestamp);
+    mpTracker->GrabImageRGBD(im,depthmap,timestamp);
 }
 
-cv::Mat System::TrackMonocular(cv::Mat const& im, double timestamp)
+void System::TrackMonocular(cv::Mat const& im, double timestamp)
 {
     assert(mSensor == MONOCULAR);
 
@@ -170,7 +170,7 @@ cv::Mat System::TrackMonocular(cv::Mat const& im, double timestamp)
         locked_handle_reset();
     }
 
-    return mpTracker->GrabImageMonocular(im, timestamp);
+    mpTracker->GrabImageMonocular(im, timestamp);
 }
 
 void System::Shutdown()

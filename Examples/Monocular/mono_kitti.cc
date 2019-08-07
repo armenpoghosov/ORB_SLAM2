@@ -29,6 +29,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/videoio.hpp>
 
+#include <conio.h>
+
 #include"System.h"
 
 using namespace std;
@@ -97,6 +99,10 @@ int main(int argc, char **argv)
 
         // Pass the image to the SLAM system
         SLAM.TrackMonocular(im, tframe += 25);
+
+        if (::_kbhit() != 0 && ::_getch() == ' ')
+            ::_getch();
+
 
         //std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 

@@ -93,7 +93,7 @@ void LoopClosing::Run()
 void LoopClosing::InsertKeyFrame(KeyFrame *pKF)
 {
     std::unique_lock<std::mutex> lock(mMutexLoopQueue);
-    if (pKF->mnId != 0)
+    if (pKF->get_id() != 0)
         mlpLoopKeyFrameQueue.push_back(pKF);
 }
 
@@ -108,7 +108,7 @@ bool LoopClosing::DetectLoop()
     }
 
     // If the map contains less than 10 KF or less than 10 KF have passed from last loop detection
-    if (mpCurrentKF->mnId < mLastLoopKFid + 10)
+    if (mpCurrentKF->get_id() < mLastLoopKFid + 10)
     {
         mpKeyFrameDB->add(mpCurrentKF);
         mpCurrentKF->SetErase();
@@ -353,11 +353,11 @@ bool LoopClosing::ComputeSim3()
 
         for (MapPoint* pMP : vpMapPoints)
         {
-            if (pMP == nullptr || pMP->isBad() || pMP->mnLoopPointForKF == mpCurrentKF->mnId)
+            if (pMP == nullptr || pMP->isBad() || pMP->mnLoopPointForKF == mpCurrentKF->get_id())
                 continue;
 
             mvpLoopMapPoints.push_back(pMP);
-            pMP->mnLoopPointForKF = mpCurrentKF->mnId;
+            pMP->mnLoopPointForKF = mpCurrentKF->get_id();
         }
     }
 
@@ -465,7 +465,7 @@ void LoopClosing::CorrectLoop()
 
             for (MapPoint* pMPi : vpMPsi)
             {
-                if (pMPi == nullptr || pMPi->isBad() || pMPi->mnCorrectedByKF == mpCurrentKF->mnId)
+                if (pMPi == nullptr || pMPi->isBad() || pMPi->mnCorrectedByKF == mpCurrentKF->get_id())
                     continue;
 
                 // Project with non-corrected pose and project back with corrected pose
@@ -475,8 +475,8 @@ void LoopClosing::CorrectLoop()
 
                 cv::Mat cvCorrectedP3Dw = Converter::toCvMat(eigCorrectedP3Dw);
                 pMPi->SetWorldPos(cvCorrectedP3Dw);
-                pMPi->mnCorrectedByKF = mpCurrentKF->mnId;
-                pMPi->mnCorrectedReference = pKFi->mnId;
+                pMPi->mnCorrectedByKF = mpCurrentKF->get_id();
+                pMPi->mnCorrectedReference = pKFi->get_id();
                 pMPi->UpdateNormalAndDepth();
             }
 
@@ -554,12 +554,12 @@ void LoopClosing::CorrectLoop()
     mbRunningGBA = true;
     mbFinishedGBA = false;
     mbStopGBA = false;
-    mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->mnId);
+    mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->get_id());
 
     // Loop closed. Release Local Mapping.
     mpLocalMapper->resume();
 
-    mLastLoopKFid = mpCurrentKF->mnId;
+    mLastLoopKFid = mpCurrentKF->get_id();
 }
 
 void LoopClosing::SearchAndFuse(KeyFrameAndPose const& CorrectedPosesMap)
@@ -649,7 +649,8 @@ void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
             std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
 
             // Correct keyframes starting at map first keyframe
-            std::list<KeyFrame*> lpKFtoCheck(mpMap->mvpKeyFrameOrigins.begin(), mpMap->mvpKeyFrameOrigins.end());
+            std::vector<KeyFrame*> const& key_frame_origins = mpMap->get_key_frame_origins();
+            std::list<KeyFrame*> lpKFtoCheck(key_frame_origins.begin(), key_frame_origins.end());
 
             while (!lpKFtoCheck.empty())
             {

@@ -32,7 +32,7 @@ namespace ORB_SLAM2
 
 Initializer::Initializer(Frame const& rRF, float sigma, int iterations)
 {
-    mK = rRF.mK.clone();
+    mK = rRF.get_K().clone();
 
     mvKeys1 = rRF.mvKeysUn;
 

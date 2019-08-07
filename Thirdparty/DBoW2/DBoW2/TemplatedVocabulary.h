@@ -628,182 +628,150 @@ void TemplatedVocabulary<TDescriptor,F>::getFeatures(
 
 template<class TDescriptor, class F>
 void TemplatedVocabulary<TDescriptor,F>::HKmeansStep(NodeId parent_id, 
-  const vector<pDescriptor> &descriptors, int current_level)
+    std::vector<pDescriptor> const& descriptors, int current_level)
 {
-  if(descriptors.empty()) return;
-        
-  // features associated to each cluster
-  vector<TDescriptor> clusters;
-	vector<vector<unsigned int> > groups; // groups[i] = [j1, j2, ...]
-	// j1, j2, ... indices of descriptors associated to cluster i
+    if (descriptors.empty())
+        return;
 
-  clusters.reserve(m_k);
-	groups.reserve(m_k);
-  
-  //const int msizes[] = { m_k, descriptors.size() };
-  //cv::SparseMat assoc(2, msizes, CV_8U);
-  //cv::SparseMat last_assoc(2, msizes, CV_8U);  
-  //// assoc.row(cluster_idx).col(descriptor_idx) = 1 iif associated
-  
-  if((int)descriptors.size() <= m_k)
-  {
-    // trivial case: one cluster per feature
-    groups.resize(descriptors.size());
+    // features associated to each cluster
+    std::vector<TDescriptor> clusters;
+    std::vector<std::vector<std::size_t> > groups; // groups[i] = [j1, j2, ...]
+    // j1, j2, ... indices of descriptors associated to cluster i
 
-    for(unsigned int i = 0; i < descriptors.size(); i++)
+    clusters.reserve(m_k);
+    groups.reserve(m_k);
+
+    if (descriptors.size() <= (std::size_t)m_k)
     {
-      groups[i].push_back(i);
-      clusters.push_back(*descriptors[i]);
-    }
-  }
-  else
-  {
-    // select clusters and groups with kmeans
-    
-    bool first_time = true;
-    bool goon = true;
-    
-    // to check if clusters move after iterations
-    vector<int> last_association, current_association;
+        // trivial case: one cluster per feature
+        groups.resize(descriptors.size());
 
-    while(goon)
-    {
-      // 1. Calculate clusters
-
-			if(first_time)
-			{
-        // random sample 
-        initiateClusters(descriptors, clusters);
-      }
-      else
-      {
-        // calculate cluster centres
-
-        for(unsigned int c = 0; c < clusters.size(); ++c)
+        for (std::size_t i = 0; i < descriptors.size(); i++)
         {
-          vector<pDescriptor> cluster_descriptors;
-          cluster_descriptors.reserve(groups[c].size());
-          
-          /*
-          for(unsigned int d = 0; d < descriptors.size(); ++d)
-          {
-            if( assoc.find<unsigned char>(c, d) )
+            groups[i].push_back(i);
+            clusters.push_back(*descriptors[i]);
+        }
+    }
+    else
+    {
+        // select clusters and groups with kmeans
+        bool first_time = true;
+        bool goon = true;
+
+        // to check if clusters move after iterations
+        std::vector<int> last_association;
+        std::vector<int> current_association;
+
+        while (goon)
+        {
+            // 1. Calculate clusters
+            if (first_time)
             {
-              cluster_descriptors.push_back(descriptors[d]);
+                // random sample 
+                initiateClusters(descriptors, clusters);
             }
-          }
-          */
-          
-          vector<unsigned int>::const_iterator vit;
-          for(vit = groups[c].begin(); vit != groups[c].end(); ++vit)
-          {
-            cluster_descriptors.push_back(descriptors[*vit]);
-          }
-          
-          
-          F::meanValue(cluster_descriptors, clusters[c]);
-        }
+            else
+            {
+                // calculate cluster centres
+                for (std::size_t c = 0; c < clusters.size(); ++c)
+                {
+                    std::vector<pDescriptor> cluster_descriptors;
+                    cluster_descriptors.reserve(groups[c].size());
+
+                    for (auto vit = groups[c].begin(); vit != groups[c].end(); ++vit)
+                        cluster_descriptors.push_back(descriptors[*vit]);
+
+                    F::meanValue(cluster_descriptors, clusters[c]);
+                }
+            } // if(!first_time)
+
+            // 2. Associate features with clusters
+
+            // calculate distances to cluster centers
+            groups.clear();
+            groups.resize(clusters.size());
+            current_association.resize(descriptors.size());
+
+            auto fit = descriptors.begin();
+            for (; fit != descriptors.end(); ++fit)
+            {
+                double best_dist = F::distance(*(*fit), clusters[0]);
+                unsigned int icluster = 0;
         
-      } // if(!first_time)
+                for (unsigned int c = 1; c < clusters.size(); ++c)
+                {
+                    double dist = F::distance(*(*fit), clusters[c]);
+                    if (dist < best_dist)
+                    {
+                        best_dist = dist;
+                        icluster = c;
+                    }
+                }
 
-      // 2. Associate features with clusters
+                //assoc.ref<unsigned char>(icluster, d) = 1;
 
-      // calculate distances to cluster centers
-      groups.clear();
-      groups.resize(clusters.size(), vector<unsigned int>());
-      current_association.resize(descriptors.size());
+                groups[icluster].push_back(fit - descriptors.begin());
+                current_association[ fit - descriptors.begin() ] = icluster;
+            }
 
-      //assoc.clear();
+            // kmeans++ ensures all the clusters has any feature associated with them
 
-      typename vector<pDescriptor>::const_iterator fit;
-      //unsigned int d = 0;
-      for(fit = descriptors.begin(); fit != descriptors.end(); ++fit)//, ++d)
-      {
-        double best_dist = F::distance(*(*fit), clusters[0]);
-        unsigned int icluster = 0;
-        
-        for(unsigned int c = 1; c < clusters.size(); ++c)
-        {
-          double dist = F::distance(*(*fit), clusters[c]);
-          if(dist < best_dist)
-          {
-            best_dist = dist;
-            icluster = c;
-          }
-        }
+            // 3. check convergence
+            if (first_time)
+            {
+                first_time = false;
+            }
+            else
+            {
+                goon = false;
+                for (std::size_t i = 0; i < current_association.size(); ++i)
+                {
+                    if (current_association[i] != last_association[i])
+                    {
+                        goon = true;
+                        break;
+                    }
+                }
+            }
 
-        //assoc.ref<unsigned char>(icluster, d) = 1;
-
-        groups[icluster].push_back(fit - descriptors.begin());
-        current_association[ fit - descriptors.begin() ] = icluster;
-      }
-      
-      // kmeans++ ensures all the clusters has any feature associated with them
-
-      // 3. check convergence
-      if(first_time)
-      {
-        first_time = false;
-      }
-      else
-      {
-        //goon = !eqUChar(last_assoc, assoc);
-        
-        goon = false;
-        for(unsigned int i = 0; i < current_association.size(); i++)
-        {
-          if(current_association[i] != last_association[i]){
-            goon = true;
-            break;
-          }
-        }
-      }
-
-			if(goon)
-			{
-				// copy last feature-cluster association
-				last_association = current_association;
-				//last_assoc = assoc.clone();
-			}
-			
-		} // while(goon)
-    
-  } // if must run kmeans
+            if (goon)
+            {
+                // copy last feature-cluster association
+                last_association = current_association;
+                //last_assoc = assoc.clone();
+            }
+        } // while(goon)
+    } // if must run kmeans
   
-  // create nodes
-  for(unsigned int i = 0; i < clusters.size(); ++i)
-  {
-    NodeId id = (NodeId)m_nodes.size();
-    m_nodes.push_back(Node(id));
-    m_nodes.back().descriptor = clusters[i];
-    m_nodes.back().parent = parent_id;
-    m_nodes[parent_id].children.push_back(id);
-  }
-  
-  // go on with the next level
-  if(current_level < m_L)
-  {
-    // iterate again with the resulting clusters
-    const vector<NodeId> &children_ids = m_nodes[parent_id].children;
-    for(unsigned int i = 0; i < clusters.size(); ++i)
+    // create nodes
+    for (std::size_t i = 0; i < clusters.size(); ++i)
     {
-      NodeId id = children_ids[i];
-
-      vector<pDescriptor> child_features;
-      child_features.reserve(groups[i].size());
-
-      vector<unsigned int>::const_iterator vit;
-      for(vit = groups[i].begin(); vit != groups[i].end(); ++vit)
-      {
-        child_features.push_back(descriptors[*vit]);
-      }
-
-      if(child_features.size() > 1)
-      {
-        HKmeansStep(id, child_features, current_level + 1);
-      }
+        NodeId id = (NodeId)m_nodes.size();
+        m_nodes.push_back(Node(id));
+        m_nodes.back().descriptor = clusters[i];
+        m_nodes.back().parent = parent_id;
+        m_nodes[parent_id].children.push_back(id);
     }
-  }
+
+    // go on with the next level
+    if (current_level < m_L)
+    {
+        // iterate again with the resulting clusters
+        std::vector<NodeId> const& children_ids = m_nodes[parent_id].children;
+        for (std::size_t i = 0; i < clusters.size(); ++i)
+        {
+            NodeId id = children_ids[i];
+
+            vector<pDescriptor> child_features;
+            child_features.reserve(groups[i].size());
+
+            for (auto vit = groups[i].begin(); vit != groups[i].end(); ++vit)
+                child_features.push_back(descriptors[*vit]);
+
+            if (child_features.size() > 1)
+                HKmeansStep(id, child_features, current_level + 1);
+        }
+    }
 }
 
 // --------------------------------------------------------------------------
