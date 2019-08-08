@@ -46,8 +46,6 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mnFuseTargetForKF(0),
     mnBALocalForKF(0),
     mnBAFixedForKF(0),
-    mnLoopQuery(0),
-    mnLoopWords(0),
     mnRelocQuery(0),
     mnRelocWords(0),
     mnBAGlobalForKF(0),
@@ -64,8 +62,8 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mThDepth(F.mThDepth),
 
 
-    m_kf_N(F.m_frame_N),
-    mvKeys(F.mvKeys),
+    m_kf_N(F.get_frame_N()),
+    mvKeys(F.get_key_points()),
     mvKeysUn(F.mvKeysUn),
     mvuRight(F.mvuRight),
     mvDepth(F.mvDepth),
@@ -96,7 +94,7 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mbBad(false),
     mpMap(pMap)
 {
-    mnId = s_next_id++;
+    m_id = s_next_id++;
 
     mGrid.resize(mnGridCols);
 
@@ -282,7 +280,7 @@ void KeyFrame::UpdateConnections()
 
         for (auto const& pair : observations)
         {
-            if (pair.first->mnId == mnId)
+            if (pair.first->m_id == m_id)
                 continue;
 
             ++KFcounter[pair.first];
@@ -347,7 +345,7 @@ void KeyFrame::UpdateConnections()
         mvpOrderedConnectedKeyFrames = std::move(vpOrderedConnectedKeyFrames);
         mvOrderedWeights = std::move(vOrderedWeights);
 
-        if (mbFirstConnection && mnId != 0)
+        if (mbFirstConnection && m_id != 0)
         {
             mpParent = mvpOrderedConnectedKeyFrames.front();
             mpParent->AddChild(this);
@@ -390,7 +388,7 @@ void KeyFrame::SetBadFlag()
     {
         std::unique_lock<std::mutex> lock(mMutexConnections);
 
-        if (mnId == 0)
+        if (m_id == 0)
             return;
 
         if (mbNotErase)
@@ -439,7 +437,7 @@ void KeyFrame::SetBadFlag()
                 {
                     for (KeyFrame* pcKF : sParentCandidates)
                     {
-                        if (vpConnected[i]->mnId != pcKF->mnId)
+                        if (vpConnected[i]->m_id != pcKF->m_id)
                             continue;
 
                         int w = pKF->GetWeight(vpConnected[i]);

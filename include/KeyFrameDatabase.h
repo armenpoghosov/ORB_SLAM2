@@ -61,7 +61,7 @@ protected:
     // Inverted file
     std::vector<std::list<KeyFrame*> >  mvInvertedFile;
     // Mutex
-    std::mutex mutable                  mMutex;
+    std::mutex mutable                  m_mutex;
 };
 
 } //namespace ORB_SLAM

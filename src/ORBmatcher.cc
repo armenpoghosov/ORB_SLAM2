@@ -152,7 +152,7 @@ std::size_t ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoin
             rotHist[i].reserve(500);
     }
 
-    vpMapPointMatches = std::vector<MapPoint*>(F.m_frame_N);
+    vpMapPointMatches = std::vector<MapPoint*>(F.get_frame_N());
 
     std::vector<MapPoint*> const& vpMapPointsKF = pKF->GetMapPointMatches();
     DBoW2::FeatureVector const& vFeatVecKF = pKF->mFeatVec;
@@ -214,7 +214,7 @@ std::size_t ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoin
 
                     if (m_check_orientation)
                     {
-                        float rot = kp.angle - F.mvKeys[bestIdxF].angle;
+                        float rot = kp.angle - F.get_key_points()[bestIdxF].angle;
                         if (rot < 0.f)
                             rot += 360.f;
 
@@ -345,7 +345,7 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw,
         cv::Mat const dMP = pMP->GetDescriptor();
 
         int bestDist = 256;
-        int bestIdx = -1;
+        std::size_t bestIdx = -1;
 
         for (size_t const idx : vIndices)
         {
@@ -407,15 +407,16 @@ int ORBmatcher::SearchForInitialization(Frame const& F1, Frame const& F2,
         if (vIndices2.empty())
             continue;
 
-        cv::Mat const& d1 = F1.get_descriptor(i1);
+        cv::Mat const& d1 = F1.get_descriptor((int)i1);
 
         int bestDist = std::numeric_limits<int>::max();
-        int bestIdx2 = -1;
+
+        std::size_t bestIdx2 = -1;
         int bestDist2 = std::numeric_limits<int>::max();
 
         for (std::size_t i2 : vIndices2)
         {
-            cv::Mat const& d2 = F2.get_descriptor(i2);
+            cv::Mat const& d2 = F2.get_descriptor((int)i2);
 
             int const dist = DescriptorDistance(d1, d2);
             if (vMatchedDistance[i2] <= dist)
@@ -443,7 +444,7 @@ int ORBmatcher::SearchForInitialization(Frame const& F1, Frame const& F2,
         }
 
         vnMatches12[i1] = bestIdx2;
-        vnMatches21[bestIdx2] = i1;
+        vnMatches21[bestIdx2] = (int)i1; // TODO: PAE: look at it deeper
         vMatchedDistance[bestIdx2] = bestDist;
         ++nmatches;
 
@@ -1310,7 +1311,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
         bBackward = false;
     }
 
-    for (int i = 0; i < LastFrame.m_frame_N; ++i)
+    for (int i = 0; i < LastFrame.get_frame_N(); ++i)
     {
         MapPoint* pMP = LastFrame.mvpMapPoints[i];
 
@@ -1335,7 +1336,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
             v < CurrentFrame.mnMinY || v > CurrentFrame.mnMaxY)
             continue;
 
-        int const nLastOctave = LastFrame.mvKeys[i].octave;
+        int const nLastOctave = LastFrame.get_key_points()[i].octave;
 
         // Search in a window. Size depends on scale
         float const radius = th * CurrentFrame.mvScaleFactors[nLastOctave];

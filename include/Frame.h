@@ -48,7 +48,7 @@ public:
         FRAME_GRID_COLS = 64
     };
 
-    Frame() // PAE: may need complete removal?
+    Frame() // TODO: PAE: may need complete removal
     {}
 
     // Copy constructor.
@@ -138,6 +138,12 @@ public:
     float get_mb() const
         { return mb; }
 
+    std::vector<cv::KeyPoint> const& get_key_points() const
+        { return mvKeys; }
+
+    std::size_t get_frame_N() const
+        { return m_frame_N; }
+
 public:
 
     // NOTE: PAE: stupid function to be refactored ... just for the sake of reducing code size
@@ -164,7 +170,7 @@ public:
 
     // Threshold close/far points. Close points are inserted from 1 view.
     // Far points are inserted as in the monocular case from 2 views.
-    float                       mThDepth;
+    float                       mThDepth; // PAE: in fact it is always const
 
     // Number of KeyPoints.
     std::size_t                 m_frame_N;
@@ -172,7 +178,6 @@ public:
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
     // In the stereo case, mvKeysUn is redundant as images must be rectified.
     // In the RGB-D case, RGB images can be distorted.
-    std::vector<cv::KeyPoint>   mvKeys;
     std::vector<cv::KeyPoint>   mvKeysRight;
     std::vector<cv::KeyPoint>   mvKeysUn;
 
@@ -223,6 +228,11 @@ private:
 
     // Assign keypoints to the grid for speed up feature matching (called in the constructor).
     void AssignFeaturesToGrid();
+
+    // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
+    // In the stereo case, mvKeysUn is redundant as images must be rectified.
+    // In the RGB-D case, RGB images can be distorted.
+    std::vector<cv::KeyPoint>   mvKeys;
 
     // Stereo baseline multiplied by fx.
     float                       mbf;

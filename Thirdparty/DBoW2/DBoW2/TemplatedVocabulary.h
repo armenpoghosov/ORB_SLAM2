@@ -145,18 +145,14 @@ public:
     * @return number of words
     */
     virtual std::size_t size() const
-    {
-        return m_words.size();
-    }
+        { return m_words.size(); }
 
     /**
     * Returns whether the vocabulary is empty (i.e. it has not been trained)
     * @return true iff the vocabulary is empty
     */
     virtual bool empty() const
-    {
-        return m_words.empty();
-    }
+        { return m_words.empty(); }
 
     /**
     * Transforms a set of descriptores into a bow vector
@@ -189,8 +185,9 @@ public:
     * @return score between vectors
     * @note the vectors must be already sorted and normalized if necessary
     */
-    double score(BowVector const& a, BowVector const& b) const;
-  
+    double score(BowVector const& v1, BowVector const& v2) const
+        { return m_scoring_object->score(v1, v2); }
+
     /**
     * Returns the id of the node that is "levelsup" levels from the word given
     * @param wid word id
@@ -1080,15 +1077,6 @@ void TemplatedVocabulary<TDescriptor, F>::transform(
 
 // --------------------------------------------------------------------------
 
-template<class TDescriptor, class F> 
-inline double TemplatedVocabulary<TDescriptor,F>::score
-  (const BowVector &v1, const BowVector &v2) const
-{
-  return m_scoring_object->score(v1, v2);
-}
-
-// --------------------------------------------------------------------------
-
 template<class TDescriptor, class F>
 void TemplatedVocabulary<TDescriptor,F>::transform
   (const TDescriptor &feature, WordId &id) const
@@ -1434,7 +1422,7 @@ void TemplatedVocabulary<TDescriptor, F>::save(cv::FileStorage& f, std::string c
 // --------------------------------------------------------------------------
 
 template<class TDescriptor, class F>
-void TemplatedVocabulary<TDescriptor,F>::load(cv::FileStorage const& fs, std::string const& name)
+void TemplatedVocabulary<TDescriptor, F>::load(cv::FileStorage const& fs, std::string const& name)
 {
     m_words.clear();
     m_nodes.clear();
@@ -1456,10 +1444,10 @@ void TemplatedVocabulary<TDescriptor,F>::load(cv::FileStorage const& fs, std::st
 
     for(std::size_t i = 0; i < fn.size(); ++i)
     {
-        NodeId nid = (int)fn[i]["nodeId"];
-        NodeId pid = (int)fn[i]["parentId"];
-        WordValue weight = (WordValue)fn[i]["weight"];
-        std::string d = (std::string)fn[i]["descriptor"];
+        NodeId nid = (int)fn[(int)i]["nodeId"];
+        NodeId pid = (int)fn[(int)i]["parentId"];
+        WordValue weight = (WordValue)fn[(int)i]["weight"];
+        std::string d = (std::string)fn[(int)i]["descriptor"];
 
         m_nodes[nid].id = nid;
         m_nodes[nid].parent = pid;
@@ -1477,8 +1465,8 @@ void TemplatedVocabulary<TDescriptor,F>::load(cv::FileStorage const& fs, std::st
 
     for(std::size_t i = 0; i < fn.size(); ++i)
     {
-        NodeId wid = (int)fn[i]["wordId"];
-        NodeId nid = (int)fn[i]["nodeId"];
+        NodeId wid = (int)fn[(int)i]["wordId"];
+        NodeId nid = (int)fn[(int)i]["nodeId"];
 
         m_nodes[nid].word_id = wid;
         m_words[wid] = &m_nodes[nid];

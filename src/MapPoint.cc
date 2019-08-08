@@ -33,7 +33,7 @@ mutex MapPoint::mGlobalMutex;
 MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
     :
     mnFirstKFid(pRefKF->get_id()),
-    mnFirstFrame(pRefKF->mnFrameId),
+    mnFirstFrame(pRefKF->get_frame_id()),
     m_observe_count(0),
     mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),

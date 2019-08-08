@@ -89,9 +89,9 @@ void MapDrawer::DrawMapPoints()
 
 void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
 {
-    const float &w = mKeyFrameSize;
-    const float h = w*0.75;
-    const float z = w*0.6;
+    float const w = mKeyFrameSize;
+    float const h = w * 0.75f;
+    float const z = w * 0.6f;
 
     const vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
 
@@ -149,7 +149,7 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
 
             for (KeyFrame* pCovKF : vCovKFs)
             {
-                if (pCovKF->mnId < vpKFs[i]->get_id())
+                if (pCovKF->get_id() < vpKFs[i]->get_id())
                     continue;
 
                 cv::Mat Ow2 = pCovKF->GetCameraCenter();
@@ -185,16 +185,16 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
 
 void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
 {
-    const float &w = mCameraSize;
-    const float h = w*0.75;
-    const float z = w*0.6;
+    float const w = mCameraSize;
+    float const h = w * 0.75f;
+    float const z = w * 0.6f;
 
     glPushMatrix();
 
 #ifdef HAVE_GLES
-        glMultMatrixf(Twc.m);
+    glMultMatrixf(Twc.m);
 #else
-        glMultMatrixd(Twc.m);
+    glMultMatrixd(Twc.m);
 #endif
 
     glLineWidth(mCameraLineWidth);

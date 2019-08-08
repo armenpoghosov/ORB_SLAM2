@@ -119,20 +119,16 @@ bool LoopClosing::DetectLoop()
     // This is the lowest score to a connected keyframe in the covisibility graph
     // We will impose loop candidates to have a higher similarity than this
     std::vector<KeyFrame*> const vpConnectedKeyFrames = mpCurrentKF->GetVectorCovisibleKeyFrames();
-    DBoW2::BowVector const& CurrentBowVec = mpCurrentKF->mBowVec;
+    DBoW2::BowVector const& CurrentBowVec = mpCurrentKF->get_BoW();
 
     float minScore = 1;
 
-    for (size_t i = 0; i<vpConnectedKeyFrames.size(); ++i)
+    for (KeyFrame* pKF : vpConnectedKeyFrames)
     {
-        KeyFrame* pKF = vpConnectedKeyFrames[i];
-
         if (pKF->isBad())
             continue;
 
-        DBoW2::BowVector const& BowVec = pKF->mBowVec;
-
-        float const score = mpORBVocabulary->score(CurrentBowVec, BowVec);
+        float const score = mpORBVocabulary->score(CurrentBowVec, pKF->get_BoW());
         if (score < minScore)
             minScore = score;
     }

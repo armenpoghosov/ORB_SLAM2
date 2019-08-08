@@ -154,11 +154,13 @@ public:
     int PredictScale(float currentDist, KeyFrame* pKF) const;
     int PredictScale(float currentDist, Frame const* pF) const;
 
+    uint64_t get_id() const
+        { return mnId; }
+
 public:
 
     static std::atomic<uint64_t>    s_next_id;
 
-    uint64_t                        mnId;
     uint64_t                        mnFirstKFid;
     uint64_t                        mnFirstFrame;
 
@@ -189,6 +191,8 @@ public:
     static std::mutex               mGlobalMutex;
 
 protected:
+
+    uint64_t                        mnId;
 
      // Position in absolute coordinates
      cv::Mat                        mWorldPos;

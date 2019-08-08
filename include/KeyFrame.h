@@ -221,19 +221,25 @@ public:
     float ComputeSceneMedianDepth(int q) const;
 
     static bool lId(KeyFrame const* pKF1, KeyFrame const* pKF2)
-        { return pKF1->mnId < pKF2->mnId; }
+        { return pKF1->m_id < pKF2->m_id; }
 
     static void reset_id_counter()
         { s_next_id = 0; }
 
     uint64_t get_id() const
-        { return mnId; }
+        { return m_id; }
+
+    uint64_t get_frame_id() const
+        { return mnFrameId; }
+
+    DBoW2::BowVector const& get_BoW() const
+        { return mBowVec; }
+
+    DBoW2::FeatureVector const& get_BoW_features() const
+        { return mFeatVec; }
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
-
-    uint64_t                        mnId;
-    uint64_t const                  mnFrameId;
 
     double const                    mTimeStamp;
 
@@ -252,9 +258,6 @@ public:
     uint64_t                        mnBAFixedForKF;
 
     // Variables used by the keyframe database
-    uint64_t                        mnLoopQuery;
-    int                             mnLoopWords;
-    float                           mLoopScore;
     uint64_t                        mnRelocQuery;
     int                             mnRelocWords;
     float                           mRelocScore;
@@ -292,7 +295,7 @@ public:
     DBoW2::FeatureVector            mFeatVec;
 
     // Pose relative to parent (this is computed when bad flag is activated)
-    cv::Mat mTcp;
+    cv::Mat                         mTcp;
 
     // Scale
     int const                       mnScaleLevels;
@@ -312,9 +315,8 @@ public:
 protected:
 
     static uint64_t                 s_next_id;
-
-
-
+    uint64_t                        m_id;
+    uint64_t const                  mnFrameId;
 
     // The following variables need to be accessed trough a mutex to be thread safe.
 

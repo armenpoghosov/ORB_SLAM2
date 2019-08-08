@@ -177,7 +177,7 @@ void FrameDrawer::Update(Tracking *pTracker)
 
     pTracker->get_current_frame().get_image_left().copyTo(mIm);
 
-    mvCurrentKeys = pTracker->get_current_frame().mvKeys;
+    mvCurrentKeys = pTracker->get_current_frame().get_key_points();
     N = mvCurrentKeys.size();
 
     mvbVO = vector<bool>(N);
@@ -187,7 +187,7 @@ void FrameDrawer::Update(Tracking *pTracker)
 
     if (pTracker->get_last_state() == Tracking::NOT_INITIALIZED)
     {
-        mvIniKeys = pTracker->get_initial_frame().mvKeys;
+        mvIniKeys = pTracker->get_initial_frame().get_key_points();
         mvIniMatches = pTracker->get_ini_matches();
     }
     else if (pTracker->get_last_state() == Tracking::OK)
