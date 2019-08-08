@@ -26,11 +26,13 @@
 #include "FrameDrawer.h"
 #include "Converter.h"
 #include "Map.h"
+#include "MapDrawer.h"
 #include "Initializer.h"
 #include "System.h"
 #include "Optimizer.h"
 #include "ORBmatcher.h"
 #include "PnPsolver.h"
+#include "Viewer.h"
 
 namespace ORB_SLAM2
 {

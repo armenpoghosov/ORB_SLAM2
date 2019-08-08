@@ -669,7 +669,7 @@ void Frame::ComputeStereoFromRGBD(cv::Mat const& imDepth)
         cv::KeyPoint const& kpU = mvKeysUn[i];
 
         float const d = imDepth.at<float>((int)kp.pt.y, (int)kp.pt.x);
-        if (d > 0.)
+        if (d > 0.f)
         {
             mvDepth[i] = d;
             mvuRight[i] = kpU.pt.x - mbf / d;

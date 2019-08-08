@@ -46,8 +46,6 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mnFuseTargetForKF(0),
     mnBALocalForKF(0),
     mnBAFixedForKF(0),
-    mnRelocQuery(0),
-    mnRelocWords(0),
     mnBAGlobalForKF(0),
 
     // TODO: these probably have to be removed too

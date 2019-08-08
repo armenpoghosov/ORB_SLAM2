@@ -155,7 +155,7 @@ std::size_t ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoin
     vpMapPointMatches = std::vector<MapPoint*>(F.get_frame_N());
 
     std::vector<MapPoint*> const& vpMapPointsKF = pKF->GetMapPointMatches();
-    DBoW2::FeatureVector const& vFeatVecKF = pKF->mFeatVec;
+    DBoW2::FeatureVector const& vFeatVecKF = pKF->get_BoW_features();
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
     DBoW2::FeatureVector::const_iterator KFit = vFeatVecKF.begin();
@@ -507,8 +507,8 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint
     std::vector<cv::KeyPoint> const& vKeysUn1 = pKF1->mvKeysUn;
     std::vector<cv::KeyPoint> const& vKeysUn2 = pKF2->mvKeysUn;
 
-    DBoW2::FeatureVector const& vFeatVec1 = pKF1->mFeatVec;
-    DBoW2::FeatureVector const& vFeatVec2 = pKF2->mFeatVec;
+    DBoW2::FeatureVector const& vFeatVec1 = pKF1->get_BoW_features();
+    DBoW2::FeatureVector const& vFeatVec2 = pKF2->get_BoW_features();
 
     std::vector<MapPoint*> const vpMapPoints1 = pKF1->GetMapPointMatches();
     vector<MapPoint*> const vpMapPoints2 = pKF2->GetMapPointMatches();
@@ -654,8 +654,8 @@ std::size_t ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
     for (int i = 0; i < HISTO_LENGTH; ++i)
         rotHist[i].reserve(500);
 
-    DBoW2::FeatureVector const& vFeatVec1 = pKF1->mFeatVec;
-    DBoW2::FeatureVector const& vFeatVec2 = pKF2->mFeatVec;
+    DBoW2::FeatureVector const& vFeatVec1 = pKF1->get_BoW_features();
+    DBoW2::FeatureVector const& vFeatVec2 = pKF2->get_BoW_features();
 
     DBoW2::FeatureVector::const_iterator f1it = vFeatVec1.begin();
     DBoW2::FeatureVector::const_iterator f2it = vFeatVec2.begin();

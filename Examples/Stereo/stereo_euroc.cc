@@ -18,16 +18,15 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
+#include <chrono>
 
-#include<iostream>
-#include<algorithm>
-#include<fstream>
-#include<iomanip>
-#include<chrono>
+#include<opencv2/opencv.hpp>
 
-#include<opencv2/core/core.hpp>
-
-#include<System.h>
+#include <System.h>
 
 using namespace std;
 

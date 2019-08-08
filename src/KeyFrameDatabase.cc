@@ -67,7 +67,7 @@ void KeyFrameDatabase::clear()
     mvInvertedFile.resize(mpVoc->size());
 }
 
-std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float minScore)
+std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, double dblMinScore) const
 {
     // Search all keyframes that share a word with current keyframes
     // Discard keyframes connected to the query keyframe
@@ -118,7 +118,9 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, flo
             continue;
         }
 
-        if ((it->second.m_score = mpVoc->score(pKF->get_BoW(), it->first->get_BoW())) >= minScore)
+        it->second.m_score = mpVoc->score(pKF->get_BoW(), it->first->get_BoW());
+
+        if (it->second.m_score >= dblMinScore)
         {
             it->second.m_next = head_list;
             head_list = &(*it);
@@ -130,7 +132,7 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, flo
     if (head_list == nullptr)
         return vpLoopCandidates;
 
-    double dblBestAccumulatedScore = minScore;
+    double dblBestAccumulatedScore = dblMinScore;
 
     // Lets now accumulate score by covisibility
     std::unordered_map<KeyFrame*, double> map_best_scores;
@@ -184,111 +186,97 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, flo
     return vpLoopCandidates;
 }
 
-vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame* F)
+std::vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame* F) const
 {
-    std::list<KeyFrame*> lKFsSharingWords;
+    struct TEntry
+    {
+        std::size_t m_count = 0;
+        double      m_score = 0.;
+    };
 
-    // Search all keyframes that share a word with current frame
+    std::vector<KeyFrame*> vpRelocCandidates;
+
+    std::size_t maxCommonWords = 0;
+    std::unordered_map<KeyFrame*, TEntry> map;
     {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        for (auto const& pair_work_id_value : F->mBowVec)
+        for (auto const& pair : F->mBowVec)
         {
-            std::list<KeyFrame*> const& lKFs = mvInvertedFile[pair_work_id_value.first];
-
-            for (KeyFrame* pKFi : lKFs)
+            for (KeyFrame* pWIdKF : mvInvertedFile[pair.first])
             {
-                if (pKFi->mnRelocQuery != F->get_id())
-                {
-                    pKFi->mnRelocWords = 0;
-                    pKFi->mnRelocQuery = F->get_id();
-                    lKFsSharingWords.push_back(pKFi);
-                }
-
-                ++pKFi->mnRelocWords;
+                std::size_t& count = map[pWIdKF].m_count;
+                if (++count > maxCommonWords)
+                    maxCommonWords = count;
             }
         }
     }
 
-    if (lKFsSharingWords.empty())
-        return vector<KeyFrame*>();
+    if (map.empty())
+        return vpRelocCandidates;
 
-    // Only compare against those keyframes that share enough words
-    int maxCommonWords = 0;
-    for (KeyFrame* pKFi : lKFsSharingWords)
+    std::size_t const minCommonWordsRetain = (std::size_t)(maxCommonWords * 0.8);
+
+    for (auto it = map.begin(), itEnd = map.end(); it != itEnd;)
     {
-        if (pKFi->mnRelocWords > maxCommonWords)
-            maxCommonWords = pKFi->mnRelocWords;
-    }
-
-    int minCommonWords = (int)(maxCommonWords * 0.8f);
-
-    std::list<pair<float, KeyFrame*> > lScoreAndMatch;
-
-    // Compute similarity score.
-    for (KeyFrame* pKFi : lKFsSharingWords)
-    {
-        if (pKFi->mnRelocWords > minCommonWords)
+        if (it->second.m_count <= minCommonWordsRetain)
         {
-            float const si = (float)mpVoc->score(F->mBowVec, pKFi->mBowVec);
-            pKFi->mRelocScore = si;
-            lScoreAndMatch.emplace_back(si, pKFi);
+            it = map.erase(it);
+            continue;
         }
+
+        it->second.m_score = mpVoc->score(F->mBowVec, it->first->get_BoW());
+
+        ++it;
     }
 
-    if (lScoreAndMatch.empty())
-        return vector<KeyFrame*>();
+    if (map.empty())
+        return vpRelocCandidates;
 
-    float bestAccScore = 0;
-    std::list<pair<float, KeyFrame*> > lAccScoreAndMatch;
+    double dblBestAccumulatedScore = 0.;
+    std::unordered_map<KeyFrame*, double> map_best_scores;
 
-    // Lets now accumulate score by covisibility
-    for (auto const& pair_score_key_frame : lScoreAndMatch)
+    for (auto const& pair : map)
     {
-        KeyFrame* pKFi = pair_score_key_frame.second;
+        KeyFrame* pKFBestScore = pair.first;
+        double dblBestScore = pair.second.m_score;
 
-        KeyFrame* pBestKF = pKFi;
-        float bestScore = pair_score_key_frame.first;
+        double dblAccumulatedScore = dblBestScore;
+        std::vector<KeyFrame*> const& neighbours = pKFBestScore->GetBestCovisibilityKeyFrames(10);
 
-        std::vector<KeyFrame*> vpNeighs = pKFi->GetBestCovisibilityKeyFrames(10);
-        float accScore = bestScore;
-
-        for (KeyFrame* pKF2 : vpNeighs)
+        for (KeyFrame* pKFN : neighbours)
         {
-            if (pKF2->mnRelocQuery != F->get_id())
+            auto it = map.find(pKFN);
+            if (it == map.end())
                 continue;
 
-            accScore += pKF2->mRelocScore;
+            dblAccumulatedScore += it->second.m_score;
 
-            if (pKF2->mRelocScore > bestScore)
+            if (it->second.m_score > dblBestScore)
             {
-                pBestKF = pKF2;
-                bestScore = pKF2->mRelocScore;
+                pKFBestScore = pKFN;
+                dblBestScore = it->second.m_score;
             }
         }
 
-        lAccScoreAndMatch.emplace_back(accScore, pBestKF);
-        
-        if (accScore > bestAccScore)
-            bestAccScore = accScore;
+        // TODO: PAE: I honestly don't fully undersand why it makes sence to examine
+        // convisibility frames here this way ... I mean the entire algorithm ...
+        auto const& pair = map_best_scores.emplace(pKFBestScore, dblBestScore);
+        if (!pair.second && pair.first->second < dblBestScore)
+            pair.first->second = dblBestScore;
+
+        if (dblAccumulatedScore > dblBestAccumulatedScore)
+            dblBestAccumulatedScore = dblAccumulatedScore;
     }
 
-    // Return all those keyframes with a score higher than 0.75 * bestScore
-    float minScoreToRetain = 0.75f * bestAccScore;
+    double const dblMinScoreToRetain = 0.75 * dblBestAccumulatedScore;
 
-    std::unordered_set<KeyFrame*> spAlreadyAddedKF;
+    vpRelocCandidates.reserve(map_best_scores.size());
 
-    std::vector<KeyFrame*> vpRelocCandidates;
-    vpRelocCandidates.reserve(lAccScoreAndMatch.size());
-
-    for (auto const& pair : lAccScoreAndMatch)
+    for (auto const& pair : map_best_scores)
     {
-        if (pair.first <= minScoreToRetain)
-            continue;
-
-        auto const& pair_set = spAlreadyAddedKF.insert(pair.second);
-        if (pair_set.second)
-            vpRelocCandidates.push_back(pair.second);
+        if (pair.second >= dblMinScoreToRetain)
+            vpRelocCandidates.push_back(pair.first);
     }
 
     return vpRelocCandidates;

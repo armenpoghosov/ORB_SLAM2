@@ -18,18 +18,29 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-
 #include "System.h"
+
 #include "Converter.h"
+#include "FrameDrawer.h"
+#include "KeyFrameDatabase.h"
+#include "LocalMapping.h"
+#include "LoopClosing.h"
+#include "Map.h"
+#include "MapDrawer.h"
+#include "Tracking.h"
+#include "Viewer.h"
+
 #include <thread>
 #include <pangolin/pangolin.h>
 #include <iomanip>
 
+
+
 namespace ORB_SLAM2
 {
 
-System::System(string const& strVocFile, string const& strSettingsFile, eSensor sensor, bool bUseViewer)
+System::System(std::string const& strVocFile, std::string const& strSettingsFile,
+        eSensor sensor, bool bUseViewer)
     :
     mSensor(sensor),
     mpViewer(nullptr),
@@ -243,7 +254,7 @@ void System::SaveTrajectoryTUM(const string &filename)
         // If the reference keyframe was culled, traverse the spanning tree to get a suitable keyframe.
         while(pKF->isBad())
         {
-            Trw = Trw*pKF->mTcp;
+            Trw = Trw * pKF->get_Tcp();
             pKF = pKF->GetParent();
         }
 
@@ -298,17 +309,14 @@ void System::SaveKeyFrameTrajectoryTUM(const string &filename)
     cout << endl << "trajectory saved!" << endl;
 }
 
-void System::SaveTrajectoryKITTI(const string &filename)
+void System::SaveTrajectoryKITTI(const std::string &filename)
 {
-    cout << endl << "Saving camera trajectory to " << filename << " ..." << endl;
-    if(mSensor==MONOCULAR)
-    {
-        cerr << "ERROR: SaveTrajectoryKITTI cannot be used for monocular." << endl;
-        return;
-    }
+    assert(mSensor == MONOCULAR);
+
+    std::cout << std::endl << "Saving camera trajectory to " << filename << " ..." << std::endl;
 
     std::vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
-    sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
+    std::sort(vpKFs.begin(),vpKFs.end(), KeyFrame::lId);
 
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
@@ -341,7 +349,7 @@ void System::SaveTrajectoryKITTI(const string &filename)
 
         while (pKF->isBad())
         {
-            Trw = Trw * pKF->mTcp;
+            Trw = Trw * pKF->get_Tcp();
             pKF = pKF->GetParent();
         }
 

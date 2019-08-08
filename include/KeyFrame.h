@@ -238,6 +238,9 @@ public:
     DBoW2::FeatureVector const& get_BoW_features() const
         { return mFeatVec; }
 
+    cv::Mat const& get_Tcp() const
+        { return mTcp; }
+
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
 
@@ -256,11 +259,6 @@ public:
     // Variables used by the local mapping
     uint64_t                        mnBALocalForKF;
     uint64_t                        mnBAFixedForKF;
-
-    // Variables used by the keyframe database
-    uint64_t                        mnRelocQuery;
-    int                             mnRelocWords;
-    float                           mRelocScore;
 
     // Variables used by loop closing
     cv::Mat                         mTcwGBA;
@@ -290,13 +288,6 @@ public:
 
     cv::Mat const                   mDescriptors;
 
-    // BoW
-    DBoW2::BowVector                mBowVec;
-    DBoW2::FeatureVector            mFeatVec;
-
-    // Pose relative to parent (this is computed when bad flag is activated)
-    cv::Mat                         mTcp;
-
     // Scale
     int const                       mnScaleLevels;
     float const                     mfScaleFactor;
@@ -318,11 +309,18 @@ protected:
     uint64_t                        m_id;
     uint64_t const                  mnFrameId;
 
+    // Pose relative to parent (this is computed when bad flag is activated)
+    cv::Mat                         mTcp;
+
     // The following variables need to be accessed trough a mutex to be thread safe.
 
     // SE3 pose and inverse
     cv::Mat                         m_Tcw;
     cv::Mat                         m_Twc;
+
+    // BoW
+    DBoW2::BowVector                mBowVec;
+    DBoW2::FeatureVector            mFeatVec;
 
     // MapPoints associated to keypoints
     std::vector<MapPoint*>          mvpMapPoints;
