@@ -605,11 +605,11 @@ void Tracking::CreateInitialMapMonocular()
         pMP->ComputeDistinctiveDescriptors();
         pMP->UpdateNormalAndDepth();
 
-        //Fill Current Frame structure
+        // Fill Current Frame structure
         mCurrentFrame.mvpMapPoints[ini_index] = pMP;
         mCurrentFrame.mvbOutlier[ini_index] = false;
 
-        //Add to Map
+        // Add to Map
         mpMap->AddMapPoint(pMP);
     }
 

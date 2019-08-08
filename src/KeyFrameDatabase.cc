@@ -56,8 +56,8 @@ void KeyFrameDatabase::erase(KeyFrame* pKF)
         // List of keyframes that share the word
         std::list<KeyFrame*>& lKFs = mvInvertedFile[pair.first];
         auto it = std::find(lKFs.begin(), lKFs.end(), pKF);
-        assert(pKF != lKFs.end());
-        lKFs.erase(it);
+        if (it != lKFs.end())
+            lKFs.erase(it);
     }
 }
 

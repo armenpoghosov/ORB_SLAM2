@@ -44,8 +44,6 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
 
     mnTrackReferenceForFrame(0),
     mnFuseTargetForKF(0),
-    mnBALocalForKF(0),
-    mnBAFixedForKF(0),
     mnBAGlobalForKF(0),
 
     // TODO: these probably have to be removed too

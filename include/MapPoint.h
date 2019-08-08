@@ -177,7 +177,6 @@ public:
     uint64_t                        mnLastFrameSeen;
 
     // Variables used by local mapping
-    uint64_t                        mnBALocalForKF;
     uint64_t                        mnFuseCandidateForKF;
 
     // Variables used by loop closing

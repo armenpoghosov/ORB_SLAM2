@@ -256,10 +256,6 @@ public:
     uint64_t                        mnTrackReferenceForFrame;
     uint64_t                        mnFuseTargetForKF;
 
-    // Variables used by the local mapping
-    uint64_t                        mnBALocalForKF;
-    uint64_t                        mnBAFixedForKF;
-
     // Variables used by loop closing
     cv::Mat                         mTcwGBA;
     cv::Mat                         mTcwBefGBA;

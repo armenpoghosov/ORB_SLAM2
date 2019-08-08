@@ -430,66 +430,51 @@ int Optimizer::PoseOptimization(Frame* pFrame)
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
 {
     // Local KeyFrames: First Breath Search from Current Keyframe
-    std::list<KeyFrame*> lLocalKeyFrames;
+    std::unordered_set<KeyFrame*> local_key_frames;
+    local_key_frames.emplace(pKF);
 
-    lLocalKeyFrames.push_back(pKF);
-    pKF->mnBALocalForKF = pKF->get_id();
-
-    std::vector<KeyFrame*> const vNeighKFs = pKF->GetVectorCovisibleKeyFrames();
-
-    for (KeyFrame* pKFi : vNeighKFs)
+    std::vector<KeyFrame*> const& covisible_frames = pKF->GetVectorCovisibleKeyFrames();
+    for (KeyFrame* pKFCV : covisible_frames)
     {
-        pKFi->mnBALocalForKF = pKF->get_id();
+        if (pKFCV->isBad())
+            continue;
 
-        if (!pKFi->isBad())
-            lLocalKeyFrames.push_back(pKFi);
+        local_key_frames.emplace(pKFCV);
     }
 
     // Local MapPoints seen in Local KeyFrames
-    std::list<MapPoint*> lLocalMapPoints;
-
-    for (KeyFrame* pLKF : lLocalKeyFrames)
+    std::unordered_set<MapPoint*> local_map_points;
+    for (KeyFrame* pLKF : local_key_frames)
     {
-        vector<MapPoint*> vpMPs = pLKF->GetMapPointMatches();
-
-        for (MapPoint* pMP : vpMPs)
+        std::vector<MapPoint*> const& lkf_map_points = pLKF->GetMapPointMatches();
+        for (MapPoint* pMP : lkf_map_points)
         {
-            if (pMP == nullptr || pMP->isBad() || pMP->mnBALocalForKF == pKF->get_id())
+            if (pMP == nullptr || pMP->isBad())
                 continue;
 
-            lLocalMapPoints.push_back(pMP);
-            pMP->mnBALocalForKF = pKF->get_id();
+            local_map_points.emplace(pMP);
         }
     }
 
-    // Fixed Keyframes. Keyframes that see Local MapPoints but that are not Local Keyframes
-    list<KeyFrame*> lFixedCameras;
-    for (MapPoint *pLMP : lLocalMapPoints)
+    std::unordered_set<KeyFrame*> fixel_frames;
+    for (MapPoint *pLMP : local_map_points)
     {
-        std:unordered_map<KeyFrame*, size_t> observations = pLMP->GetObservations();
-
+        std:unordered_map<KeyFrame*, size_t> const& observations = pLMP->GetObservations();
         for (auto const& pair : observations)
         {
-            KeyFrame* pKFi = pair.first;
+            if (pair.first->isBad() || local_key_frames.find(pair.first) != local_key_frames.end())
+                continue;
 
-            if (pKFi->mnBALocalForKF != pKF->get_id() && pKFi->mnBAFixedForKF != pKF->get_id())
-            {                
-                pKFi->mnBAFixedForKF = pKF->get_id();
-                if (!pKFi->isBad())
-                    lFixedCameras.push_back(pKFi);
-            }
+            fixel_frames.emplace(pair.first);
         }
     }
 
     // Setup optimizer
-    g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-
-    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
-
+    g2o::BlockSolver_6_3::LinearSolverType* linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+    g2o::BlockSolver_6_3* solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+
+    g2o::SparseOptimizer optimizer;
     optimizer.setAlgorithm(solver);
 
     if (pbStopFlag)
@@ -497,77 +482,82 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
     uint64_t maxKFid = 0;
 
-    // Set Local KeyFrame vertices
-    for (KeyFrame* pKFi : lLocalKeyFrames)
+    // set local KeyFrame vertices
+    for (KeyFrame* pLKF : local_key_frames)
     {
         g2o::VertexSE3Expmap* vSE3 = new g2o::VertexSE3Expmap();
-        vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
-        vSE3->setId(pKFi->get_id());
-        vSE3->setFixed(pKFi->get_id() ==0);
+        vSE3->setEstimate(Converter::toSE3Quat(pLKF->GetPose()));
+        vSE3->setId(pLKF->get_id());
+        vSE3->setFixed(pLKF->get_id() == 0);
+
         optimizer.addVertex(vSE3);
-        if (pKFi->get_id() > maxKFid)
-            maxKFid = pKFi->get_id();
+
+        if (pLKF->get_id() > maxKFid)
+            maxKFid = pLKF->get_id();
     }
 
     // Set Fixed KeyFrame vertices
-    for (KeyFrame* pKFi : lFixedCameras)
+    for (KeyFrame* pKFF : fixel_frames)
     {
         g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
-        vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
-        vSE3->setId(pKFi->get_id());
+        vSE3->setEstimate(Converter::toSE3Quat(pKFF->GetPose()));
+        vSE3->setId(pKFF->get_id());
         vSE3->setFixed(true);
+
         optimizer.addVertex(vSE3);
-        if (pKFi->get_id() > maxKFid)
-            maxKFid = pKFi->get_id();
+
+        if (pKFF->get_id() > maxKFid)
+            maxKFid = pKFF->get_id();
     }
 
     // Set MapPoint vertices
-    std::size_t const nExpectedSize = (lLocalKeyFrames.size() + lFixedCameras.size()) * lLocalMapPoints.size();
+    std::size_t const nExpectedSize = (local_key_frames.size() + fixel_frames.size()) * local_map_points.size();
 
-    vector<g2o::EdgeSE3ProjectXYZ*> vpEdgesMono;
+    std::vector<g2o::EdgeSE3ProjectXYZ*> vpEdgesMono;
     vpEdgesMono.reserve(nExpectedSize);
 
-    vector<KeyFrame*> vpEdgeKFMono;
+    std::vector<KeyFrame*> vpEdgeKFMono;
     vpEdgeKFMono.reserve(nExpectedSize);
 
-    vector<MapPoint*> vpMapPointEdgeMono;
+    std::vector<MapPoint*> vpMapPointEdgeMono;
     vpMapPointEdgeMono.reserve(nExpectedSize);
 
-    vector<g2o::EdgeStereoSE3ProjectXYZ*> vpEdgesStereo;
+    std::vector<g2o::EdgeStereoSE3ProjectXYZ*> vpEdgesStereo;
     vpEdgesStereo.reserve(nExpectedSize);
 
-    vector<KeyFrame*> vpEdgeKFStereo;
+    std::vector<KeyFrame*> vpEdgeKFStereo;
     vpEdgeKFStereo.reserve(nExpectedSize);
 
-    vector<MapPoint*> vpMapPointEdgeStereo;
+    std::vector<MapPoint*> vpMapPointEdgeStereo;
     vpMapPointEdgeStereo.reserve(nExpectedSize);
 
-    float const thHuberMono = sqrt(5.991);
-    float const thHuberStereo = sqrt(7.815);
+    double const thHuberMono = std::sqrt(5.991);
+    double const thHuberStereo = std::sqrt(7.815);
 
-    for (MapPoint* pMP : lLocalMapPoints)
+    for (MapPoint* pMP : local_map_points)
     {
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
         vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
-        int id = pMP->get_id() + maxKFid + 1;
+
+        int const id = pMP->get_id() + maxKFid + 1;
+
         vPoint->setId(id);
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
 
+        // Set edges
         std::unordered_map<KeyFrame*, size_t> const& observations = pMP->GetObservations();
-
-        //Set edges
-        for (auto mit = observations.begin(), mend = observations.end(); mit != mend; ++mit)
+        for (auto const& pair : observations)
         {
-            KeyFrame* pKFi = mit->first;
+            KeyFrame* pKFO = pair.first;
 
-            if (pKFi->isBad())
+            if (pKFO->isBad())
                 continue;
 
-            cv::KeyPoint const& kpUn = pKFi->mvKeysUn[mit->second];
+            cv::KeyPoint const& kpUn = pKFO->mvKeysUn[pair.second];
 
             // Monocular observation
-            if (pKFi->mvuRight[mit->second] < 0)
+            if (pKFO->mvuRight[pair.second] < 0)
             {
                 Eigen::Matrix<double, 2, 1> obs;
                 obs << kpUn.pt.x, kpUn.pt.y;
@@ -575,53 +565,56 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                 g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
 
                 e->setVertex(0, optimizer.vertex(id));
-                e->setVertex(1, optimizer.vertex(pKFi->get_id()));
+                e->setVertex(1, optimizer.vertex(pKFO->get_id()));
                 e->setMeasurement(obs);
-                float const invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
+
+                float const invSigma2 = pKFO->mvInvLevelSigma2[kpUn.octave];
                 e->setInformation(Eigen::Matrix2d::Identity() * invSigma2);
 
                 g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
                 e->setRobustKernel(rk);
                 rk->setDelta(thHuberMono);
 
-                e->fx = pKFi->fx;
-                e->fy = pKFi->fy;
-                e->cx = pKFi->cx;
-                e->cy = pKFi->cy;
+                e->fx = pKFO->fx;
+                e->fy = pKFO->fy;
+                e->cx = pKFO->cx;
+                e->cy = pKFO->cy;
 
                 optimizer.addEdge(e);
+
                 vpEdgesMono.push_back(e);
-                vpEdgeKFMono.push_back(pKFi);
+                vpEdgeKFMono.push_back(pKFO);
                 vpMapPointEdgeMono.push_back(pMP);
             }
             else // Stereo observation
             {
                 Eigen::Matrix<double, 3, 1> obs;
-                float const kp_ur = pKFi->mvuRight[mit->second];
+                float const kp_ur = pKFO->mvuRight[pair.second];
                 obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
 
                 g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
 
                 e->setVertex(0, optimizer.vertex(id));
-                e->setVertex(1, optimizer.vertex(pKFi->get_id()));
+                e->setVertex(1, optimizer.vertex(pKFO->get_id()));
                 e->setMeasurement(obs);
-                float const invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
-                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity() * invSigma2;
-                e->setInformation(Info);
+
+                float const invSigma2 = pKFO->mvInvLevelSigma2[kpUn.octave];
+                e->setInformation(Eigen::Matrix3d::Identity() * invSigma2);
 
                 g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
                 e->setRobustKernel(rk);
                 rk->setDelta(thHuberStereo);
 
-                e->fx = pKFi->fx;
-                e->fy = pKFi->fy;
-                e->cx = pKFi->cx;
-                e->cy = pKFi->cy;
-                e->bf = pKFi->mbf;
+                e->fx = pKFO->fx;
+                e->fy = pKFO->fy;
+                e->cx = pKFO->cx;
+                e->cy = pKFO->cy;
+                e->bf = pKFO->mbf;
 
                 optimizer.addEdge(e);
+
                 vpEdgesStereo.push_back(e);
-                vpEdgeKFStereo.push_back(pKFi);
+                vpEdgeKFStereo.push_back(pKFO);
                 vpMapPointEdgeStereo.push_back(pMP);
             }
         }
@@ -636,11 +629,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     if (pbStopFlag == nullptr || !(*pbStopFlag))
     {
         // Check inlier observations
-        for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
+        for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; ++i)
         {
             MapPoint* pMP = vpMapPointEdgeMono[i];
 
-            if (pMP->isBad())
+            if (pMP->isBad()) // TODO: PAE: HM can it get changed?
                 continue;
 
             g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
@@ -655,7 +648,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         {
             MapPoint* pMP = vpMapPointEdgeStereo[i];
 
-            if (pMP->isBad())
+            if (pMP->isBad()) // TODO: PAE: HM can it get changed?
                 continue;
 
             g2o::EdgeStereoSE3ProjectXYZ* e = vpEdgesStereo[i];
@@ -666,24 +659,23 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         }
 
         // Optimize again without the outliers
-
         optimizer.initializeOptimization(0);
         optimizer.optimize(10);
     }
 
-    vector<pair<KeyFrame*, MapPoint*> > vToErase;
+    std::vector<std::pair<KeyFrame*, MapPoint*> > vToErase;
     vToErase.reserve(vpEdgesMono.size() + vpEdgesStereo.size());
 
     // Check inlier observations
-    for(size_t i = 0, iend = vpEdgesMono.size(); i < iend; ++i)
+    for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; ++i)
     {
         MapPoint* pMP = vpMapPointEdgeMono[i];
 
-        if (pMP->isBad())
+        if (pMP->isBad()) // TODO: PAE: hm can it get changed?
             continue;
 
         g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
-        if(e->chi2() > 5.991 || !e->isDepthPositive())
+        if (e->chi2() > 5.991 || !e->isDepthPositive())
         {
             KeyFrame* pKFi = vpEdgeKFMono[i];
             vToErase.emplace_back(pKFi, pMP);
@@ -694,7 +686,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     {
         MapPoint* pMP = vpMapPointEdgeStereo[i];
 
-        if (pMP->isBad())
+        if (pMP->isBad())  // TODO: PAE: hm can it get changed?
             continue;
 
         g2o::EdgeStereoSE3ProjectXYZ* e = vpEdgesStereo[i];
@@ -719,15 +711,15 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     // Recover optimized data
 
     // Keyframes
-    for (KeyFrame* pKF : lLocalKeyFrames)
+    for (KeyFrame* pKF : local_key_frames)
     {
-        g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->get_id()));
+        g2o::VertexSE3Expmap* vSE3 = (g2o::VertexSE3Expmap*)(optimizer.vertex(pKF->get_id()));
         g2o::SE3Quat SE3quat = vSE3->estimate();
         pKF->SetPose(Converter::toCvMat(SE3quat));
     }
 
     // Points
-    for (MapPoint* pMP : lLocalMapPoints)
+    for (MapPoint* pMP : local_map_points)
     {
         g2o::VertexSBAPointXYZ* vPoint = (g2o::VertexSBAPointXYZ*)(optimizer.vertex(pMP->get_id() + maxKFid + 1));
         pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
