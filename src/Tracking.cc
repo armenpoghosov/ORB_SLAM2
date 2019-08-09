@@ -479,7 +479,7 @@ void Tracking::StereoInitialization()
     mnLastKeyFrameId = mCurrentFrame.get_id();
     mpLastKeyFrame = pKFini;
 
-    mvpLocalKeyFrames.push_back(pKFini);
+    mvpLocalKeyFrames.insert(pKFini);
     mvpLocalMapPoints = mpMap->GetAllMapPoints();
     mpReferenceKF = pKFini;
     mCurrentFrame.mpReferenceKF = pKFini;
@@ -653,9 +653,9 @@ void Tracking::CreateInitialMapMonocular()
     mnLastKeyFrameId = mCurrentFrame.get_id();
     mpLastKeyFrame = pKFcur;
 
-    mvpLocalKeyFrames.push_back(pKFcur);
-    mvpLocalKeyFrames.push_back(pKFini);
-    mvpLocalMapPoints=mpMap->GetAllMapPoints();
+    mvpLocalKeyFrames.insert(pKFcur);
+    mvpLocalKeyFrames.insert(pKFini);
+    mvpLocalMapPoints = mpMap->GetAllMapPoints();
     mpReferenceKF = pKFcur;
     mCurrentFrame.mpReferenceKF = pKFcur;
 
@@ -1115,7 +1115,7 @@ void Tracking::UpdateLocalKeyFrames()
             continue;
         }
 
-        std::unordered_map<KeyFrame*, size_t> const observations = rpMP->GetObservations();
+        std::unordered_map<KeyFrame*, size_t> const& observations = rpMP->GetObservations();
 
         for (auto const& pair : observations)
         {
@@ -1130,68 +1130,83 @@ void Tracking::UpdateLocalKeyFrames()
     std::size_t max = 0;
     KeyFrame* pKFmax = nullptr;
 
-    mvpLocalKeyFrames.clear();
-    mvpLocalKeyFrames.reserve(3 * keyframeCounter.size());
-
     // All keyframes that observe a map point are included in the local map.
     // Also check which keyframe shares most points
-    for (auto const& kf_count_pair : keyframeCounter)
+    KeyFrame* head = nullptr;
+    std::unordered_map<KeyFrame*, KeyFrame*> map;
+    map.reserve(3 * keyframeCounter.size());
+
+    for (auto const& pair : keyframeCounter)
     {
-        KeyFrame* pKF = kf_count_pair.first;
+        KeyFrame* pKF = pair.first;
 
         if (pKF->isBad())
             continue;
 
-        if (kf_count_pair.second > max)
+        if (pair.second > max)
         {
-            max = kf_count_pair.second;
+            max = pair.second;
             pKFmax = pKF;
         }
 
-        mvpLocalKeyFrames.push_back(kf_count_pair.first);
-        pKF->mnTrackReferenceForFrame = mCurrentFrame.get_id();
+        map.emplace(pKF, head);
+        head = pKF;
     }
 
     // Include also some not-already-included keyframes that are neighbors to already-included keyframes
-    for (std::size_t index = 0, size = mvpLocalKeyFrames.size(); size <= 80 && index < size; ++index)
+    for (KeyFrame* head_next = nullptr;; )
     {
-        KeyFrame* pKF = mvpLocalKeyFrames[index];
-
-        std::vector<KeyFrame*> const neighbour_key_frames = pKF->GetBestCovisibilityKeyFrames(10);
+        std::vector<KeyFrame*> const neighbour_key_frames = head->GetBestCovisibilityKeyFrames(10);
 
         for (KeyFrame* pNeighKF : neighbour_key_frames)
         {
-            if (!pNeighKF->isBad() && pNeighKF->mnTrackReferenceForFrame != mCurrentFrame.get_id())
-            {
-                pNeighKF->mnTrackReferenceForFrame = mCurrentFrame.get_id();
-                mvpLocalKeyFrames.push_back(pNeighKF);
-                ++size;
-                break;
-            }
+            if (pNeighKF->isBad())
+                continue;
+
+            auto const& pair = map.emplace(pNeighKF, head_next);
+            if (pair.second)
+                head_next = pNeighKF;
         }
 
-        std::unordered_set<KeyFrame*> const spChilds = pKF->GetChilds();
+        std::unordered_set<KeyFrame*> const spChilds = head->GetChilds();
         for (KeyFrame* pChildKF : spChilds)
         {
-            if (!pChildKF->isBad() && pChildKF->mnTrackReferenceForFrame != mCurrentFrame.get_id())
-            {
-                pChildKF->mnTrackReferenceForFrame = mCurrentFrame.get_id();
-                mvpLocalKeyFrames.push_back(pChildKF);
-                ++size;
-                break;
-            }
+            if (pChildKF->isBad())
+                continue;
+
+            auto const& pair = map.emplace(pChildKF, head_next);
+            if (pair.second)
+                head_next = pChildKF;
         }
 
-        KeyFrame* pParent = pKF->GetParent();
-
-        if (pParent != nullptr && pParent->mnTrackReferenceForFrame != mCurrentFrame.get_id())
+        KeyFrame* pParent = head->GetParent();
+        if (pParent != nullptr)
         {
-            pParent->mnTrackReferenceForFrame = mCurrentFrame.get_id();
-            mvpLocalKeyFrames.push_back(pParent);
-            ++size;
-            break;
+            auto const& pair = map.emplace(pParent, head_next);
+            if (pair.second)
+                head_next = pParent;
         }
+
+        if (map.size() >= 80)
+            break;
+
+        auto it = map.find(head);
+        assert(it != itEnd);
+
+        if ((head = it->second) != nullptr)
+            continue;
+
+        if ((head = head_next) == nullptr)
+            break;
+
+        head_next = nullptr;
     }
+
+    mvpLocalKeyFrames.clear();
+    mvpLocalKeyFrames.reserve(map.size());
+
+    for (auto const& pair : map)
+        mvpLocalKeyFrames.insert(pair.first);
 
     if (pKFmax != nullptr)
     {

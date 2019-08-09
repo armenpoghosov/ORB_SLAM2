@@ -32,8 +32,6 @@
 
 #include"System.h"
 
-using namespace std;
-
 void LoadImages(std::string const& strSequence,
     std::vector<std::string>& vstrImageFilenames, std::vector<double>& vTimestamps);
 

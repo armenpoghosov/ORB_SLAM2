@@ -503,29 +503,27 @@ void LocalMapping::CreateNewMapPoints()
 
 void LocalMapping::SearchInNeighbors()
 {
-    int nn = mbMonocular ? 20 : 10;
-
-    std::vector<KeyFrame*> const& vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+    std::vector<KeyFrame*> const& vpNeighKFs =
+        mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(mbMonocular ? 20 : 10);
  
-    std::vector<KeyFrame*> vpTargetKFs;
+    std::unordered_set<KeyFrame*> target_key_frames;
 
-    for (KeyFrame* pKFi : vpNeighKFs)
+    for (KeyFrame* pKFCV : vpNeighKFs)
     {
-        if (pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->get_id())
+        if (pKFCV->isBad())
             continue;
 
-        vpTargetKFs.push_back(pKFi);
-        pKFi->mnFuseTargetForKF = mpCurrentKeyFrame->get_id();
+        auto const& pair = target_key_frames.insert(pKFCV);
+        if (!pair.second)
+            continue;
 
-        // Extend to some second neighbors
-        std::vector<KeyFrame*> const& vpSecondNeighKFs = pKFi->GetBestCovisibilityKeyFrames(5);
-        for (KeyFrame* pKFi2 : vpSecondNeighKFs)
+        std::vector<KeyFrame*> const& neighbours2 = pKFCV->GetBestCovisibilityKeyFrames(5);
+        for (KeyFrame* pKFCV2 : neighbours2)
         {
-            if (pKFi2->isBad() || pKFi2->get_id() == mpCurrentKeyFrame->get_id() ||
-                pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->get_id())
+            if (pKFCV2 == mpCurrentKeyFrame || pKFCV2->isBad())
                 continue;
 
-            vpTargetKFs.push_back(pKFi2);
+            target_key_frames.insert(pKFCV);
         }
     }
 
@@ -534,29 +532,31 @@ void LocalMapping::SearchInNeighbors()
 
     std::vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
-    for (KeyFrame* pKFi : vpTargetKFs)
-        matcher.Fuse(pKFi, vpMapPointMatches);
+    // TODO: PAE: think about removing the vector in the call above and turning it to a set
+    std::unordered_set<MapPoint*> fuse_candidates;
+    fuse_candidates.insert(vpMapPointMatches.begin(), vpMapPointMatches.end());
+
+    for (KeyFrame* pTKF : target_key_frames)
+        matcher.Fuse(pTKF, fuse_candidates, 0.3f);
 
     // Search matches by projection from target KFs in current KF
-    std::vector<MapPoint*> vpFuseCandidates;
-    vpFuseCandidates.reserve(vpTargetKFs.size() * vpMapPointMatches.size());
+    fuse_candidates.clear();
+    fuse_candidates.reserve(target_key_frames.size() * vpMapPointMatches.size());
 
-    for (KeyFrame* pKFi : vpTargetKFs)
+    for (KeyFrame* pTKF : target_key_frames)
     {
-        std::vector<MapPoint*> vpMapPointsKFi = pKFi->GetMapPointMatches();
+        std::vector<MapPoint*> const& vpMapPointsKFi = pTKF->GetMapPointMatches();
 
         for (MapPoint* pMP : vpMapPointsKFi)
         {
-            if (pMP == nullptr || pMP->isBad() ||
-                pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->get_id())
+            if (pMP == nullptr || pMP->isBad())
                 continue;
 
-            vpFuseCandidates.push_back(pMP);
-            pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->get_id();
+            fuse_candidates.insert(pMP);
         }
     }
 
-    matcher.Fuse(mpCurrentKeyFrame, vpFuseCandidates);
+    matcher.Fuse(mpCurrentKeyFrame, fuse_candidates, 0.3f);
 
     // Update points
     vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();

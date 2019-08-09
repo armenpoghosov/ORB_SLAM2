@@ -42,8 +42,6 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mfGridElementWidthInv(F.mfGridElementWidthInv),
     mfGridElementHeightInv(F.mfGridElementHeightInv),
 
-    mnTrackReferenceForFrame(0),
-    mnFuseTargetForKF(0),
     mnBAGlobalForKF(0),
 
     // TODO: these probably have to be removed too

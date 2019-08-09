@@ -22,17 +22,17 @@
 #ifndef ORBMATCHER_H
 #define ORBMATCHER_H
 
-#include<vector>
-#include<opencv2/core/core.hpp>
-#include<opencv2/features2d/features2d.hpp>
+#include <opencv2/opencv.hpp>
 
-#include"MapPoint.h"
-#include"KeyFrame.h"
-#include"Frame.h"
-
+#include <unordered_set>
+#include <vector>
 
 namespace ORB_SLAM2
 {
+
+class Frame;
+class KeyFrame;
+class MapPoint;
 
 class ORBmatcher
 {
@@ -87,10 +87,11 @@ public:
         const float &s12, const cv::Mat &R12, const cv::Mat &t12, const float th);
 
     // Project MapPoints into KeyFrame and search for duplicated MapPoints.
-    int Fuse(KeyFrame* pKF, vector<MapPoint*> const& vpMapPoints, float th = 3.0);
+    int Fuse(KeyFrame* pKF, std::unordered_set<MapPoint*> const& map_points, float th);
 
     // Project MapPoints into KeyFrame using a given Sim3 and search for duplicated MapPoints.
-    int Fuse(KeyFrame* pKF, cv::Mat Scw, const std::vector<MapPoint*> &vpPoints, float th, vector<MapPoint *> &vpReplacePoint);
+    int Fuse(KeyFrame* pKF, cv::Mat Scw, std::vector<MapPoint*> const& vpPoints,
+        float th, std::vector<MapPoint*>& vpReplacePoint);
 
 protected:
 
@@ -98,7 +99,7 @@ protected:
         cv::Mat const& F12, KeyFrame const* pKF);
 
     static float RadiusByViewingCos(float viewCos)
-        { return viewCos > 0.998 ? 2.5f : 4.0f; }
+        { return viewCos > 0.998f ? 2.5f : 4.0f; }
 
     void ComputeThreeMaxima(std::vector<int> const* histo, int L, int &ind1, int &ind2, int &ind3);
 

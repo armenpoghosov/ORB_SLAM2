@@ -22,13 +22,14 @@
 #ifndef TRACKING_H
 #define TRACKING_H
 
-#include<opencv2/core/core.hpp>
-#include<opencv2/features2d/features2d.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 #include"Frame.h"
 
 #include <mutex>
 #include <future>
+#include <unordered_set>
 
 namespace ORB_SLAM2
 {
@@ -194,9 +195,9 @@ protected:
     Initializer*                mpInitializer;
 
     // Local Map
-    KeyFrame*                   mpReferenceKF;
-    std::vector<KeyFrame*>      mvpLocalKeyFrames;
-    std::vector<MapPoint*>      mvpLocalMapPoints;
+    KeyFrame*                       mpReferenceKF;
+    std::unordered_set<KeyFrame*>   mvpLocalKeyFrames;
+    std::vector<MapPoint*>          mvpLocalMapPoints;
 
     // System
     System*                     mpSystem;

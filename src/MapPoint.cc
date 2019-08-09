@@ -20,6 +20,7 @@
 
 #include "MapPoint.h"
 
+#include "KeyFrame.h"
 #include "Map.h"
 #include "ORBmatcher.h"
 
@@ -28,7 +29,7 @@ namespace ORB_SLAM2
 
 std::atomic<uint64_t> MapPoint::s_next_id;
 
-mutex MapPoint::mGlobalMutex;
+std::mutex MapPoint::mGlobalMutex;
 
 MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
     :
@@ -37,7 +38,6 @@ MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
     m_observe_count(0),
     mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),
-    mnFuseCandidateForKF(0),
     mnLoopPointForKF(0),
     mnCorrectedByKF(0),
     mnCorrectedReference(0),
@@ -64,7 +64,6 @@ MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF)
     m_observe_count(0),
     mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),
-    mnFuseCandidateForKF(0),
     mnLoopPointForKF(0),
     mnCorrectedByKF(0),
     mnCorrectedReference(0),

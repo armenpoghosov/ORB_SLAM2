@@ -20,14 +20,17 @@
 
 #include "ORBmatcher.h"
 
-#include <limits.h>
-
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 
+#include "Frame.h"
+#include "KeyFrame.h"
+#include "MapPoint.h"
+
 #include <cstdint>
+#include <limits>
 #include <unordered_set>
 
 using namespace std;
@@ -789,7 +792,7 @@ std::size_t ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
     return nmatches;
 }
 
-int ORBmatcher::Fuse(KeyFrame* pKF, std::vector<MapPoint*> const& vpMapPoints, float th)
+int ORBmatcher::Fuse(KeyFrame* pKF, std::unordered_set<MapPoint*> const& map_points, float th)
 {
     float const fx = pKF->fx;
     float const fy = pKF->fy;
@@ -803,7 +806,7 @@ int ORBmatcher::Fuse(KeyFrame* pKF, std::vector<MapPoint*> const& vpMapPoints, f
 
     int nFused = 0;
 
-    for (MapPoint* pMP : vpMapPoints)
+    for (MapPoint* pMP : map_points)
     {
         if (pMP == nullptr || pMP->isBad() || pMP->IsInKeyFrame(pKF))
             continue;
@@ -927,7 +930,7 @@ int ORBmatcher::Fuse(KeyFrame* pKF, std::vector<MapPoint*> const& vpMapPoints, f
     return nFused;
 }
 
-int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoints, float th, vector<MapPoint *> &vpReplacePoint)
+int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, std::vector<MapPoint*> const&vpPoints, float th, std::vector<MapPoint *> &vpReplacePoint)
 {
     // Get Calibration Parameters for later projection
     const float &fx = pKF->fx;

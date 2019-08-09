@@ -252,10 +252,6 @@ public:
     float const                     mfGridElementWidthInv;
     float const                     mfGridElementHeightInv;
 
-    // Variables used by the tracking
-    uint64_t                        mnTrackReferenceForFrame;
-    uint64_t                        mnFuseTargetForKF;
-
     // Variables used by loop closing
     cv::Mat                         mTcwGBA;
     cv::Mat                         mTcwBefGBA;

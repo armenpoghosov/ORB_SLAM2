@@ -31,9 +31,9 @@
 namespace ORB_SLAM2
 {
 
+class Frame;
 class KeyFrame;
 class Map;
-class Frame;
 
 class MapPoint
 {
@@ -175,9 +175,6 @@ public:
     float                           mTrackViewCos;
     uint64_t                        mnTrackReferenceForFrame;
     uint64_t                        mnLastFrameSeen;
-
-    // Variables used by local mapping
-    uint64_t                        mnFuseCandidateForKF;
 
     // Variables used by loop closing
     uint64_t                        mnLoopPointForKF;
