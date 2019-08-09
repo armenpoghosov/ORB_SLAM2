@@ -59,7 +59,7 @@ void MapDrawer::DrawMapPoints()
 
     for (MapPoint* pMP : vpMPs)
     {
-        if (pMP->isBad() || spRefMPs.count(pMP) != 0)
+        if (pMP->isBad() || spRefMPs.find(pMP) != spRefMPs.end())
             continue;
 
         cv::Mat pos = pMP->GetWorldPos();

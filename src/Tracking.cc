@@ -620,7 +620,7 @@ void Tracking::CreateInitialMapMonocular()
     // Bundle Adjustment
     cout << "New Map created with " << mpMap->MapPointsInMap() << " points" << endl;
 
-    Optimizer::GlobalBundleAdjustemnt(mpMap, 20, nullptr, 0, true);
+    Optimizer::GlobalBundleAdjustemnt(mpMap, 20, nullptr, true, true);
 
     // Set median depth to 1
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
@@ -1058,13 +1058,9 @@ void Tracking::SearchLocalPoints()
     {
         ORBmatcher matcher(0.8f, true);
 
-        int th = mSensor == System::RGBD ? 1 : 3;
-
         // If the camera has been relocalised recently, perform a coarser search
-        if (mCurrentFrame.get_id() < mnLastRelocFrameId + 2)
-            th = 5;
-
-        matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, (float)th);
+        float const th = (mCurrentFrame.get_id() < mnLastRelocFrameId + 2) ? 5.f : (mSensor == System::RGBD ? 1.f : 3.f);
+        matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th);
     }
 }
 

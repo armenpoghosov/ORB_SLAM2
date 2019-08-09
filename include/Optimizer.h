@@ -38,7 +38,9 @@ class Optimizer
 {
 public:
 
-    static void GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool *pbStopFlag, uint64_t nLoopKF, bool bRobus);
+    // either update keyframes and map points at once or return the updated positions in the result pair
+    static std::pair<std::unordered_map<KeyFrame*, cv::Mat>, std::unordered_map<MapPoint*, cv::Mat> >
+    GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool *pbStopFlag, bool bUpdateAtOnce, bool bRobus);
 
     static void LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);
 

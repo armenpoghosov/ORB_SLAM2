@@ -174,9 +174,6 @@ public:
     // Variables used by loop closing
     uint64_t                        mnCorrectedByKF;
     uint64_t                        mnCorrectedReference;
-    cv::Mat                         mPosGBA;
-
-    uint64_t                        mnBAGlobalForKF;
 
     static std::mutex               mGlobalMutex;
 

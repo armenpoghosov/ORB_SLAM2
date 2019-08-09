@@ -252,11 +252,6 @@ public:
     float const                     mfGridElementWidthInv;
     float const                     mfGridElementHeightInv;
 
-    // Variables used by loop closing
-    cv::Mat                         mTcwGBA;
-    cv::Mat                         mTcwBefGBA;
-    uint64_t                        mnBAGlobalForKF;
-
     // Calibration parameters
     float const                     fx;
     float const                     fy;

@@ -550,7 +550,7 @@ void LoopClosing::CorrectLoop()
     mbFinishedGBA = false;
     mbStopGBA = false;
 
-    mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->get_id());
+    mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this);
 
     // Loop closed. Release Local Mapping.
     mpLocalMapper->resume();
@@ -611,12 +611,12 @@ void LoopClosing::ResetIfRequested()
     }
 }
 
-void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
+void LoopClosing::RunGlobalBundleAdjustment()
 {
     cout << "Starting Global Bundle Adjustment" << endl;
 
     uint64_t const idx = mnFullBAIdx;
-    Optimizer::GlobalBundleAdjustemnt(mpMap, 10, &mbStopGBA, nLoopKF, false);
+    auto pair_GBA = Optimizer::GlobalBundleAdjustemnt(mpMap, 10, &mbStopGBA, false, false);
 
     // Update all MapPoints and KeyFrames
     // Local Mapping was active during BA, that means that there might be new keyframes
@@ -642,67 +642,75 @@ void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
             std::vector<KeyFrame*> const& key_frame_origins = mpMap->get_key_frame_origins();
             std::list<KeyFrame*> lpKFtoCheck(key_frame_origins.begin(), key_frame_origins.end());
 
+            std::unordered_map<KeyFrame*, cv::Mat> map_replaced; // PAE: TODO: think about it
+
             while (!lpKFtoCheck.empty())
             {
                 KeyFrame* pKF = lpKFtoCheck.front();
+                cv::Mat Twc = pKF->GetPoseInverse();
+
+                auto itKF = pair_GBA.first.find(pKF);
+                assert(itKF != pair_GBA.first.end());
+                cv::Mat const& matKF = itKF->second;
 
                 std::unordered_set<KeyFrame*> const sChilds = pKF->GetChilds();
-                cv::Mat Twc = pKF->GetPoseInverse();
 
                 for (auto sit = sChilds.cbegin(); sit != sChilds.cend(); ++sit)
                 {
                     KeyFrame* pChild = *sit;
 
-                    if (pChild->mnBAGlobalForKF != nLoopKF)
-                    {
-                        cv::Mat Tchildc = pChild->GetPose()*Twc;
-                        pChild->mTcwGBA = Tchildc * pKF->mTcwGBA; //*Tcorc*pKF->mTcwGBA;
-                        pChild->mnBAGlobalForKF = nLoopKF;
-
-                    }
+                    auto itChild = pair_GBA.first.find(pChild);
+                    if (itChild == pair_GBA.first.end()) // TODO: PAE: this in fact should NEVER HAPEN
+                        pair_GBA.first.emplace(pChild, pChild->GetPose() * Twc * matKF);
 
                     lpKFtoCheck.push_back(pChild);
                 }
 
-                pKF->mTcwBefGBA = pKF->GetPose();
-                pKF->SetPose(pKF->mTcwGBA);
+                auto pair_replaced = map_replaced.emplace(pKF, pKF->GetPose());
+                assert(pair_replaced.second);
+                (void)pair_replaced;
+
+                pKF->SetPose(matKF);
                 lpKFtoCheck.pop_front();
             }
 
             // Correct MapPoints
             std::vector<MapPoint*> const vpMPs = mpMap->GetAllMapPoints();
 
-            for (size_t i = 0; i < vpMPs.size(); ++i)
+            for (MapPoint* pMP : vpMPs)
             {
-                MapPoint* pMP = vpMPs[i];
-
                 if (pMP->isBad())
                     continue;
 
-                if (pMP->mnBAGlobalForKF == nLoopKF)
+                auto itMP = pair_GBA.second.find(pMP);
+                if (itMP != pair_GBA.second.end())
                 {
                     // If optimized by Global BA, just update
-                    pMP->SetWorldPos(pMP->mPosGBA);
+                    pMP->SetWorldPos(itMP->second);
                 }
                 else
                 {
                     // Update according to the correction of its reference keyframe
                     KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
-                    if (pRefKF->mnBAGlobalForKF != nLoopKF)
+                    auto itKF = pair_GBA.first.find(pRefKF);
+                    if (itKF == pair_GBA.first.end())
                         continue;
 
+                    auto itKFReplaced = map_replaced.find(pRefKF);
+                    assert(itKFReplaced != map_replaced.end());
+
                     // Map to non-corrected camera
-                    cv::Mat Rcw = pRefKF->mTcwBefGBA.rowRange(0,3).colRange(0,3);
-                    cv::Mat tcw = pRefKF->mTcwBefGBA.rowRange(0,3).col(3);
-                    cv::Mat Xc = Rcw*pMP->GetWorldPos()+tcw;
+                    cv::Mat Rcw = itKFReplaced->second.rowRange(0,3).colRange(0,3);
+                    cv::Mat tcw = itKFReplaced->second.rowRange(0,3).col(3);
+                    cv::Mat Xc = Rcw * pMP->GetWorldPos() + tcw;
 
                     // Backproject using corrected camera
                     cv::Mat Twc = pRefKF->GetPoseInverse();
-                    cv::Mat Rwc = Twc.rowRange(0,3).colRange(0,3);
-                    cv::Mat twc = Twc.rowRange(0,3).col(3);
+                    cv::Mat Rwc = Twc.rowRange(0, 3).colRange(0, 3);
+                    cv::Mat twc = Twc.rowRange(0, 3).col(3);
 
-                    pMP->SetWorldPos(Rwc*Xc+twc);
+                    pMP->SetWorldPos(Rwc * Xc + twc);
                 }
             }
 
@@ -717,7 +725,5 @@ void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
         mbRunningGBA = false;
     }
 }
-
-
 
 } //namespace ORB_SLAM

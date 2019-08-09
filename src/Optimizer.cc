@@ -37,7 +37,8 @@
 namespace ORB_SLAM2
 {
 
-void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, uint64_t nLoopKF, bool bRobust)
+std::pair<std::unordered_map<KeyFrame*, cv::Mat>, std::unordered_map<MapPoint*, cv::Mat> >
+Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, bool bUpdateAtOnce, bool bRobust)
 {
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
     g2o::BlockSolver_6_3* solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
@@ -185,25 +186,25 @@ void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopF
 
     // Recover optimized data
 
+    std::pair<std::unordered_map<KeyFrame*, cv::Mat>, std::unordered_map<MapPoint*, cv::Mat> > result;
+
     // Keyframes
-    for (size_t i = 0; i < vpKFs.size(); ++i)
+    for (KeyFrame* pKF : vpKFs)
     {
-        KeyFrame* pKF = vpKFs[i];
         if (pKF->isBad())
             continue;
 
         g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->get_id()));
         g2o::SE3Quat SE3quat = vSE3->estimate();
 
-        if (nLoopKF == 0)
+        if (bUpdateAtOnce)
         {
             pKF->SetPose(Converter::toCvMat(SE3quat));
         }
         else
         {
-            pKF->mTcwGBA.create(4, 4, CV_32F);
-            Converter::toCvMat(SE3quat).copyTo(pKF->mTcwGBA);
-            pKF->mnBAGlobalForKF = nLoopKF;
+            auto const& pair = result.first.emplace(pKF, Converter::toCvMat(SE3quat));
+            assert(pair.second);
         }
     }
 
@@ -220,18 +221,19 @@ void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopF
 
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->get_id() + maxKFid+1));
 
-        if (nLoopKF == 0)
+        if (bUpdateAtOnce)
         {
             pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
             pMP->UpdateNormalAndDepth();
         }
         else
         {
-            pMP->mPosGBA.create(3, 1, CV_32F);
-            Converter::toCvMat(vPoint->estimate()).copyTo(pMP->mPosGBA);
-            pMP->mnBAGlobalForKF = nLoopKF;
+            auto const& pair = result.second.emplace(pMP, Converter::toCvMat(vPoint->estimate()));
+            assert(pair.second);
         }
     }
+
+    return result;
 }
 
 int Optimizer::PoseOptimization(Frame* pFrame)
