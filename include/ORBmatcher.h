@@ -25,6 +25,7 @@
 #include <opencv2/opencv.hpp>
 
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 namespace ORB_SLAM2
@@ -52,7 +53,7 @@ public:
 
     // Search matches between Frame keypoints and projected MapPoints. Returns number of matches
     // Used to track the local map (Tracking)
-    int SearchByProjection(Frame& F, std::vector<MapPoint*> const& vpMapPoints, float th = 3);
+    int SearchByProjection(Frame& F, std::unordered_set<MapPoint*> const& vpMapPoints, float th = 3);
 
     // Project MapPoints tracked in last frame into the current frame and search matches.
     // Used to track from previous frame (Tracking)
@@ -65,7 +66,8 @@ public:
 
     // Project MapPoints using a Similarity Transformation and search matches.
     // Used in loop detection (Loop Closing)
-     int SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const std::vector<MapPoint*> &vpPoints, std::vector<MapPoint*> &vpMatched, int th);
+     int SearchByProjection(KeyFrame* pKF, cv::Mat Scw,
+         std::unordered_set<MapPoint*> const& vpPoints, std::vector<MapPoint*>& vpMatched, int th);
 
     // Search matches between MapPoints in a KeyFrame and ORB in a Frame.
     // Brute force constrained to ORB that belong to the same vocabulary node (at a certain level)
@@ -90,8 +92,8 @@ public:
     int Fuse(KeyFrame* pKF, std::unordered_set<MapPoint*> const& map_points, float th);
 
     // Project MapPoints into KeyFrame using a given Sim3 and search for duplicated MapPoints.
-    int Fuse(KeyFrame* pKF, cv::Mat Scw, std::vector<MapPoint*> const& vpPoints,
-        float th, std::vector<MapPoint*>& vpReplacePoint);
+    void Fuse(KeyFrame* pKF, cv::Mat Scw, std::unordered_set<MapPoint*> const& vpPoints, float th,
+        std::unordered_map<MapPoint*, MapPoint*>& vpReplacePoint);
 
 protected:
 

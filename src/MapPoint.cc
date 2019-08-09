@@ -34,11 +34,8 @@ std::mutex MapPoint::mGlobalMutex;
 MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
     :
     mnFirstKFid(pRefKF->get_id()),
-    mnFirstFrame(pRefKF->get_frame_id()),
     m_observe_count(0),
-    mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),
-    mnLoopPointForKF(0),
     mnCorrectedByKF(0),
     mnCorrectedReference(0),
     mnBAGlobalForKF(0),
@@ -59,12 +56,9 @@ MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
 
 MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF)
     :
-    mnFirstKFid(-1),
-    mnFirstFrame(pFrame->get_id()),
+    mnFirstKFid((uint64_t)-1),
     m_observe_count(0),
-    mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0),
-    mnLoopPointForKF(0),
     mnCorrectedByKF(0),
     mnCorrectedReference(0),
     mnBAGlobalForKF(0),

@@ -197,7 +197,7 @@ protected:
     // Local Map
     KeyFrame*                       mpReferenceKF;
     std::unordered_set<KeyFrame*>   mvpLocalKeyFrames;
-    std::vector<MapPoint*>          mvpLocalMapPoints;
+    std::unordered_set<MapPoint*>   mvpLocalMapPoints;
 
     // System
     System*                     mpSystem;

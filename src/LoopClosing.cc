@@ -44,7 +44,7 @@ LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, 
     mbRunningGBA(false),
     mbFinishedGBA(true),
     mbStopGBA(false),
-    mpThreadGBA(NULL),
+    mpThreadGBA(nullptr),
     mbFixScale(bFixScale),
     mnFullBAIdx(0)
 {
@@ -100,7 +100,7 @@ void LoopClosing::InsertKeyFrame(KeyFrame *pKF)
 bool LoopClosing::DetectLoop()
 {
     {
-        unique_lock<mutex> lock(mMutexLoopQueue);
+        std::unique_lock<std::mutex> lock(mMutexLoopQueue);
         mpCurrentKF = mlpLoopKeyFrameQueue.front();
         mlpLoopKeyFrameQueue.pop_front();
         // Avoid that a keyframe can be erased while it is being process by this thread
@@ -349,16 +349,15 @@ bool LoopClosing::ComputeSim3()
 
         for (MapPoint* pMP : vpMapPoints)
         {
-            if (pMP == nullptr || pMP->isBad() || pMP->mnLoopPointForKF == mpCurrentKF->get_id())
+            if (pMP == nullptr || pMP->isBad())
                 continue;
 
-            mvpLoopMapPoints.push_back(pMP);
-            pMP->mnLoopPointForKF = mpCurrentKF->get_id();
+            mvpLoopMapPoints.insert(pMP);
         }
     }
 
     // Find more matches projecting with the computed Sim3
-    matcher.SearchByProjection(mpCurrentKF, mScw, mvpLoopMapPoints, mvpCurrentMatchedPoints,10);
+    matcher.SearchByProjection(mpCurrentKF, mScw, mvpLoopMapPoints, mvpCurrentMatchedPoints, 10);
 
     // If enough matches accept Loop
     std::size_t nTotalMatches = 0;
@@ -550,6 +549,7 @@ void LoopClosing::CorrectLoop()
     mbRunningGBA = true;
     mbFinishedGBA = false;
     mbStopGBA = false;
+
     mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->get_id());
 
     // Loop closed. Release Local Mapping.
@@ -569,19 +569,13 @@ void LoopClosing::SearchAndFuse(KeyFrameAndPose const& CorrectedPosesMap)
 
         cv::Mat cvScw = Converter::toCvMat(g2oScw);
 
-        std::vector<MapPoint*> vpReplacePoints(mvpLoopMapPoints.size());
+        std::unordered_map<MapPoint*, MapPoint*> vpReplacePoints;
         matcher.Fuse(pKF, cvScw, mvpLoopMapPoints, 4, vpReplacePoints);
 
         // Get Map Mutex
         std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
-
-        std::size_t const nLP = mvpLoopMapPoints.size();
-        for (std::size_t i = 0; i < nLP; ++i)
-        {
-            MapPoint* pRep = vpReplacePoints[i];
-            if (pRep != nullptr)
-                pRep->Replace(mvpLoopMapPoints[i]);
-        }
+        for (auto const& pair : vpReplacePoints)
+            pair.second->Replace(pair.first);
     }
 }
 
@@ -662,7 +656,7 @@ void LoopClosing::RunGlobalBundleAdjustment(uint64_t nLoopKF)
                     if (pChild->mnBAGlobalForKF != nLoopKF)
                     {
                         cv::Mat Tchildc = pChild->GetPose()*Twc;
-                        pChild->mTcwGBA = Tchildc*pKF->mTcwGBA;//*Tcorc*pKF->mTcwGBA;
+                        pChild->mTcwGBA = Tchildc * pKF->mTcwGBA; //*Tcorc*pKF->mTcwGBA;
                         pChild->mnBAGlobalForKF = nLoopKF;
 
                     }

@@ -228,12 +228,12 @@ void LocalMapping::MapPointCulling()
         if (pMP->isBad())
             lit = mlpRecentAddedMapPoints.erase(lit);
         else if (pMP->GetFoundRatio() < 0.25f ||
-            (nCurrentKFid >= pMP->mnFirstKFid + 2 && pMP->Observations() <= cnThObs))
+            (nCurrentKFid >= pMP->get_first_key_frame_id() + 2 && pMP->Observations() <= cnThObs))
         {
             pMP->SetBadFlag();
             lit = mlpRecentAddedMapPoints.erase(lit);
         }
-        else if (nCurrentKFid >= pMP->mnFirstKFid + 3)
+        else if (nCurrentKFid >= pMP->get_first_key_frame_id() + 3)
             lit = mlpRecentAddedMapPoints.erase(lit);
         else
             ++lit;

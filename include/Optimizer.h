@@ -38,11 +38,7 @@ class Optimizer
 {
 public:
 
-    static void BundleAdjustment(std::vector<KeyFrame*> const& vpKF, std::vector<MapPoint*> const& vpMP,
-        int nIterations = 5, bool *pbStopFlag = nullptr, uint64_t nLoopKF = 0, bool bRobust = true);
-
-    static void GlobalBundleAdjustemnt(Map* pMap, int nIterations = 5,
-        bool *pbStopFlag = nullptr, uint64_t nLoopKF = 0, bool bRobust = true);
+    static void GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool *pbStopFlag, uint64_t nLoopKF, bool bRobus);
 
     static void LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);
 
@@ -54,8 +50,8 @@ public:
         std::unordered_map<KeyFrame*, std::unordered_set<KeyFrame*> > const& LoopConnections, bool bFixScale);
 
     // if bFixScale is true, optimize SE3 (stereo,rgbd), Sim3 otherwise (mono)
-    static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches1,
-                            g2o::Sim3 &g2oS12, const float th2, const bool bFixScale);
+    static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2,
+        std::vector<MapPoint*> &vpMatches1, g2o::Sim3& g2oS12, float th2, bool bFixScale);
 };
 
 } //namespace ORB_SLAM

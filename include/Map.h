@@ -67,7 +67,7 @@ public:
     }
 
     // TODO: PAE: what does this thing do? ... it does not validate anything right?
-    void SetReferenceMapPoints(std::vector<MapPoint*> const& vpMPs)
+    void SetReferenceMapPoints(std::unordered_set<MapPoint*> const& vpMPs)
     {
         std::unique_lock<std::mutex> lock(mMutexMap);
         mvpReferenceMapPoints = vpMPs;
@@ -91,7 +91,13 @@ public:
         return std::vector<MapPoint*>(mspMapPoints.begin(), mspMapPoints.end());
     }
 
-    std::vector<MapPoint*> GetReferenceMapPoints() const
+    std::unordered_set<MapPoint*> GetAllMapPointsSet() const
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        return mspMapPoints;
+    }
+
+    std::unordered_set<MapPoint*> GetReferenceMapPoints() const
     {
         std::unique_lock<std::mutex> lock(mMutexMap);
         return mvpReferenceMapPoints;
@@ -130,7 +136,7 @@ protected:
     std::unordered_set<MapPoint*>   mspMapPoints;
     std::unordered_set<KeyFrame*>   mspKeyFrames;
     std::vector<KeyFrame*>          mvpKeyFrameOrigins;
-    std::vector<MapPoint*>          mvpReferenceMapPoints;
+    std::unordered_set<MapPoint*>   mvpReferenceMapPoints;
     uint64_t                        mnMaxKFid;
     // Index related to a big change in the map (loop closure, global BA)
     std::atomic<int>                mnBigChangeIdx;

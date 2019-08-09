@@ -157,14 +157,10 @@ public:
     uint64_t get_id() const
         { return mnId; }
 
+    uint64_t get_first_key_frame_id() const
+        { return mnFirstKFid; }
+
 public:
-
-    static std::atomic<uint64_t>    s_next_id;
-
-    uint64_t                        mnFirstKFid;
-    uint64_t                        mnFirstFrame;
-
-    std::size_t                     m_observe_count;
 
     // Variables used by the tracking
     float                           mTrackProjX;
@@ -173,11 +169,9 @@ public:
     bool                            mbTrackInView;
     int                             mnTrackScaleLevel;
     float                           mTrackViewCos;
-    uint64_t                        mnTrackReferenceForFrame;
     uint64_t                        mnLastFrameSeen;
 
     // Variables used by loop closing
-    uint64_t                        mnLoopPointForKF;
     uint64_t                        mnCorrectedByKF;
     uint64_t                        mnCorrectedReference;
     cv::Mat                         mPosGBA;
@@ -188,6 +182,10 @@ public:
 
 protected:
 
+    static std::atomic<uint64_t>    s_next_id;
+
+    uint64_t const                  mnFirstKFid;
+    std::size_t                     m_observe_count;
     uint64_t                        mnId;
 
      // Position in absolute coordinates

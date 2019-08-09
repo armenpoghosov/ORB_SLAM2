@@ -480,7 +480,7 @@ void Tracking::StereoInitialization()
     mpLastKeyFrame = pKFini;
 
     mvpLocalKeyFrames.insert(pKFini);
-    mvpLocalMapPoints = mpMap->GetAllMapPoints();
+    mvpLocalMapPoints = mpMap->GetAllMapPointsSet();
     mpReferenceKF = pKFini;
     mCurrentFrame.mpReferenceKF = pKFini;
 
@@ -620,7 +620,7 @@ void Tracking::CreateInitialMapMonocular()
     // Bundle Adjustment
     cout << "New Map created with " << mpMap->MapPointsInMap() << " points" << endl;
 
-    Optimizer::GlobalBundleAdjustemnt(mpMap, 20);
+    Optimizer::GlobalBundleAdjustemnt(mpMap, 20, nullptr, 0, true);
 
     // Set median depth to 1
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
@@ -655,7 +655,7 @@ void Tracking::CreateInitialMapMonocular()
 
     mvpLocalKeyFrames.insert(pKFcur);
     mvpLocalKeyFrames.insert(pKFini);
-    mvpLocalMapPoints = mpMap->GetAllMapPoints();
+    mvpLocalMapPoints = mpMap->GetAllMapPointsSet();
     mpReferenceKF = pKFcur;
     mCurrentFrame.mpReferenceKF = pKFcur;
 
@@ -705,8 +705,8 @@ bool Tracking::TrackReferenceKeyFrame()
     Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers
-    int nmatchesMap = 0;
-    for (int i = 0; i < mCurrentFrame.get_frame_N(); ++i)
+    std::size_t nmatchesMap = 0;
+    for (std::size_t i = 0; i < mCurrentFrame.get_frame_N(); ++i)
     {
         MapPoint*& rpMP = mCurrentFrame.mvpMapPoints[i];
 
@@ -1084,15 +1084,14 @@ void Tracking::UpdateLocalPoints()
 
     for (KeyFrame* pKF : mvpLocalKeyFrames)
     {
-        std::vector<MapPoint*> const vpMPs = pKF->GetMapPointMatches();
+        std::vector<MapPoint*> const& vpMPs = pKF->GetMapPointMatches();
 
         for (MapPoint* pMP : vpMPs)
         {
-            if (pMP == nullptr || pMP->isBad() || pMP->mnTrackReferenceForFrame == mCurrentFrame.get_id())
+            if (pMP == nullptr || pMP->isBad())
                 continue;
 
-            mvpLocalMapPoints.push_back(pMP);
-            pMP->mnTrackReferenceForFrame = mCurrentFrame.get_id();
+            mvpLocalMapPoints.insert(pMP);
         }
     }
 }

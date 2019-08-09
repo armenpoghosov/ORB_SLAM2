@@ -44,7 +44,7 @@ ORBmatcher::ORBmatcher(float nnratio, bool check_orientation)
     m_check_orientation(check_orientation)
 {}
 
-int ORBmatcher::SearchByProjection(Frame& F, std::vector<MapPoint*> const& vpMapPoints, float th)
+int ORBmatcher::SearchByProjection(Frame& F, std::unordered_set<MapPoint*> const& vpMapPoints, float th)
 {
     int nmatches = 0;
 
@@ -268,7 +268,7 @@ std::size_t ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoin
 }
 
 int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw,
-    std::vector<MapPoint*> const& vpPoints, std::vector<MapPoint*>& vpMatched, int th)
+    std::unordered_set<MapPoint*> const& vpPoints, std::vector<MapPoint*>& vpMatched, int th)
 {
     // Get Calibration Parameters for later projection
     float const fx = pKF->fx;
@@ -285,16 +285,13 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw,
     cv::Mat Ow = -Rcw.t() * tcw;
 
     // Set of MapPoints already found in the KeyFrame
-    std::unordered_set<MapPoint*> spAlreadyFound(vpMatched.begin(), vpMatched.end());
-    spAlreadyFound.erase(nullptr);
-
     int nmatches = 0;
 
     // For each Candidate MapPoint Project and Match
     for (MapPoint* pMP : vpPoints)
     {
         // Discard Bad MapPoints and already found
-        if (pMP->isBad() || spAlreadyFound.count(pMP) != 0)
+        if (pMP->isBad())
             continue;
 
         // Get 3D Coords.
@@ -352,7 +349,7 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw,
 
         for (size_t const idx : vIndices)
         {
-            if (vpMatched[idx])
+            if (vpMatched[idx] != nullptr)
                 continue;
 
             int const& kpLevel= pKF->mvKeysUn[idx].octave;
@@ -930,96 +927,89 @@ int ORBmatcher::Fuse(KeyFrame* pKF, std::unordered_set<MapPoint*> const& map_poi
     return nFused;
 }
 
-int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, std::vector<MapPoint*> const&vpPoints, float th, std::vector<MapPoint *> &vpReplacePoint)
+void ORBmatcher::Fuse(KeyFrame* pKF, cv::Mat Scw, std::unordered_set<MapPoint*> const& vpPoints,
+    float th, std::unordered_map<MapPoint*, MapPoint*>& vpReplacePoint)
 {
     // Get Calibration Parameters for later projection
-    const float &fx = pKF->fx;
-    const float &fy = pKF->fy;
-    const float &cx = pKF->cx;
-    const float &cy = pKF->cy;
+    float const fx = pKF->fx;
+    float const fy = pKF->fy;
+    float const cx = pKF->cx;
+    float const cy = pKF->cy;
 
     // Decompose Scw
     cv::Mat sRcw = Scw.rowRange(0,3).colRange(0,3);
-    const float scw = sqrt(sRcw.row(0).dot(sRcw.row(0)));
-    cv::Mat Rcw = sRcw/scw;
-    cv::Mat tcw = Scw.rowRange(0,3).col(3)/scw;
-    cv::Mat Ow = -Rcw.t()*tcw;
+    float const scw = std::sqrt(sRcw.row(0).dot(sRcw.row(0)));
+    cv::Mat Rcw = sRcw / scw;
+    cv::Mat tcw = Scw.rowRange(0,3).col(3) / scw;
+    cv::Mat Ow = -Rcw.t() * tcw;
 
     // Set of MapPoints already found in the KeyFrame
-    std::unordered_set<MapPoint*> const spAlreadyFound = pKF->GetMapPoints();
-
-    int nFused=0;
-
-    std::size_t const nPoints = vpPoints.size();
+    std::unordered_set<MapPoint*> const& spAlreadyFound = pKF->GetMapPoints();
 
     // For each candidate MapPoint project and match
-    for (std::size_t iMP = 0; iMP < nPoints; ++iMP)
+    for (MapPoint* pMP : vpPoints)
     {
-        MapPoint* pMP = vpPoints[iMP];
-
         // Discard Bad MapPoints and already found
-        if(pMP->isBad() || spAlreadyFound.count(pMP))
+        if (pMP->isBad() || spAlreadyFound.find(pMP) != spAlreadyFound.end())
             continue;
 
         // Get 3D Coords.
         cv::Mat p3Dw = pMP->GetWorldPos();
 
         // Transform into Camera Coords.
-        cv::Mat p3Dc = Rcw*p3Dw+tcw;
+        cv::Mat p3Dc = Rcw * p3Dw + tcw;
 
         // Depth must be positive
-        if(p3Dc.at<float>(2)<0.0f)
+        if (p3Dc.at<float>(2) < 0.f)
             continue;
 
         // Project into Image
-        const float invz = 1.0/p3Dc.at<float>(2);
-        const float x = p3Dc.at<float>(0)*invz;
-        const float y = p3Dc.at<float>(1)*invz;
+        float const invz = 1.f / p3Dc.at<float>(2);
+        float const x = p3Dc.at<float>(0) * invz;
+        float const y = p3Dc.at<float>(1) * invz;
 
-        const float u = fx*x+cx;
-        const float v = fy*y+cy;
+        float const u = fx * x + cx;
+        float const v = fy * y + cy;
 
         // Point must be inside the image
-        if(!pKF->IsInImage(u,v))
+        if (!pKF->IsInImage(u, v))
             continue;
 
         // Depth must be inside the scale pyramid of the image
-        const float maxDistance = pMP->GetMaxDistanceInvariance();
-        const float minDistance = pMP->GetMinDistanceInvariance();
-        cv::Mat PO = p3Dw-Ow;
-        const float dist3D = cv::norm(PO);
+        float const maxDistance = pMP->GetMaxDistanceInvariance();
+        float const minDistance = pMP->GetMinDistanceInvariance();
 
-        if(dist3D<minDistance || dist3D>maxDistance)
+        cv::Mat PO = p3Dw - Ow;
+        double const dist3D = cv::norm(PO);
+
+        if (dist3D < minDistance || dist3D > maxDistance)
             continue;
 
         // Viewing angle must be less than 60 deg
         cv::Mat Pn = pMP->GetNormal();
 
-        if(PO.dot(Pn)<0.5*dist3D)
+        if (PO.dot(Pn) < 0.5 * dist3D)
             continue;
 
         // Compute predicted scale level
-        const int nPredictedLevel = pMP->PredictScale(dist3D,pKF);
+        int const nPredictedLevel = pMP->PredictScale(dist3D,pKF);
 
         // Search in a radius
-        const float radius = th*pKF->mvScaleFactors[nPredictedLevel];
+        float const radius = th * pKF->mvScaleFactors[nPredictedLevel];
 
-        const vector<size_t> vIndices = pKF->GetFeaturesInArea(u,v,radius);
-
-        if(vIndices.empty())
+        std::vector<size_t> const& vIndices = pKF->GetFeaturesInArea(u, v, radius);
+        if (vIndices.empty())
             continue;
 
         // Match to the most similar keypoint in the radius
 
-        cv::Mat const dMP = pMP->GetDescriptor();
+        cv::Mat const& dMP = pMP->GetDescriptor();
 
         int bestDist = INT_MAX;
         int bestIdx = -1;
 
-        for (auto vit = vIndices.begin(); vit != vIndices.end(); ++vit)
+        for (size_t const idx : vIndices)
         {
-            size_t const idx = *vit;
-
             int const kpLevel = pKF->mvKeysUn[idx].octave;
 
             if (kpLevel < nPredictedLevel - 1 || kpLevel > nPredictedLevel)
@@ -1028,7 +1018,6 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, std::vector<MapPoint*> const&vp
             cv::Mat const& dKF = pKF->mDescriptors.row(idx);
 
             int const dist = DescriptorDistance(dMP, dKF);
-
             if (dist < bestDist)
             {
                 bestDist = dist;
@@ -1047,13 +1036,9 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, std::vector<MapPoint*> const&vp
                 pKF->AddMapPoint(pMP, bestIdx);
             }
             else if (!pMPinKF->isBad())
-                vpReplacePoint[iMP] = pMPinKF;
-
-            nFused++;
+                vpReplacePoint.emplace(pMP, pMPinKF);
         }
     }
-
-    return nFused;
 }
 
 int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &vpMatches12,

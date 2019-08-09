@@ -50,9 +50,7 @@ void MapDrawer::DrawMapPoints()
     if (vpMPs.empty())
         return;
 
-    std::vector<MapPoint*> const& vpRefMPs = mpMap->GetReferenceMapPoints();
-
-    std::unordered_set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
+    std::unordered_set<MapPoint*> const& spRefMPs = mpMap->GetReferenceMapPoints();
 
     glPointSize(mPointSize);
     glBegin(GL_POINTS);

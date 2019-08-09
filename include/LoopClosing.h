@@ -69,25 +69,25 @@ public:
 
     bool isRunningGBA()
     {
-        unique_lock<std::mutex> lock(mMutexGBA);
+        std::unique_lock<std::mutex> lock(mMutexGBA);
         return mbRunningGBA;
     }
 
     bool isFinishedGBA()
     {
-        unique_lock<std::mutex> lock(mMutexGBA);
+        std::unique_lock<std::mutex> lock(mMutexGBA);
         return mbFinishedGBA;
     }   
 
     void RequestFinish()
     {
-        unique_lock<mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinishRequested = true;
     }
 
     bool isFinished()
     {
-        unique_lock<mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinished;
     }
 
@@ -113,13 +113,13 @@ protected:
 
     bool CheckFinish() const
     {
-        unique_lock<mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinishRequested;
     }
 
     void SetFinish()
     {
-        unique_lock<mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinished = true;
     }
 
@@ -152,7 +152,7 @@ protected:
     std::vector<KeyFrame*>          mvpEnoughConsistentCandidates;
     std::vector<KeyFrame*>          mvpCurrentConnectedKFs;
     std::vector<MapPoint*>          mvpCurrentMatchedPoints;
-    std::vector<MapPoint*>          mvpLoopMapPoints;
+    std::unordered_set<MapPoint*>   mvpLoopMapPoints;
     cv::Mat                         mScw;
     g2o::Sim3                       mg2oScw;
 
