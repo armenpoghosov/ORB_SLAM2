@@ -330,7 +330,7 @@ void KeyFrame::UpdateConnections()
     }
 
     {
-        unique_lock<mutex> lockCon(mMutexConnections);
+        std::unique_lock<std::mutex> lockCon(mMutexConnections);
 
         // mspConnectedKeyFrames = spConnectedKeyFrames;
         mConnectedKeyFrameWeights = std::move(KFcounter);

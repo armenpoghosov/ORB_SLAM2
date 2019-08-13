@@ -231,7 +231,7 @@ void Tracking::GrabImageMonocular(cv::Mat const& im, double timestamp)
         mpORBVocabulary, mK, mDistCoef, mbf, mThDepth));
 
     if (m_future.valid())
-        m_future.get();
+        m_future.wait();
 
     m_future = std::async(std::launch::async, &Tracking::track_worker, this, std::move(frame));
 }
@@ -272,8 +272,8 @@ void Tracking::Track()
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
         if (!mbOnlyTracking)
         {
-            // Local Mapping is activated. This is the normal behaviour, unless
-            // you explicitly activate the "only tracking" mode.
+            // Local Mapping is activated. This is the normal behaviour, unless you explicitly
+            // activate the "only tracking" mode.
             if (mState == OK)
             {
                 // Local Mapping might have changed some MapPoints tracked in last frame
@@ -655,7 +655,9 @@ void Tracking::CreateInitialMapMonocular()
 
     mvpLocalKeyFrames.insert(pKFcur);
     mvpLocalKeyFrames.insert(pKFini);
+    
     mvpLocalMapPoints = mpMap->GetAllMapPointsSet();
+
     mpReferenceKF = pKFcur;
     mCurrentFrame.mpReferenceKF = pKFcur;
 
@@ -732,9 +734,7 @@ bool Tracking::TrackReferenceKeyFrame()
 void Tracking::UpdateLastFrame()
 {
     // Update pose according to reference keyframe
-    KeyFrame* pRef = mLastFrame.mpReferenceKF;
-    cv::Mat Tlr = mlRelativeFramePoses.back();
-    mLastFrame.SetPose(Tlr * pRef->GetPose());
+    mLastFrame.SetPose(mlRelativeFramePoses.back() * mLastFrame.mpReferenceKF->GetPose());
 
     if (mSensor == System::MONOCULAR || mnLastKeyFrameId == mLastFrame.get_id() || !mbOnlyTracking)
         return;
@@ -751,7 +751,7 @@ void Tracking::UpdateLastFrame()
             vDepthIdx.emplace_back(z, i);
     }
 
-    if(vDepthIdx.empty())
+    if (vDepthIdx.empty())
         return;
 
     sort(vDepthIdx.begin(),vDepthIdx.end());
@@ -783,8 +783,6 @@ void Tracking::UpdateLastFrame()
 
 bool Tracking::TrackWithMotionModel()
 {
-    ORBmatcher matcher(0.9f, true);
-
     // Update last frame pose according to its reference keyframe
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
@@ -795,6 +793,8 @@ bool Tracking::TrackWithMotionModel()
     float th = mSensor != System::STEREO ? 15.f : 7.f;
 
     // If few matches, uses a wider window search
+    ORBmatcher matcher(0.9f, true);
+
     std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), nullptr);
     int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
     if (nmatches < 20)
@@ -892,9 +892,7 @@ bool Tracking::NeedNewKeyFrame()
         return false;
 
     // Tracked MapPoints in the reference keyframe
-    int nMinObs = nKFs <= 2 ? 2 : 3;
-
-    int nRefMatches = mpReferenceKF->TrackedMapPoints(nMinObs);
+    int nRefMatches = mpReferenceKF->TrackedMapPoints(nKFs <= 2 ? 2 : 3);
 
     // Local Mapping accept keyframes?
     bool bLocalMappingIdle = mpLocalMapper->AcceptKeyFrames();
@@ -938,6 +936,7 @@ bool Tracking::NeedNewKeyFrame()
     {
         // If the mapping accepts keyframes, insert keyframe.
         // Otherwise send a signal to interrupt BA <- PAE: the comment is outdated
+        return (mCurrentFrame.get_id() % 3) == 0;
         return bLocalMappingIdle || (mSensor != System::MONOCULAR && mpLocalMapper->queued_key_frames() < 3);
     }
 
@@ -1186,7 +1185,7 @@ void Tracking::UpdateLocalKeyFrames()
             break;
 
         auto it = map.find(head);
-        assert(it != itEnd);
+        assert(it != map.end());
 
         if ((head = it->second) != nullptr)
             continue;

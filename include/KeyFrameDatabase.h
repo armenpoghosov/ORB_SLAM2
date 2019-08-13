@@ -21,22 +21,17 @@
 #ifndef KEYFRAMEDATABASE_H
 #define KEYFRAMEDATABASE_H
 
-#include <vector>
 #include <list>
-#include <set>
 #include <mutex>
+#include <vector>
 
-#include "KeyFrame.h"
-#include "Frame.h"
 #include "ORBVocabulary.h"
-
 
 namespace ORB_SLAM2
 {
 
 class KeyFrame;
 class Frame;
-
 
 class KeyFrameDatabase
 {

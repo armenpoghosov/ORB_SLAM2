@@ -34,7 +34,7 @@ LocalMapping::LocalMapping(Map *pMap, bool bMonocular)
     mpMap(pMap),
     m_state(eState_Stopped)
 {
-    m_thread = std::thread(&LocalMapping::run, this);
+    /*m_thread = std::thread(&LocalMapping::run, this);
 
     // TODO: PAE: review exception safety here
     {
@@ -42,16 +42,18 @@ LocalMapping::LocalMapping(Map *pMap, bool bMonocular)
 
         while (m_state == eState_Stopped)
             m_kick_condition.wait(lock);
-    }
+    }*/
 }
 
 LocalMapping::~LocalMapping()
 {
-    RequestFinish();
+    /*RequestFinish();
 
     if (m_thread.joinable())
-        m_thread.join();
+        m_thread.join();*/
 }
+
+
 
 void LocalMapping::run()
 {
@@ -102,23 +104,17 @@ void LocalMapping::run()
             // Triangulate new MapPoints
             CreateNewMapPoints();
 
-            // PAE: if (queued_key_frames() == 0)
-            {
-                // Find more matches in neighbor keyframes and fuse point duplications
-                SearchInNeighbors();
+            // Find more matches in neighbor keyframes and fuse point duplications
+            SearchInNeighbors();
 
-                // PAE: if (queued_key_frames() == 0)
-                {
-                    // Local BA
-                    if (mpMap->KeyFramesInMap() > 2)
-                        Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, nullptr/*&mbAbortBA*/, mpMap);
+            // Local BA
+            if (mpMap->KeyFramesInMap() > 2)
+                Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, nullptr/*&mbAbortBA*/, mpMap);
 
-                    // Check redundant local Keyframes
-                    KeyFrameCulling();
-                }
-            }
+            // Check redundant local Keyframes
+            KeyFrameCulling();
 
-            mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame); // PAE: pass to loop closer?
+            mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
             lock.lock();
         }
@@ -155,6 +151,32 @@ void LocalMapping::run()
 
 void LocalMapping::enqueue_key_frame(KeyFrame *pKF)
 {
+    mpCurrentKeyFrame = pKF;
+
+    // BoW conversion and insertion in Map
+    ProcessNewKeyFrame();
+
+    // Check recent MapPoints
+    MapPointCulling();
+
+    // Triangulate new MapPoints
+    CreateNewMapPoints();
+
+    // Find more matches in neighbor keyframes and fuse point duplications
+    SearchInNeighbors();
+
+    // Local BA
+    if (mpMap->KeyFramesInMap() > 2)
+        Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, nullptr/*&mbAbortBA*/, mpMap);
+
+    // Check redundant local Keyframes
+    KeyFrameCulling();
+
+    //mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+
+    /*
+
+
     std::unique_lock<std::mutex> lock(m_mutex);
 
     mlNewKeyFrames.push_back(pKF);
@@ -176,7 +198,7 @@ void LocalMapping::enqueue_key_frame(KeyFrame *pKF)
     case eState_Pausing:
     case eState_Paused:
     break;
-    }
+    }*/
 }
 
 void LocalMapping::ProcessNewKeyFrame()
@@ -221,22 +243,22 @@ void LocalMapping::MapPointCulling()
 
     int const cnThObs = mbMonocular ? 2 : 3;
 
-    for (auto lit = mlpRecentAddedMapPoints.begin(); lit != mlpRecentAddedMapPoints.end();)
+    for (auto it = mlpRecentAddedMapPoints.begin(); it != mlpRecentAddedMapPoints.end();)
     {
-        MapPoint* pMP = *lit;
+        MapPoint* pMP = *it;
 
         if (pMP->isBad())
-            lit = mlpRecentAddedMapPoints.erase(lit);
+            it = mlpRecentAddedMapPoints.erase(it);
         else if (pMP->GetFoundRatio() < 0.25f ||
             (nCurrentKFid >= pMP->get_first_key_frame_id() + 2 && pMP->Observations() <= cnThObs))
         {
             pMP->SetBadFlag();
-            lit = mlpRecentAddedMapPoints.erase(lit);
+            it = mlpRecentAddedMapPoints.erase(it);
         }
         else if (nCurrentKFid >= pMP->get_first_key_frame_id() + 3)
-            lit = mlpRecentAddedMapPoints.erase(lit);
+            it = mlpRecentAddedMapPoints.erase(it);
         else
-            ++lit;
+            ++it;
     }
 }
 
@@ -253,11 +275,10 @@ void LocalMapping::CreateNewMapPoints()
     cv::Mat tcw1 = mpCurrentKeyFrame->GetTranslation();
 
     cv::Mat Tcw1(3, 4, CV_32F);
-    Rcw1.copyTo(Tcw1.colRange(0,3));
+    Rcw1.copyTo(Tcw1.colRange(0, 3));
     tcw1.copyTo(Tcw1.col(3));
 
     cv::Mat Rwc1 = Rcw1.t();
-
     cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();
 
     float const fx1 = mpCurrentKeyFrame->fx;
@@ -272,13 +293,8 @@ void LocalMapping::CreateNewMapPoints()
     float const ratioFactor = 1.5f * mpCurrentKeyFrame->mfScaleFactor;
 
     // Search matches with epipolar restriction and triangulate
-    for (size_t i = 0; i < vpNeighKFs.size(); ++i)
+    for (KeyFrame* pKF2 : vpNeighKFs)
     {
-        if (i > 0 && queued_key_frames() != 0)
-            return;
-
-        KeyFrame* pKF2 = vpNeighKFs[i];
-
         // Check first that baseline is not too short
         cv::Mat Ow2 = pKF2->GetCameraCenter();
 
@@ -476,8 +492,6 @@ void LocalMapping::CreateNewMapPoints()
             float const ratioDist = (float)(dist2 / dist1);
             float const ratioOctave = mpCurrentKeyFrame->mvScaleFactors[kp1.octave] / pKF2->mvScaleFactors[kp2.octave];
 
-            /*if(fabs(ratioDist-ratioOctave)>ratioFactor)
-                continue;*/
             if (ratioDist * ratioFactor < ratioOctave || ratioDist > ratioOctave * ratioFactor)
                 continue;
 
@@ -664,7 +678,7 @@ cv::Mat LocalMapping::SkewSymmetricMatrix(cv::Mat const& v)
 
 bool LocalMapping::pause()
 {
-    // TODO: PAE: quick and dirty ... has to be rewritten
+/*    // TODO: PAE: quick and dirty ... has to be rewritten
     std::unique_lock<std::mutex> lock(m_mutex);
 
     if (m_state != eState_Running || m_state != eState_Idle)
@@ -675,13 +689,13 @@ bool LocalMapping::pause()
     do
         m_kick_condition.wait(lock);
     while (m_state == eState_Pausing);
-
+    */
     return true;
 }
 
 void LocalMapping::resume()
 {
-    // TODO: PAE: quick and dirty ... has to be rewritten
+/*    // TODO: PAE: quick and dirty ... has to be rewritten
     std::unique_lock<std::mutex> lock(m_mutex);
 
     switch (m_state)
@@ -705,13 +719,13 @@ void LocalMapping::resume()
         delete entry;
 
     mlNewKeyFrames.clear();
-
+    */
     cout << "Local Mapping RESUME" << endl;
 }
 
 void LocalMapping::RequestReset()
 {
-    // PAE quick and dirty ... has to be rewritten
+    /*// PAE quick and dirty ... has to be rewritten
     std::unique_lock<std::mutex> lock(m_mutex);
 
     if (m_state != eState_Running)
@@ -721,7 +735,10 @@ void LocalMapping::RequestReset()
 
     do
         m_kick_condition.wait(lock);
-    while (m_state == eState_Reset);
+    while (m_state == eState_Reset);*/
+
+
+    mlpRecentAddedMapPoints.clear(); // PAE: threading off
 }
 
 } //namespace ORB_SLAM

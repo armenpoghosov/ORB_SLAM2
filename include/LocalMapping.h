@@ -125,8 +125,10 @@ public:
 
     bool AcceptKeyFrames() const
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        return m_state == eState_Idle;
+        return true; // PAE: threadding off
+
+        //std::unique_lock<std::mutex> lock(m_mutex);
+        //return m_state == eState_Idle;
     }
 
     std::size_t queued_key_frames() const

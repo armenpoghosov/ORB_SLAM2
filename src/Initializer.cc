@@ -20,12 +20,13 @@
 
 #include "Initializer.h"
 
-#include "Thirdparty/DBoW2/DUtils/Random.h"
+//#include "Thirdparty/DBoW2/DUtils/Random.h"
 
 #include "Optimizer.h"
 #include "ORBmatcher.h"
 
 #include <future>
+#include <random>
 
 namespace ORB_SLAM2
 {
@@ -69,7 +70,8 @@ bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches1
     // Generate sets of 8 points for each RANSAC iteration
     mvSets = std::vector<std::size_t[8]>(mMaxIterations);
 
-    DUtils::Random::SeedRandOnce(0);
+    std::mt19937 generator;
+    std::uniform_int_distribution<std::size_t> distribution(0, N - 1);
 
     for (int it = 0; it < mMaxIterations; ++it)
     {
@@ -82,9 +84,8 @@ bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches1
         {
             std::size_t index;
 
-            for (index = DUtils::Random::RandomInt(0, N - 1);
-                std::find(it_s, it, index) != it;
-                index = DUtils::Random::RandomInt(0, N - 1))
+            for (index = distribution(generator);
+                std::find(it_s, it, index) != it; index = distribution(generator))
             {}
 
             *it = index;
@@ -92,8 +93,8 @@ bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches1
     }
 
     // Launch threads to compute in parallel a fundamental matrix and a homography
-    vector<bool> vbMatchesInliersH;
-    vector<bool> vbMatchesInliersF;
+    std::vector<bool> vbMatchesInliersH;
+    std::vector<bool> vbMatchesInliersF;
 
     float SH;
     float SF;

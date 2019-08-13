@@ -655,12 +655,11 @@ std::size_t ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
         rotHist[i].reserve(500);
 
     DBoW2::FeatureVector const& vFeatVec1 = pKF1->get_BoW_features();
-    DBoW2::FeatureVector const& vFeatVec2 = pKF2->get_BoW_features();
-
     DBoW2::FeatureVector::const_iterator f1it = vFeatVec1.begin();
-    DBoW2::FeatureVector::const_iterator f2it = vFeatVec2.begin();
-
     DBoW2::FeatureVector::const_iterator const f1end = vFeatVec1.end();
+
+    DBoW2::FeatureVector const& vFeatVec2 = pKF2->get_BoW_features();
+    DBoW2::FeatureVector::const_iterator f2it = vFeatVec2.begin();
     DBoW2::FeatureVector::const_iterator const f2end = vFeatVec2.end();
 
     while (f1it != f1end && f2it != f2end)
