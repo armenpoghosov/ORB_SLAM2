@@ -236,17 +236,16 @@ Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, 
     return result;
 }
 
-int Optimizer::PoseOptimization(Frame* pFrame)
+std::size_t Optimizer::PoseOptimization(Frame* pFrame)
 {
-    g2o::SparseOptimizer optimizer;
-
     g2o::BlockSolver_6_3::LinearSolverType* linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
     g2o::BlockSolver_6_3* solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+
+    g2o::SparseOptimizer optimizer;
     optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(solver_ptr));
 
     // Set Frame vertex
     g2o::VertexSE3Expmap* vSE3 = new g2o::VertexSE3Expmap();
-    vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
     vSE3->setId(0);
     vSE3->setFixed(false);
     optimizer.addVertex(vSE3);
@@ -269,7 +268,7 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     float const deltaMono = std::sqrt(5.991);
     float const deltaStereo = std::sqrt(7.815);
 
-    int nInitialCorrespondences = 0;
+    std::size_t nInitialCorrespondences = 0;
 
     {
         std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
@@ -360,11 +359,11 @@ int Optimizer::PoseOptimization(Frame* pFrame)
 
     // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
     // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
-    static float const chi2Mono[4] = { 5.991, 5.991, 5.991, 5.991 };
-    static float const chi2Stereo[4] = { 7.815, 7.815, 7.815, 7.815 };
+    static float const chi2Mono[4] = { 5.991f, 5.991f, 5.991f, 5.991f };
+    static float const chi2Stereo[4] = { 7.815f, 7.815f, 7.815f, 7.815f };
     static int const its[4] = { 10, 10, 10, 10 };
 
-    int nBad = 0;
+    std::size_t nBad = 0;
 
     for (size_t it = 0; it < 4; ++it)
     {
@@ -693,7 +692,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     }
 
     // Get Map Mutex
-    std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
+    // PAE: threading removed std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
 
     for (size_t i = 0; i < vToErase.size(); ++i)
     {

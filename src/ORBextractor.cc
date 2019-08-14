@@ -763,8 +763,8 @@ void ORBextractor::operator () (cv::InputArray _image,
             continue;
 
         // preprocess the resized image
-        cv::Mat workingMat = mvImagePyramid[level].clone();
-        cv::GaussianBlur(workingMat, workingMat, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+        cv::Mat workingMat(mvImagePyramid[level].size(), mvImagePyramid[level].type());
+        cv::GaussianBlur(mvImagePyramid[level], workingMat, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
 
         // Compute the descriptors
         cv::Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);

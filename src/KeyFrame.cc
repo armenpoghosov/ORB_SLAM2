@@ -233,19 +233,17 @@ std::unordered_set<MapPoint*> KeyFrame::GetMapPoints() const
     return s;
 }
 
-int KeyFrame::TrackedMapPoints(std::size_t minObservations) const
+std::size_t KeyFrame::TrackedMapPoints(std::size_t minObservations) const
 {
-    std::unique_lock<std::mutex> lock(mMutexFeatures);
+    std::size_t nPoints = 0;
 
-    int nPoints = 0;
+    std::unique_lock<std::mutex> lock(mMutexFeatures);
 
     for (MapPoint* pMP : mvpMapPoints)
     {
         if (pMP != nullptr && !pMP->isBad() &&
             (minObservations <= 0 || pMP->Observations() >= minObservations))
-        {
             ++nPoints;
-        }
     }
 
     return nPoints;
@@ -255,7 +253,7 @@ void KeyFrame::UpdateConnections()
 {
     std::vector<MapPoint*> vpMP;
     {
-        unique_lock<mutex> lockMPs(mMutexFeatures);
+        std::unique_lock<std::mutex> lockMPs(mMutexFeatures);
         vpMP = mvpMapPoints;
     }
 

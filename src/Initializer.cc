@@ -118,7 +118,7 @@ bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches1
     // return false;
 }
 
-void Initializer::FindHomography(vector<bool>& vbMatchesInliers, float& score, cv::Mat& H21)
+void Initializer::FindHomography(std::vector<bool>& vbMatchesInliers, float& score, cv::Mat& H21)
 {
     // Normalize coordinates
     cv::Mat T1;

@@ -189,7 +189,7 @@ public:
         return mvpMapPoints[idx];
     }
 
-    int TrackedMapPoints(std::size_t minObs) const;
+    std::size_t TrackedMapPoints(std::size_t minObs) const;
 
     // KeyPoint functions
     std::vector<size_t> GetFeaturesInArea(float x, float y, float r) const;

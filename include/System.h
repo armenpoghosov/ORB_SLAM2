@@ -143,9 +143,6 @@ private:
     // performs relocalization if tracking fails.
     Tracking*                   mpTracker;
 
-    // Local Mapper. It manages the local map and performs local bundle adjustment.
-    LocalMapping*               mpLocalMapper;
-
     // Loop Closer. It searches loops with every new keyframe. If there is a loop it performs
     // a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
     LoopClosing*                mpLoopCloser;

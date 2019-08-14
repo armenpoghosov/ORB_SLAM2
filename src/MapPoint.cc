@@ -93,11 +93,12 @@ void MapPoint::SetWorldPos(cv::Mat const& Pos)
     Pos.copyTo(mWorldPos);
 }
 
-void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
+bool MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
 {
     std::unique_lock<std::mutex> lock(mMutexFeatures);
 
     auto const& pair = mObservations.emplace(pKF, idx);
+
     if (pair.second)
     {
         if (pKF->mvuRight[idx] >= 0.f)
@@ -105,6 +106,8 @@ void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
         else
             ++m_observe_count;
     }
+
+    return pair.second;
 }
 
 void MapPoint::EraseObservation(KeyFrame* pKF)
@@ -221,7 +224,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
         KeyFrame* pKF = pair.first;
 
         if (!pKF->isBad())
-            vDescriptors.push_back(pKF->mDescriptors.row((int)pair.second));
+            vDescriptors.emplace_back(pKF->mDescriptors.row((int)pair.second));
     }
 
     if (vDescriptors.empty())
@@ -251,11 +254,12 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     for (std::size_t i = 0; i < N; ++i)
     {
-        std::vector<int> vDists(&Distances[i * N], &Distances[i * N] + N);
+        int* it = &Distances[i * N];
+        int* itEnd = it + N;
 
-        std::sort(vDists.begin(), vDists.end());
+        std::sort(it, itEnd);
 
-        int median = vDists[(std::size_t)(0.5 * (N - 1))];
+        int median = it[(std::size_t)(0.5 * (N - 1))];
         if (median < BestMedian)
         {
             BestMedian = median;
@@ -288,17 +292,16 @@ void MapPoint::UpdateNormalAndDepth()
     }
 
     std::size_t const n = observations.size();
-
     if (n == 0)
         return;
 
-    cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
+    cv::Mat normal = cv::Mat::zeros(3, 1, CV_32F);
 
     for (auto const& pair : observations)
     {
         cv::Mat Owi = pair.first->GetCameraCenter();
-        cv::Mat normali = mWorldPos - Owi;
-        normal = normal + normali / cv::norm(normali);
+        cv::Mat normali = Pos - Owi;
+        normal += normali / cv::norm(normali);
     }
 
     cv::Mat PC = Pos - pRefKF->GetCameraCenter();

@@ -1266,9 +1266,10 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
     return nFound;
 }
 
-int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, float th, bool bMono)
+std::size_t ORBmatcher::SearchByProjection(Frame& CurrentFrame,
+    Frame const& LastFrame, float th, bool bMono)
 {
-    int nmatches = 0;
+    std::size_t nmatches = 0;
 
     // Rotation Histogram (to check rotation consistency)
     std::vector<int> rotHist[HISTO_LENGTH];
@@ -1309,7 +1310,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
         cv::Mat x3Dw = pMP->GetWorldPos();
         cv::Mat x3Dc = Rcw * x3Dw + tcw;
 
-        float const invzc = 1.0 / x3Dc.at<float>(2);
+        float const invzc = 1.f / x3Dc.at<float>(2);
         if (invzc < 0)
             continue;
 
@@ -1342,14 +1343,14 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
 
         cv::Mat dMP = pMP->GetDescriptor();
 
-        int bestDist = 256;
-        int bestIdx2 = -1;
+        int bestDist = TH_HIGH;
+        std::size_t bestIdx2 = (std::size_t)-1;
 
         for (size_t const i2 : vIndices2)
         {
             MapPoint* pMP_i2 = CurrentFrame.mvpMapPoints[i2];
 
-            if (pMP_i2 != nullptr && pMP_i2->Observations() > 0)
+            if (pMP_i2 != nullptr && pMP_i2->Observations() != 0)
                 continue;
 
             if (CurrentFrame.mvuRight[i2] > 0)
@@ -1370,7 +1371,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
             }
         }
 
-        if (bestDist > TH_HIGH)
+        if (bestDist >= TH_HIGH)
             continue;
 
         CurrentFrame.mvpMapPoints[bestIdx2] = pMP;
@@ -1411,7 +1412,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, 
             for (int histo_index : histo_entry)
                 CurrentFrame.mvpMapPoints[histo_index] = nullptr;
 
-            nmatches -= (int)histo_entry.size();
+            nmatches -= histo_entry.size();
         }
     }
 

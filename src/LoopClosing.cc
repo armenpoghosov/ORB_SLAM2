@@ -27,7 +27,6 @@
 #include <mutex>
 #include <thread>
 
-
 namespace ORB_SLAM2
 {
 
@@ -66,6 +65,7 @@ void LoopClosing::Run()
 
     for (;;)
     {
+        /* PAE: removed loop closing
         // Check if there are keyframes in the queue
         if (CheckNewKeyFrames() &&
             // Detect loop candidates and check covisibility consistency
@@ -76,7 +76,7 @@ void LoopClosing::Run()
         {
             // Perform loop fusion and pose graph optimization
             CorrectLoop();
-        }
+        }*/
 
         ResetIfRequested();
 
@@ -388,10 +388,6 @@ void LoopClosing::CorrectLoop()
 {
     cout << "Loop detected!" << endl;
 
-    // Send a stop signal to Local Mapping
-    // Avoid new keyframes to be inserted while correcting the loop
-    mpLocalMapper->pause();
-
     // If a Global Bundle Adjustment is running, abort it
     if (isRunningGBA())
     {
@@ -552,9 +548,6 @@ void LoopClosing::CorrectLoop()
 
     mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this);
 
-    // Loop closed. Release Local Mapping.
-    mpLocalMapper->resume();
-
     mLastLoopKFid = mpCurrentKF->get_id();
 }
 
@@ -632,8 +625,6 @@ void LoopClosing::RunGlobalBundleAdjustment()
         {
             cout << "Global Bundle Adjustment finished" << endl;
             cout << "Updating map ..." << endl;
-
-            mpLocalMapper->pause();
 
             // Get Map Mutex
             std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
@@ -715,8 +706,6 @@ void LoopClosing::RunGlobalBundleAdjustment()
             }
 
             mpMap->InformNewBigChange();
-
-            mpLocalMapper->resume();
 
             cout << "Map updated!" << endl;
         }

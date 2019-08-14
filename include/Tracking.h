@@ -67,9 +67,6 @@ public:
     void GrabImageRGBD(cv::Mat const& imRGB, cv::Mat const& imD, double timestamp);
     void GrabImageMonocular(cv::Mat const& im, double timestamp);
 
-    void SetLocalMapper(LocalMapping* pLocalMapper)
-        { mpLocalMapper = pLocalMapper; }
-
     void SetLoopClosing(LoopClosing* pLoopClosing)
         { mpLoopClosing = pLoopClosing; }
 
@@ -146,6 +143,23 @@ protected:
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
 
+
+
+
+    // PAE: functions moved from local mapping
+    void ProcessNewKeyFrame();
+    void CreateNewMapPoints();
+    void MapPointCulling();
+    void SearchInNeighbors();
+    void KeyFrameCulling();
+    static cv::Mat ComputeF12(KeyFrame* pKF1, KeyFrame* pKF2);
+    static cv::Mat SkewSymmetricMatrix(cv::Mat const& v);
+    void enqueue_key_frame(KeyFrame* pKF);
+    // PAE: members moved from local mapping
+    KeyFrame*                   mpCurrentKeyFrame;
+    std::list<MapPoint*>        mlpRecentAddedMapPoints;
+
+
     // Lists used to recover the full camera trajectory at the end of the execution.
     // Basically we store the reference keyframe for each frame and its relative transformation
     std::list<cv::Mat>          mlRelativeFramePoses;
@@ -179,7 +193,6 @@ protected:
     bool                        mbVO;
 
     // Other Thread Pointers
-    LocalMapping*               mpLocalMapper;
     LoopClosing*                mpLoopClosing;
 
     // ORB

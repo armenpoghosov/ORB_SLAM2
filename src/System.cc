@@ -23,7 +23,6 @@
 #include "Converter.h"
 #include "FrameDrawer.h"
 #include "KeyFrameDatabase.h"
-#include "LocalMapping.h"
 #include "LoopClosing.h"
 #include "Map.h"
 #include "MapDrawer.h"
@@ -99,9 +98,6 @@ System::System(std::string const& strVocFile, std::string const& strSettingsFile
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
 
-    //Initialize the Local Mapping thread and launch
-    mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
-
     //Initialize the Loop Closing thread and launch
     // NOTE: PAE: thread is opened here!
     mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR);
@@ -114,14 +110,9 @@ System::System(std::string const& strVocFile, std::string const& strSettingsFile
     }
 
     //Set pointers between threads
-    mpTracker->SetLocalMapper(mpLocalMapper);
     mpTracker->SetLoopClosing(mpLoopCloser);
 
-    mpLocalMapper->SetTracker(mpTracker);
-    mpLocalMapper->SetLoopCloser(mpLoopCloser);
-
     mpLoopCloser->SetTracker(mpTracker);
-    mpLoopCloser->SetLocalMapper(mpLocalMapper);
 }
 
 void System::TrackStereo(cv::Mat const& imLeft, cv::Mat const& imRight, double timestamp)
@@ -186,7 +177,6 @@ void System::TrackMonocular(cv::Mat const& im, double timestamp)
 
 void System::Shutdown()
 {
-    mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
 
     if (mpViewer != nullptr)
@@ -198,10 +188,13 @@ void System::Shutdown()
     }
 
     // Wait until all thread have effectively stopped
-    while (!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
+    while (!mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
     {
         std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
+
+    // PAE: threading removed
+    std::this_thread::sleep_for(std::chrono::microseconds(1000000));
 
     if (mpViewer != nullptr)
         pangolin::BindToContext("ORB-SLAM2: Map Viewer");
@@ -372,7 +365,6 @@ void System::locked_handle_activate_localization()
 {
     if (mbActivateLocalizationMode)
     {
-        mpLocalMapper->pause();
         mpTracker->InformOnlyTracking(true);
         mbActivateLocalizationMode = false;
     }
@@ -383,7 +375,6 @@ void System::locked_handle_deactivate_localization()
     if (mbDeactivateLocalizationMode)
     {
         mpTracker->InformOnlyTracking(false);
-        mpLocalMapper->resume();
         mbDeactivateLocalizationMode = false;
     }
 }

@@ -74,7 +74,7 @@ public:
         return m_observe_count;
     }
 
-    void AddObservation(KeyFrame* pKF,size_t idx);
+    bool AddObservation(KeyFrame* pKF,size_t idx);
     void EraseObservation(KeyFrame* pKF);
 
     std::size_t GetIndexInKeyFrame(KeyFrame *pKF) const
