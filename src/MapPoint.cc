@@ -33,38 +33,50 @@ std::mutex MapPoint::mGlobalMutex;
 
 MapPoint::MapPoint(cv::Mat const& worldPos, KeyFrame* pRefKF, Map* pMap)
     :
+    mTrackProjX(0.f),
+    mTrackProjY(0.f),
+    mTrackProjXR(0.f),
+    mbTrackInView(false),
+    mnTrackScaleLevel(0),
+    mTrackViewCos(0.f),
+    mnLastFrameSeen((uint64_t)-1),
+    mnCorrectedByKF((uint64_t)-1),
+    mnCorrectedReference((uint64_t)-1),
     mnFirstKFid(pRefKF->get_id()),
     m_observe_count(0),
-    mnLastFrameSeen(0),
-    mnCorrectedByKF(0),
-    mnCorrectedReference(0),
+    mnId(s_next_id++),
     mpRefKF(pRefKF),
     mnVisible(1),
     mnFound(1),
     mbBad(false),
     mpReplaced(nullptr),
-    mfMinDistance(0),
-    mfMaxDistance(0),
+    mfMinDistance(0.f),
+    mfMaxDistance(0.f),
     mpMap(pMap)
 {
     worldPos.copyTo(mWorldPos);
     mNormalVector = cv::Mat::zeros(3, 1, CV_32F);
-
-    mnId = s_next_id++;
 }
 
 MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF)
     :
+    mTrackProjX(0.f),
+    mTrackProjY(0.f),
+    mTrackProjXR(0.f),
+    mbTrackInView(false),
+    mnTrackScaleLevel(0),
+    mTrackViewCos(0.f),
+    mnLastFrameSeen((uint64_t)-1),
+    mnCorrectedByKF((uint64_t)-1),
+    mnCorrectedReference((uint64_t)-1),
     mnFirstKFid((uint64_t)-1),
     m_observe_count(0),
-    mnLastFrameSeen(0),
-    mnCorrectedByKF(0),
-    mnCorrectedReference(0),
+    mnId(s_next_id++),
     mpRefKF(nullptr),
     mnVisible(1),
     mnFound(1),
     mbBad(false),
-    mpReplaced(NULL),
+    mpReplaced(nullptr),
     mpMap(pMap)
 {
     Pos.copyTo(mWorldPos);
@@ -78,12 +90,10 @@ MapPoint::MapPoint(cv::Mat const& Pos, Map* pMap, Frame* pFrame, int idxF)
     float const levelScaleFactor =  pFrame->mvScaleFactors[level];
     int const nLevels = pFrame->mnScaleLevels;
 
-    mfMaxDistance = dist*levelScaleFactor;
+    mfMaxDistance = dist * levelScaleFactor;
     mfMinDistance = mfMaxDistance / pFrame->mvScaleFactors[nLevels - 1];
 
     pFrame->get_descriptor(idxF).copyTo(mDescriptor);
-
-    mnId = s_next_id++;
 }
 
 void MapPoint::SetWorldPos(cv::Mat const& Pos)

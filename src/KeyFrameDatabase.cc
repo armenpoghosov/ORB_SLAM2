@@ -202,7 +202,7 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame* F
     {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        for (auto const& pair : F->mBowVec)
+        for (auto const& pair : F->get_BoW())
         {
             for (KeyFrame* pWIdKF : mvInvertedFile[pair.first])
             {
@@ -226,7 +226,7 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame* F
             continue;
         }
 
-        it->second.m_score = mpVoc->score(F->mBowVec, it->first->get_BoW());
+        it->second.m_score = mpVoc->score(F->get_BoW(), it->first->get_BoW());
 
         ++it;
     }
@@ -262,9 +262,9 @@ std::vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame* F
 
         // TODO: PAE: I honestly don't fully undersand why it makes sence to examine
         // convisibility frames here this way ... I mean the entire algorithm ...
-        auto const& pair = map_best_scores.emplace(pKFBestScore, dblBestScore);
-        if (!pair.second && pair.first->second < dblBestScore)
-            pair.first->second = dblBestScore;
+        auto const& pair_scores = map_best_scores.emplace(pKFBestScore, dblBestScore);
+        if (!pair_scores.second && pair_scores.first->second < dblBestScore)
+            pair_scores.first->second = dblBestScore;
 
         if (dblAccumulatedScore > dblBestAccumulatedScore)
             dblBestAccumulatedScore = dblAccumulatedScore;

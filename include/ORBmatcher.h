@@ -53,7 +53,8 @@ public:
 
     // Search matches between Frame keypoints and projected MapPoints. Returns number of matches
     // Used to track the local map (Tracking)
-    int SearchByProjection(Frame& F, std::unordered_set<MapPoint*> const& vpMapPoints, float th = 3);
+    std::size_t SearchByProjection(Frame& F,
+        std::unordered_set<MapPoint*> const& vpMapPoints, float th = 3.f);
 
     // Project MapPoints tracked in last frame into the current frame and search matches.
     // Used to track from previous frame (Tracking)
@@ -76,7 +77,7 @@ public:
     int SearchByBoW(KeyFrame *pKF1, KeyFrame* pKF2, std::vector<MapPoint*> &vpMatches12);
 
     // Matching for the Map Initialization (only used in the monocular case)
-    int SearchForInitialization(Frame const& F1, Frame  const&F2,
+    std::size_t SearchForInitialization(Frame const& F1, Frame  const&F2,
         std::vector<cv::Point2f>& vbPrevMatched, std::vector<int>& vnMatches12, int windowSize = 10);
 
     // Matching to triangulate new MapPoints. Check Epipolar Constraint.
@@ -98,7 +99,7 @@ public:
 protected:
 
     bool CheckDistEpipolarLine(cv::KeyPoint const& kp1, cv::KeyPoint const& kp2,
-        cv::Mat const& F12, KeyFrame const* pKF);
+        cv::Mat const& F12, KeyFrame const* pKF2);
 
     static float RadiusByViewingCos(float viewCos)
         { return viewCos > 0.998f ? 2.5f : 4.0f; }

@@ -19,13 +19,12 @@
 */
 
 #include "LoopClosing.h"
-#include "Sim3Solver.h"
+
 #include "Converter.h"
+#include "Map.h"
 #include "Optimizer.h"
 #include "ORBmatcher.h"
-
-#include <mutex>
-#include <thread>
+#include "Sim3Solver.h"
 
 namespace ORB_SLAM2
 {
@@ -121,7 +120,7 @@ bool LoopClosing::DetectLoop()
     std::vector<KeyFrame*> const vpConnectedKeyFrames = mpCurrentKF->GetVectorCovisibleKeyFrames();
     DBoW2::BowVector const& CurrentBowVec = mpCurrentKF->get_BoW();
 
-    float minScore = 1;
+    float minScore = 1.f;
 
     for (KeyFrame* pKF : vpConnectedKeyFrames)
     {
@@ -169,9 +168,9 @@ bool LoopClosing::DetectLoop()
             std::unordered_set<KeyFrame*> const& sPreviousGroup = mvConsistentGroups[iG].first;
 
             bool bConsistent = false;
-            for (auto sit = spCandidateGroup.begin(), send=spCandidateGroup.end(); sit != send; ++sit)
+            for (KeyFrame* pCandiateKF : spCandidateGroup)
             {
-                if (sPreviousGroup.count(*sit) != 0)
+                if (sPreviousGroup.count(pCandiateKF) != 0)
                 {
                     bConsistent = true;
                     bConsistentForSomeGroup = true;

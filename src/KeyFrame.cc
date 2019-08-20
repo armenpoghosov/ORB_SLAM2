@@ -60,8 +60,8 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mvuRight(F.mvuRight),
     mvDepth(F.mvDepth),
     mDescriptors(F.get_descriptors().clone()),
-    mBowVec(F.mBowVec),
-    mFeatVec(F.mFeatVec),
+    mBowVec(F.get_BoW()),
+    mFeatVec(F.get_BoW_features()),
     mnScaleLevels(F.mnScaleLevels),
     mfScaleFactor(F.mfScaleFactor),
     mfLogScaleFactor(F.mfLogScaleFactor),
@@ -101,15 +101,13 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     SetPose(F.mTcw);
 }
 
-void KeyFrame::ComputeBoW()
+void KeyFrame::compute_BoW()
 {
-    if (mBowVec.empty() || mFeatVec.empty())
-    {
-        std::vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
-        // Feature vector associate features with nodes in the 4th level (from leaves up)
-        // We assume the vocabulary tree has 6 levels, change the 4 otherwise
-        mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
-    }
+    assert(mBowVec.empty());
+    std::vector<cv::Mat> const& vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
+    // Feature vector associate features with nodes in the 4th level (from leaves up)
+    // We assume the vocabulary tree has 6 levels, change the 4 otherwise
+    mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
 }
 
 void KeyFrame::SetPose(cv::Mat const& Tcw)
@@ -157,7 +155,12 @@ void KeyFrame::UpdateBestCovisibles()
     for (auto const& pair : mConnectedKeyFrameWeights)
        vPairs.emplace_back(pair.second, pair.first);
 
-    std::sort(vPairs.begin(), vPairs.end());
+    std::sort(vPairs.begin(), vPairs.end(),
+        [] (std::pair<std::size_t, KeyFrame*> const& p1,
+            std::pair<std::size_t, KeyFrame*> const& p2) -> bool
+        {
+            return p1.first != p2.first ? (p1.first < p2.first) : (p1.second->get_id() > p2.second->get_id());
+        });
 
     std::vector<KeyFrame*> vkf; vkf.reserve(vPairs.size());
     std::vector<std::size_t> vws; vws.reserve(vPairs.size());
@@ -196,10 +199,10 @@ std::vector<KeyFrame*> KeyFrame::GetBestCovisibilityKeyFrames(std::size_t N) con
 
 std::vector<KeyFrame*> KeyFrame::GetCovisiblesByWeight(int w) const
 {
-    unique_lock<mutex> lock(mMutexConnections);
+    std::unique_lock<std::mutex> lock(mMutexConnections);
 
     if (mvpOrderedConnectedKeyFrames.empty())
-        return vector<KeyFrame*>();
+        return std::vector<KeyFrame*>();
 
     auto it = std::upper_bound(mvOrderedWeights.begin(), mvOrderedWeights.end(), w, std::greater<std::size_t>());
     if (it == mvOrderedWeights.end())
@@ -267,7 +270,6 @@ void KeyFrame::UpdateConnections()
             continue;
 
         std::unordered_map<KeyFrame*, size_t> const& observations = pMP->GetObservations();
-
         for (auto const& pair : observations)
         {
             if (pair.first->m_id == m_id)
@@ -312,7 +314,12 @@ void KeyFrame::UpdateConnections()
         pKFmax->AddConnection(this, nmax);
     }
 
-    std::sort(vPairs.begin(), vPairs.end());
+    std::sort(vPairs.begin(), vPairs.end(),
+        [] (std::pair<std::size_t, KeyFrame*> const& p1,
+            std::pair<std::size_t, KeyFrame*> const& p2) -> bool
+        {
+            return p1.first != p2.first ? (p1.first < p2.first) : (p1.second->get_id() > p2.second->get_id());
+        });
 
     // TODO: PAE: refactored but still crappy!
     std::vector<KeyFrame*> vpOrderedConnectedKeyFrames;
@@ -330,7 +337,6 @@ void KeyFrame::UpdateConnections()
     {
         std::unique_lock<std::mutex> lockCon(mMutexConnections);
 
-        // mspConnectedKeyFrames = spConnectedKeyFrames;
         mConnectedKeyFrameWeights = std::move(KFcounter);
         mvpOrderedConnectedKeyFrames = std::move(vpOrderedConnectedKeyFrames);
         mvOrderedWeights = std::move(vOrderedWeights);
@@ -346,14 +352,14 @@ void KeyFrame::UpdateConnections()
 
 void KeyFrame::ChangeParent(KeyFrame *pKF)
 {
-    unique_lock<mutex> lockCon(mMutexConnections);
+    std::unique_lock<mutex> lockCon(mMutexConnections);
     mpParent = pKF;
     pKF->AddChild(this);
 }
 
 void KeyFrame::AddLoopEdge(KeyFrame *pKF)
 {
-    unique_lock<mutex> lockCon(mMutexConnections);
+    std::unique_lock<mutex> lockCon(mMutexConnections);
     mbNotErase = true;
     mspLoopEdges.insert(pKF);
 }
@@ -362,11 +368,8 @@ void KeyFrame::SetErase()
 {
     {
         std::unique_lock<std::mutex> lock(mMutexConnections);
-
         if (mspLoopEdges.empty())
-        {
             mbNotErase = false;
-        }
     }
 
     if (mbToBeErased)
@@ -403,7 +406,7 @@ void KeyFrame::SetBadFlag()
         mvpOrderedConnectedKeyFrames.clear();
 
         // Update Spanning Tree
-        set<KeyFrame*> sParentCandidates;
+        std::unordered_set<KeyFrame*> sParentCandidates;
         sParentCandidates.insert(mpParent);
 
         // Assign at each iteration one children with a parent (the pair with highest covisibility weight)
@@ -423,14 +426,14 @@ void KeyFrame::SetBadFlag()
 
                 // Check if a parent candidate is connected to the keyframe
                 std::vector<KeyFrame*> vpConnected = pKF->GetVectorCovisibleKeyFrames();
-                for (size_t i = 0, iend = vpConnected.size(); i<iend; i++)
+                for (std::size_t i = 0, iend = vpConnected.size(); i < iend; ++i)
                 {
                     for (KeyFrame* pcKF : sParentCandidates)
                     {
                         if (vpConnected[i]->m_id != pcKF->m_id)
                             continue;
 
-                        int w = pKF->GetWeight(vpConnected[i]);
+                        int const w = pKF->GetWeight(vpConnected[i]);
                         if (w > max)
                         {
                             pC = pKF;
@@ -502,13 +505,13 @@ std::vector<size_t> KeyFrame::GetFeaturesInArea(float x, float y, float r) const
     {
         for (int iy = nMinCellY; iy <= nMaxCellY; ++iy)
         {
-            vector<size_t> const& vCell = mGrid[ix][iy];
+            std::vector<std::size_t> const& vCell = mGrid[ix][iy];
 
             for (std::size_t index : vCell)
             {
                 cv::KeyPoint const& kpUn = mvKeysUn[index];
 
-                if (fabs(kpUn.pt.x - x) < r && fabs(kpUn.pt.y - y) < r)
+                if (std::fabs(kpUn.pt.x - x) < r && std::fabs(kpUn.pt.y - y) < r)
                     vIndices.push_back(index);
             }
         }

@@ -62,51 +62,51 @@ cv::Mat Converter::toCvMat(g2o::Sim3 const& Sim3)
     return toCvSE3(s * eigR, eigt);
 }
 
-cv::Mat Converter::toCvMat(const Eigen::Matrix<double, 4, 4>& m)
+cv::Mat Converter::toCvMat(Eigen::Matrix<double, 4, 4> const& m)
 {
     cv::Mat cvMat(4, 4, CV_32F);
-    for(int i=0;i<4;i++)
-        for(int j=0; j<4; j++)
-            cvMat.at<float>(i,j)=m(i,j);
 
-    return cvMat.clone();
+    for (int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j)
+            cvMat.at<float>(i, j) = (float)m(i, j);
+
+    return cvMat;
 }
 
 cv::Mat Converter::toCvMat(const Eigen::Matrix3d &m)
 {
-    cv::Mat cvMat(3,3,CV_32F);
-    for(int i=0;i<3;i++)
-        for(int j=0; j<3; j++)
-            cvMat.at<float>(i,j)=m(i,j);
+    cv::Mat cvMat(3, 3, CV_32F);
 
-    return cvMat.clone();
+    for(int i = 0; i < 3; ++i)
+        for(int j=0; j<3; ++j)
+            cvMat.at<float>(i, j) = m(i, j);
+
+    return cvMat;
 }
 
-cv::Mat Converter::toCvMat(const Eigen::Matrix<double,3,1> &m)
+cv::Mat Converter::toCvMat(Eigen::Matrix<double, 3, 1> const& m)
 {
-    cv::Mat cvMat(3,1,CV_32F);
-    for(int i=0;i<3;i++)
-            cvMat.at<float>(i)=m(i);
+    cv::Mat cvMat(3, 1, CV_32F);
 
-    return cvMat.clone();
+    for (int i = 0; i <3;i++)
+            cvMat.at<float>(i) = (float)m(i);
+
+    return cvMat;
 }
 
-cv::Mat Converter::toCvSE3(const Eigen::Matrix<double,3,3> &R, const Eigen::Matrix<double,3,1> &t)
+cv::Mat Converter::toCvSE3(Eigen::Matrix<double, 3, 3> const& R, Eigen::Matrix<double, 3, 1> const& t)
 {
-    cv::Mat cvMat = cv::Mat::eye(4,4,CV_32F);
-    for(int i=0;i<3;i++)
+    cv::Mat cvMat = cv::Mat::eye(4, 4, CV_32F);
+
+    for (int i = 0; i < 3; ++i)
     {
-        for(int j=0;j<3;j++)
-        {
-            cvMat.at<float>(i,j)=R(i,j);
-        }
-    }
-    for(int i=0;i<3;i++)
-    {
-        cvMat.at<float>(i,3)=t(i);
+        for (int j = 0; j < 3; ++j)
+            cvMat.at<float>(i, j) = (float)R(i, j);
+
+        cvMat.at<float>(i, 3) = (float)t(i);
     }
 
-    return cvMat.clone();
+    return cvMat;
 }
 
 Eigen::Matrix<double,3,1> Converter::toVector3d(const cv::Mat &cvVector)
@@ -136,16 +136,16 @@ Eigen::Matrix<double,3,3> Converter::toMatrix3d(const cv::Mat &cvMat3)
     return M;
 }
 
-std::vector<float> Converter::toQuaternion(const cv::Mat &M)
+std::vector<float> Converter::toQuaternion(cv::Mat const& M)
 {
-    Eigen::Matrix<double,3,3> eigMat = toMatrix3d(M);
+    Eigen::Matrix<double, 3, 3> eigMat = toMatrix3d(M);
     Eigen::Quaterniond q(eigMat);
 
     std::vector<float> v(4);
-    v[0] = q.x();
-    v[1] = q.y();
-    v[2] = q.z();
-    v[3] = q.w();
+    v[0] = (float)q.x();
+    v[1] = (float)q.y();
+    v[2] = (float)q.z();
+    v[3] = (float)q.w();
 
     return v;
 }

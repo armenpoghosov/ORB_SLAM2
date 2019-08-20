@@ -87,9 +87,6 @@ public:
         return m_Tcw.rowRange(0, 3).col(3).clone();
     }
 
-    // Bag of Words Representation
-    void ComputeBoW();
-
     // Covisibility graph functions
     void AddConnection(KeyFrame* pKF, std::size_t points);
 
@@ -233,10 +230,16 @@ public:
         { return mnFrameId; }
 
     DBoW2::BowVector const& get_BoW() const
-        { return mBowVec; }
+    {
+        const_cast<KeyFrame*>(this)->ensure_BoW_computed();
+        return mBowVec;
+    }
 
     DBoW2::FeatureVector const& get_BoW_features() const
-        { return mFeatVec; }
+    {
+        const_cast<KeyFrame*>(this)->ensure_BoW_computed();
+        return mFeatVec;
+    }
 
     cv::Mat const& get_Tcp() const
         { return mTcp; }
@@ -292,6 +295,15 @@ public:
 
 protected:
 
+    // Compute Bag of Words representation.
+    void ensure_BoW_computed()
+    {
+        if (mBowVec.empty())
+            compute_BoW();
+    }
+
+    void compute_BoW();
+
     static uint64_t                 s_next_id;
     uint64_t                        m_id;
     uint64_t const                  mnFrameId;
@@ -327,10 +339,10 @@ protected:
     std::vector<std::size_t>        mvOrderedWeights;
 
     // Spanning Tree and Loop Edges
-    bool                            mbFirstConnection;
     KeyFrame*                       mpParent;
     std::unordered_set<KeyFrame*>   mspChildrens;
     std::unordered_set<KeyFrame*>   mspLoopEdges;
+    bool                            mbFirstConnection;
 
     // Bad flags
     bool                            mbNotErase;

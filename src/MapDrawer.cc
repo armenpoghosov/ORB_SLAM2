@@ -29,8 +29,9 @@
 namespace ORB_SLAM2
 {
 
-
-MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
+MapDrawer::MapDrawer(Map* pMap, std::string const& strSettingPath)
+    :
+    mpMap(pMap)
 {
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
 
@@ -40,7 +41,6 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
     mPointSize = fSettings["Viewer.PointSize"];
     mCameraSize = fSettings["Viewer.CameraSize"];
     mCameraLineWidth = fSettings["Viewer.CameraLineWidth"];
-
 }
 
 void MapDrawer::DrawMapPoints()
@@ -85,19 +85,18 @@ void MapDrawer::DrawMapPoints()
     glEnd();
 }
 
-void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
+void MapDrawer::DrawKeyFrames(bool bDrawKF, bool bDrawGraph)
 {
     float const w = mKeyFrameSize;
     float const h = w * 0.75f;
     float const z = w * 0.6f;
 
-    const vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+    std::vector<KeyFrame*> const& vpKFs = mpMap->GetAllKeyFrames();
 
-    if(bDrawKF)
+    if (bDrawKF)
     {
-        for(size_t i=0; i<vpKFs.size(); i++)
+        for (KeyFrame* pKF : vpKFs)
         {
-            KeyFrame* pKF = vpKFs[i];
             cv::Mat Twc = pKF->GetPoseInverse().t();
 
             glPushMatrix();
@@ -105,7 +104,7 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
             glMultMatrixf(Twc.ptr<GLfloat>(0));
 
             glLineWidth(mKeyFrameLineWidth);
-            glColor3f(0.0f,0.0f,1.0f);
+            glColor3f(0.f, 0.f, 1.f);
             glBegin(GL_LINES);
             glVertex3f(0,0,0);
             glVertex3f(w,h,z);
@@ -133,42 +132,42 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
         }
     }
 
-    if(bDrawGraph)
+    if (bDrawGraph)
     {
         glLineWidth(mGraphLineWidth);
-        glColor4f(0.0f,1.0f,0.0f,0.6f);
+        glColor4f(0.f, 1.f, 0.f, 0.6f);
         glBegin(GL_LINES);
 
-        for(size_t i=0; i<vpKFs.size(); i++)
+        for (KeyFrame* pKF : vpKFs)
         {
             // Covisibility Graph
-            const vector<KeyFrame*> vCovKFs = vpKFs[i]->GetCovisiblesByWeight(100);
-            cv::Mat Ow = vpKFs[i]->GetCameraCenter();
+            std::vector<KeyFrame*> const& vCovKFs = pKF->GetCovisiblesByWeight(100);
+            cv::Mat Ow = pKF->GetCameraCenter();
 
             for (KeyFrame* pCovKF : vCovKFs)
             {
-                if (pCovKF->get_id() < vpKFs[i]->get_id())
+                if (pCovKF->get_id() < pKF->get_id())
                     continue;
 
                 cv::Mat Ow2 = pCovKF->GetCameraCenter();
-                glVertex3f(Ow.at<float>(0),Ow.at<float>(1),Ow.at<float>(2));
-                glVertex3f(Ow2.at<float>(0),Ow2.at<float>(1),Ow2.at<float>(2));
+                glVertex3f(Ow.at<float>(0), Ow.at<float>(1), Ow.at<float>(2));
+                glVertex3f(Ow2.at<float>(0), Ow2.at<float>(1), Ow2.at<float>(2));
             }
 
             // Spanning tree
-            KeyFrame* pParent = vpKFs[i]->GetParent();
+            KeyFrame* pParent = pKF->GetParent();
             if (pParent != nullptr)
             {
                 cv::Mat Owp = pParent->GetCameraCenter();
-                glVertex3f(Ow.at<float>(0),Ow.at<float>(1),Ow.at<float>(2));
-                glVertex3f(Owp.at<float>(0),Owp.at<float>(1),Owp.at<float>(2));
+                glVertex3f(Ow.at<float>(0), Ow.at<float>(1), Ow.at<float>(2));
+                glVertex3f(Owp.at<float>(0), Owp.at<float>(1), Owp.at<float>(2));
             }
 
             // Loops
-            std::unordered_set<KeyFrame*> sLoopKFs = vpKFs[i]->GetLoopEdges();
+            std::unordered_set<KeyFrame*> sLoopKFs = pKF->GetLoopEdges();
             for (KeyFrame* pLoopKF : sLoopKFs)
             {
-                if (pLoopKF->get_id() < vpKFs[i]->get_id())
+                if (pLoopKF->get_id() < pKF->get_id())
                     continue;
 
                 cv::Mat Owl = pLoopKF->GetCameraCenter();
@@ -226,13 +225,13 @@ void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc)
 
 void MapDrawer::SetCurrentCameraPose(const cv::Mat &Tcw)
 {
-    unique_lock<mutex> lock(mMutexCamera);
+    std::unique_lock<std::mutex> lock(mMutexCamera);
     mCameraPose = Tcw.clone();
 }
 
 void MapDrawer::GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M)
 {
-    if(!mCameraPose.empty())
+    if (!mCameraPose.empty())
     {
         cv::Mat Rwc(3,3,CV_32F);
         cv::Mat twc(3,1,CV_32F);

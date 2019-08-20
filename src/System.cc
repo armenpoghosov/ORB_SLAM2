@@ -265,7 +265,6 @@ void System::SaveTrajectoryTUM(const string &filename)
     cout << endl << "trajectory saved!" << endl;
 }
 
-
 void System::SaveKeyFrameTrajectoryTUM(const string &filename)
 {
     cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
@@ -365,7 +364,7 @@ void System::locked_handle_activate_localization()
 {
     if (mbActivateLocalizationMode)
     {
-        mpTracker->InformOnlyTracking(true);
+        mpTracker->set_only_tracking(true);
         mbActivateLocalizationMode = false;
     }
 }
@@ -374,7 +373,7 @@ void System::locked_handle_deactivate_localization()
 {
     if (mbDeactivateLocalizationMode)
     {
-        mpTracker->InformOnlyTracking(false);
+        mpTracker->set_only_tracking(false);
         mbDeactivateLocalizationMode = false;
     }
 }

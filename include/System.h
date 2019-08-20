@@ -37,7 +37,6 @@ class Viewer;
 class FrameDrawer;
 class Map;
 class Tracking;
-class LocalMapping;
 class LoopClosing;
 class KeyFrameDatabase;
 class MapDrawer;

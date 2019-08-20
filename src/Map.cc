@@ -23,6 +23,8 @@
 #include "MapPoint.h"
 #include "KeyFrame.h"
 
+#include <algorithm>
+
 namespace ORB_SLAM2
 {
 
@@ -34,6 +36,24 @@ void Map::AddKeyFrame(KeyFrame *pKF)
 
     if (pKF->get_id() > mnMaxKFid)
         mnMaxKFid = pKF->get_id();
+}
+
+std::vector<KeyFrame*> Map::GetAllKeyFrames() const
+{
+    std::vector<KeyFrame*> kfs;
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        kfs.reserve(mspKeyFrames.size());
+        kfs.insert(kfs.end(), mspKeyFrames.begin(), mspKeyFrames.end());
+    }
+
+    std::sort(kfs.begin(), kfs.end(),
+        [](KeyFrame const* p1, KeyFrame const* p2)->bool
+        {
+            return p1->get_id() < p2->get_id();
+        });
+
+    return kfs;
 }
 
 void Map::clear()

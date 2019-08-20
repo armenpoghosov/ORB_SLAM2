@@ -79,11 +79,7 @@ public:
     int GetLastBigChangeIdx() const
         { return mnBigChangeIdx; }
 
-    std::vector<KeyFrame*> GetAllKeyFrames() const
-    {
-        std::unique_lock<std::mutex> lock(mMutexMap);
-        return std::vector<KeyFrame*>(mspKeyFrames.begin(), mspKeyFrames.end());
-    }
+    std::vector<KeyFrame*> GetAllKeyFrames() const;
 
     std::vector<MapPoint*> GetAllMapPoints() const
     {

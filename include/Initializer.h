@@ -33,7 +33,7 @@ class Initializer
 public:
 
     // Fix the reference frame
-    Initializer(Frame const& ReferenceFrame, float sigma = 1.0, int iterations = 200);
+    Initializer(Frame const& ReferenceFrame, float sigma = 1.f, int iterations = 200);
 
     // Computes in parallel a fundamental matrix and a homography
     // Selects a model and tries to recover the motion and the structure from motion
@@ -95,7 +95,7 @@ private:
     int                             mMaxIterations;
 
     // Ransac sets
-    vector<size_t[8]>               mvSets;
+    std::vector<size_t[8]>          mvSets;
 };
 
 } //namespace ORB_SLAM

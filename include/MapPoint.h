@@ -81,7 +81,7 @@ public:
     {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
         auto it = mObservations.find(pKF);
-        return it != mObservations.end() ? it->second : (std::size_t) - 1;
+        return it != mObservations.end() ? it->second : (std::size_t)-1;
     }
 
     bool IsInKeyFrame(KeyFrame *pKF) const

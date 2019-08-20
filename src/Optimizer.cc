@@ -20,6 +20,9 @@
 
 #include "Optimizer.h"
 
+#include "Map.h"
+#include "KeyFrame.h"
+
 #include "Thirdparty/g2o/g2o/core/block_solver.h"
 #include "Thirdparty/g2o/g2o/core/optimization_algorithm_levenberg.h"
 #include "Thirdparty/g2o/g2o/solvers/linear_solver_eigen.h"
@@ -31,8 +34,6 @@
 #include <Eigen/StdVector>
 
 #include "Converter.h"
-
-#include<mutex>
 
 namespace ORB_SLAM2
 {
@@ -216,7 +217,7 @@ Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, 
 
         MapPoint* pMP = vpMP[i];
 
-        if(pMP->isBad())
+        if (pMP->isBad())
             continue;
 
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->get_id() + maxKFid+1));
@@ -236,7 +237,7 @@ Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, 
     return result;
 }
 
-std::size_t Optimizer::PoseOptimization(Frame* pFrame)
+std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
 {
     g2o::BlockSolver_6_3::LinearSolverType* linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
     g2o::BlockSolver_6_3* solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
@@ -265,8 +266,8 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame)
     std::vector<std::size_t> vnIndexEdgeStereo;
     vnIndexEdgeStereo.reserve(N);
 
-    float const deltaMono = std::sqrt(5.991);
-    float const deltaStereo = std::sqrt(7.815);
+    float const deltaMono = std::sqrt(5.991f);
+    float const deltaStereo = std::sqrt(7.815f);
 
     std::size_t nInitialCorrespondences = 0;
 
@@ -321,7 +322,7 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame)
             else  // Stereo observation
             {
                 // SET EDGE
-                Eigen::Matrix<double,3,1> obs;
+                Eigen::Matrix<double, 3, 1> obs;
                 float const kp_ur = pFrame->mvuRight[i];
                 obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
 
@@ -357,8 +358,9 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame)
     if (nInitialCorrespondences < 3)
         return 0;
 
-    // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
-    // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
+    // We perform 4 optimizations, after each optimization we classify observation
+    // as inlier/outlier, At the next optimization, outliers are not included, but
+    // at the end they can be classified as inliers again.
     static float const chi2Mono[4] = { 5.991f, 5.991f, 5.991f, 5.991f };
     static float const chi2Stereo[4] = { 7.815f, 7.815f, 7.815f, 7.815f };
     static int const its[4] = { 10, 10, 10, 10 };
@@ -453,7 +455,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     std::unordered_set<KeyFrame*> fixel_frames;
     for (MapPoint *pLMP : local_map_points)
     {
-        std:unordered_map<KeyFrame*, size_t> const& observations = pLMP->GetObservations();
+        std::unordered_map<KeyFrame*, size_t> const& observations = pLMP->GetObservations();
         for (auto const& pair : observations)
         {
             if (pair.first->isBad() || local_key_frames.find(pair.first) != local_key_frames.end())

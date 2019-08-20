@@ -45,12 +45,24 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    cv::VideoCapture capture(argv[3]);
-    if (!capture.isOpened())
+    cv::VideoCapture capture;
+    if (!capture.open(argv[3]))
     {
         cerr << "could not open video file" << endl;
         return -1;
     }
+
+    /*
+    for (int index = 0; ; ++index)
+    {
+        cv::Mat img;
+        capture >> img;
+        if (img.empty())
+            break;
+        char buffer[256];
+        sprintf(buffer, "C:\\Users\\ArmenPoghosovSystemA\\Downloads\\video_urban5_cut\\%d.jpg", index);
+        cv::imwrite(buffer, img);
+    }*/
 
     // Retrieve paths to images
     //vector<string> vstrImageFilenames;

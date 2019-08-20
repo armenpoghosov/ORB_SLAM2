@@ -37,7 +37,6 @@ namespace ORB_SLAM2
 class Viewer;
 class FrameDrawer;
 class Map;
-class LocalMapping;
 class LoopClosing;
 class System;
 class MapDrawer;
@@ -46,7 +45,6 @@ class Initializer;
 
 class Tracking
 {  
-
 public:
 
     // Tracking states
@@ -79,7 +77,7 @@ public:
     void ChangeCalibration(string const& strSettingPath);
 
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
-    void InformOnlyTracking(bool flag)
+    void set_only_tracking(bool flag)
         { mbOnlyTracking = flag; }
 
     eTrackingState get_last_state() const
@@ -126,7 +124,6 @@ protected:
     void MonocularInitialization();
     void CreateInitialMapMonocular();
 
-    void CheckReplacedInLastFrame();
     bool TrackReferenceKeyFrame();
     void UpdateLastFrame();
     bool TrackWithMotionModel();
@@ -142,9 +139,6 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
-
-
-
 
     // PAE: functions moved from local mapping
     void ProcessNewKeyFrame();
@@ -240,7 +234,7 @@ protected:
     // For RGB-D inputs only. For some datasets (e.g. TUM) the depthmap values are scaled.
     float                       mDepthMapFactor;
 
-    //Current matches in frame
+    // Current matches in frame
     int                         mnMatchesInliers;
 
     //Last Frame, KeyFrame and Relocalisation Info
@@ -258,10 +252,8 @@ protected:
 
     std::list<MapPoint*>        mlpTemporalPoints;
 
-    // TODO: PAE:
+    // TODO: PAE: need to syncronoze it
     std::future<void>           m_future;
-
-
 };
 
 } //namespace ORB_SLAM

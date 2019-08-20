@@ -21,23 +21,24 @@
 #ifndef LOOPCLOSING_H
 #define LOOPCLOSING_H
 
-#include "KeyFrame.h"
-#include "Map.h"
 #include "ORBVocabulary.h"
-#include "Tracking.h"
 
-#include "KeyFrameDatabase.h"
+#include "Thirdparty/g2o/g2o/types/sim3.h"
 
-#include <thread>
 #include <mutex>
-#include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
+#include <thread>
+#include <unordered_set>
+#include <unordered_map>
 
 namespace ORB_SLAM2
 {
 
-class Tracking;
-class LocalMapping;
+class Frame;
+class KeyFrame;
 class KeyFrameDatabase;
+class Map;
+class MapPoint;
+class Tracking;
 
 class LoopClosing
 {
@@ -55,9 +56,6 @@ public:
 
     void SetTracker(Tracking *pTracker)
         { mpTracker = pTracker; }
-
-    void SetLocalMapper(LocalMapping *pLocalMapper)
-        { mpLocalMapper = pLocalMapper; }
 
     void InsertKeyFrame(KeyFrame *pKF);
 
@@ -134,8 +132,6 @@ protected:
 
     KeyFrameDatabase*               mpKeyFrameDB;
     ORBVocabulary*                  mpORBVocabulary;
-
-    LocalMapping*                   mpLocalMapper;
 
     std::list<KeyFrame*>            mlpLoopKeyFrameQueue;
 

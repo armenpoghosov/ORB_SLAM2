@@ -481,7 +481,7 @@ ORBextractor::ORBextractor(int _nfeatures, float scaleFactor, int _nlevels, int 
 
     for (int i = 1; i < nlevels; ++i)
     {
-        mvScaleFactor[i] = (float)(mvScaleFactor[i - 1] * m_scaleFactor); // PAE: what the hack
+        mvScaleFactor[i] = mvScaleFactor[i - 1] * m_scaleFactor; // PAE: what the hack
         mvLevelSigma2[i] = mvScaleFactor[i] * mvScaleFactor[i];
     }
 
@@ -490,7 +490,7 @@ ORBextractor::ORBextractor(int _nfeatures, float scaleFactor, int _nlevels, int 
     mnFeaturesPerLevel.resize(nlevels);
 
     float factor = 1.0f / m_scaleFactor; // PAE: what the hack!
-    float nDesiredFeaturesPerScale = nfeatures * (1 - factor) / (1 - (float)pow((double)factor, (double)nlevels));
+    float nDesiredFeaturesPerScale = nfeatures * (1 - factor) / (1 - (float)std::pow((double)factor, (double)nlevels));
 
     int sumFeatures = 0;
     for( int level = 0; level < nlevels - 1; ++level)
@@ -659,8 +659,8 @@ void ORBextractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint>
         int const nCols = width / W;
         int const nRows = height / W;
 
-        int const wCell = ceil(width / nCols);
-        int const hCell = ceil(height / nRows);
+        int const wCell = std::ceil(width / nCols);
+        int const hCell = std::ceil(height / nRows);
 
         for (int i = 0; i < nRows; ++i)
         {
@@ -797,11 +797,9 @@ void ORBextractor::ComputePyramid(cv::Mat image)
 
         mvImagePyramid[level] = temp(cv::Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
 
-        // Compute the resized image
         if (level != 0)
         {
-            resize(mvImagePyramid[level - 1], mvImagePyramid[level], sz, 0, 0, cv::INTER_LINEAR);
-
+            cv::resize(mvImagePyramid[level - 1], mvImagePyramid[level], sz, 0, 0, cv::INTER_LINEAR);
             cv::copyMakeBorder(mvImagePyramid[level], temp,
                 EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
                 cv::BORDER_REFLECT_101 + cv::BORDER_ISOLATED);

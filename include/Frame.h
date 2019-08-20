@@ -66,7 +66,7 @@ public:
 
     // Constructor for Monocular cameras.
     Frame(cv::Mat const& imGray, double timeStamp, ORBextractor* extractor,
-        ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, float bf, float thDepth);
+        ORBVocabulary* voc, cv::Mat &K, cv::Mat& distCoef, float bf, float thDepth);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, cv::Mat const& im);
@@ -144,6 +144,28 @@ public:
     std::size_t get_frame_N() const
         { return m_frame_N; }
 
+    DBoW2::BowVector const& get_BoW() const
+    {
+        const_cast<Frame*>(this)->ensure_BoW_computed();
+        return mBowVec;
+    }
+
+    DBoW2::FeatureVector const& get_BoW_features() const
+    {
+        const_cast<Frame*>(this)->ensure_BoW_computed();
+        return mFeatVec;
+    }
+
+    std::vector<MapPoint*> const& get_map_points() const
+        { return mvpMapPoints; }
+    // TODO: PAE: this one is a bad idea!!!
+    std::vector<MapPoint*>& get_map_points()
+        { return mvpMapPoints; }
+
+
+
+    void commit_replaced_map_points();
+
 public:
 
     // NOTE: PAE: stupid function to be refactored ... just for the sake of reducing code size
@@ -186,10 +208,6 @@ public:
     std::vector<float>          mvuRight;
     std::vector<float>          mvDepth;
 
-    // Bag of Words Vector structures.
-    DBoW2::BowVector            mBowVec;
-    DBoW2::FeatureVector        mFeatVec;
-
     // ORB descriptor, each row associated to a keypoint.
     cv::Mat                     mDescriptorsRight;
 
@@ -207,6 +225,7 @@ public:
     // Reference Keyframe.
     KeyFrame*                   mpReferenceKF;
 
+    // TODO: PAE: those have to die probably
     // Scale pyramid info.
     int                         mnScaleLevels;
     float                       mfScaleFactor;
@@ -217,6 +236,16 @@ public:
     std::vector<float>          mvInvLevelSigma2;
 
 private:
+
+
+    // Compute Bag of Words representation.
+    void ensure_BoW_computed()
+    {
+        if (mBowVec.empty())
+            compute_BoW();
+    }
+
+    void compute_BoW();
 
     // Undistort keypoints given OpenCV distortion parameters.
     // Only for the RGB-D case. Stereo must be already rectified!
@@ -234,7 +263,11 @@ private:
     // In the RGB-D case, RGB images can be distorted.
     std::vector<cv::KeyPoint>   mvKeys;
 
-    // Stereo baseline multiplied by fx.
+    // Bag of Words Vector structures.
+    DBoW2::BowVector            mBowVec;
+    DBoW2::FeatureVector        mFeatVec;
+
+    // Stereo baseline multiplied by fx
     float                       mbf;
 
     // Stereo baseline in meters.

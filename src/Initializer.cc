@@ -20,8 +20,6 @@
 
 #include "Initializer.h"
 
-//#include "Thirdparty/DBoW2/DUtils/Random.h"
-
 #include "Optimizer.h"
 #include "ORBmatcher.h"
 
@@ -32,16 +30,13 @@ namespace ORB_SLAM2
 {
 
 Initializer::Initializer(Frame const& rRF, float sigma, int iterations)
-{
-    mK = rRF.get_K().clone();
-
-    mvKeys1 = rRF.mvKeysUn;
-
-    mSigma = sigma;
-    mSigma2 = sigma * sigma;
-
-    mMaxIterations = iterations;
-}
+    :
+    mvKeys1(rRF.mvKeysUn),
+    mK(rRF.get_K().clone()),
+    mSigma(sigma),
+    mSigma2(sigma * sigma),
+    mMaxIterations(iterations)
+{}
 
 bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches12,
     cv::Mat& R21, cv::Mat& t21, std::vector<cv::Point3f>& vP3D, std::vector<bool>& vbTriangulated)
@@ -73,10 +68,8 @@ bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches1
     std::mt19937 generator;
     std::uniform_int_distribution<std::size_t> distribution(0, N - 1);
 
-    for (int it = 0; it < mMaxIterations; ++it)
+    for (std::size_t(&index_set)[8] : mvSets)
     {
-        std::size_t(&index_set)[8] = mvSets[it];
-
         std::size_t* const it_s = &index_set[0];
         std::size_t* const it_e = it_s + 8;
 
@@ -104,7 +97,7 @@ bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches1
 
     auto future = std::async(launch::async, &Initializer::FindHomography, this, ref(vbMatchesInliersH), ref(SH), ref(H));
     FindFundamental(vbMatchesInliersF, SF, F);
-    future.wait(); // Wait until both have finished
+    future.get(); // Wait until both have finished
 
     // Compute ratio of scores
     float RH = SH / (SH + SF);
@@ -148,10 +141,8 @@ void Initializer::FindHomography(std::vector<bool>& vbMatchesInliers, float& sco
     vbMatchesInliers = vector<bool>(N);
 
     // Perform all RANSAC iterations and save the solution with highest score
-    for (int it = 0; it < mMaxIterations; ++it)
+    for (std::size_t const (&index_set)[8] : mvSets)
     {
-        std::size_t const (&index_set)[8] = mvSets[it];
-
         // Select a minimum set
         for (size_t j = 0; j < 4; ++j)
         {
@@ -203,10 +194,8 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
     vector<bool> vbCurrentInliers(N);
 
     // Perform all RANSAC iterations and save the solution with highest score
-    for (int it = 0; it < mMaxIterations; ++it)
+    for (std::size_t const (&index_set)[8] : mvSets)
     {
-        std::size_t const (&index_set)[8] = mvSets[it];
-
         // Select a minimum set
         for (int j = 0; j < 8; ++j)
         {
