@@ -73,7 +73,8 @@ public:
     // Search matches between MapPoints in a KeyFrame and ORB in a Frame.
     // Brute force constrained to ORB that belong to the same vocabulary node (at a certain level)
     // Used in Relocalisation and Loop Detection
-    std::size_t SearchByBoW(KeyFrame *pKF, Frame &F, std::vector<MapPoint*> &vpMapPointMatches);
+    std::size_t SearchByBoW(KeyFrame const* pKF, Frame const& F, std::vector<MapPoint*> &vMatches);
+
     int SearchByBoW(KeyFrame *pKF1, KeyFrame* pKF2, std::vector<MapPoint*> &vpMatches12);
 
     // Matching for the Map Initialization (only used in the monocular case)
@@ -90,7 +91,7 @@ public:
         const float &s12, const cv::Mat &R12, const cv::Mat &t12, const float th);
 
     // Project MapPoints into KeyFrame and search for duplicated MapPoints.
-    int Fuse(KeyFrame* pKF, std::unordered_set<MapPoint*> const& map_points, float th);
+    std::size_t Fuse(KeyFrame* pKF, std::unordered_set<MapPoint*> const& map_points, float th);
 
     // Project MapPoints into KeyFrame using a given Sim3 and search for duplicated MapPoints.
     void Fuse(KeyFrame* pKF, cv::Mat Scw, std::unordered_set<MapPoint*> const& vpPoints, float th,

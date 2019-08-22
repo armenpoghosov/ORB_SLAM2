@@ -399,7 +399,7 @@ void Tracking::Track()
             // pass to the new keyframe, so that bundle adjustment will finally decide
             // if they are outliers or not. We don't want next frame to estimate its position
             // with those points so we discard them in the frame.
-            for (int i = 0; i < mCurrentFrame.get_frame_N(); ++i)
+            for (std::size_t i = 0; i < mCurrentFrame.get_frame_N(); ++i)
             {
                 MapPoint*& rpMP = mCurrentFrame.mvpMapPoints[i];
                 if (rpMP != nullptr && mCurrentFrame.mvbOutlier[i])
@@ -515,11 +515,10 @@ void Tracking::MonocularInitialization()
 
         // Find correspondences
         ORBmatcher matcher(0.9f, true);
-        int nmatches = matcher.SearchForInitialization(mInitialFrame,
-            mCurrentFrame, mvbPrevMatched, mvIniMatches, 100);
 
         // Check if there are enough correspondences
-        if (nmatches < MIN_KEY_COUNT_FOR_INITIALIZATOIN ||
+        if (matcher.SearchForInitialization(mInitialFrame, mCurrentFrame,
+                mvbPrevMatched, mvIniMatches, 100) < MIN_KEY_COUNT_FOR_INITIALIZATOIN ||
             // NOTE: PAE: added by me
             mCurrentFrame.get_id() - mInitialFrame.get_id() > 3)
         {
@@ -537,10 +536,7 @@ void Tracking::MonocularInitialization()
             for (size_t i = 0, iend = mvIniMatches.size(); i < iend; ++i)
             {
                 if (mvIniMatches[i] >= 0 && !vbTriangulated[i])
-                {
                     mvIniMatches[i] = -1;
-                    --nmatches;
-                }
             }
 
             // Set Frame Poses
@@ -1038,6 +1034,7 @@ void Tracking::UpdateLocalMap()
 {
     // This is for visualization
     mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
+
     // Update
     UpdateLocalKeyFrames();
     UpdateLocalPoints();
@@ -1080,10 +1077,7 @@ void Tracking::UpdateLocalKeyFrames()
 
         std::unordered_map<KeyFrame*, size_t> const& observations = rpMP->GetObservations();
         for (auto const& pair : observations)
-        {
-            std::size_t& count = keyframeCounter[pair.first];
-            ++count;
-        }
+            ++keyframeCounter[pair.first];
     }
 
     if (keyframeCounter.empty())
@@ -1120,7 +1114,7 @@ void Tracking::UpdateLocalKeyFrames()
     }
 
     // Include also some not-already-included keyframes that are neighbors to already-included keyframes
-    for (TPair* head_next = nullptr;; )
+    for (TPair* head_next = nullptr;;)
     {
         std::vector<KeyFrame*> const& neighbour_key_frames = head->first->GetBestCovisibilityKeyFrames(10);
         for (KeyFrame* pNeighKF : neighbour_key_frames)
@@ -1419,7 +1413,7 @@ void Tracking::ProcessNewKeyFrame()
     // Associate MapPoints to the new keyframe and update normal and descriptor
     std::vector<MapPoint*> const& vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
-    for (size_t i = 0; i < vpMapPointMatches.size(); ++i)
+    for (size_t i = 0, iend = vpMapPointMatches.size(); i < iend; ++i)
     {
         MapPoint* pMP = vpMapPointMatches[i];
 
@@ -1547,8 +1541,6 @@ void Tracking::CreateNewMapPoints()
         float const invfy2 = pKF2->invfy;
 
         // Triangulate each match
-        std::size_t const nmatches = vMatchedIndices.size();
-
         for (auto const& match_pair : vMatchedIndices)
         {
             size_t const idx1 = match_pair.first;
@@ -1733,7 +1725,7 @@ void Tracking::SearchInNeighbors()
         if (pKFCV->isBad())
             continue;
 
-        auto const& pair = target_key_frames.insert(pKFCV);
+        auto const& pair = target_key_frames.emplace(pKFCV);
         if (!pair.second)
             continue;
 
@@ -1743,7 +1735,7 @@ void Tracking::SearchInNeighbors()
             if (pKFCV2 == mpCurrentKeyFrame || pKFCV2->isBad())
                 continue;
 
-            target_key_frames.insert(pKFCV);
+            target_key_frames.emplace(pKFCV);
         }
     }
 
@@ -1765,6 +1757,7 @@ void Tracking::SearchInNeighbors()
     // TODO: PAE: think about removing the vector in the call above and turning it to a set
     std::unordered_set<MapPoint*> fuse_candidates;
     fuse_candidates.insert(vpMapPointMatches.begin(), vpMapPointMatches.end());
+    fuse_candidates.erase(nullptr);
 
     for (KeyFrame* pTKF : target_key_frames_vector)
         matcher.Fuse(pTKF, fuse_candidates, 0.3f);
@@ -1829,26 +1822,26 @@ void Tracking::KeyFrameCulling()
     // A keyframe is considered redundant if the 90% of the MapPoints it sees, are seen
     // in at least other 3 keyframes (in the same or finer scale)
     // We only consider close stereo points
-    std::vector<KeyFrame*> const& vpLocalKeyFrames = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
+    std::vector<KeyFrame*> const& vpLocalKFs = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
 
-    for (KeyFrame* pKF : vpLocalKeyFrames)
+    int const thObs = 3;
+
+    for (KeyFrame* pKF : vpLocalKFs)
     {
         if (pKF->get_id() == 0)
             continue;
 
-        std::vector<MapPoint*> const vpMapPoints = pKF->GetMapPointMatches();
+        std::size_t nMPs = 0;
+        std::size_t nRedundantObservations = 0;
 
-        int const thObs = 3;
-        int nRedundantObservations = 0;
-
-        int nMPs = 0;
+        std::vector<MapPoint*> const& vpMapPoints = pKF->GetMapPointMatches();
 
         for (size_t i = 0, iend = vpMapPoints.size(); i < iend; ++i)
         {
             MapPoint* pMP = vpMapPoints[i];
 
-            if (pMP == nullptr || pMP->isBad() || (mSensor != System::MONOCULAR &&
-                    (pKF->mvDepth[i] > pKF->mThDepth || pKF->mvDepth[i] < 0)))
+            if (pMP == nullptr || pMP->isBad() ||
+                (mSensor != System::MONOCULAR && (pKF->mvDepth[i] > pKF->mThDepth || pKF->mvDepth[i] < 0)))
                 continue;
 
             ++nMPs;
@@ -1858,25 +1851,21 @@ void Tracking::KeyFrameCulling()
 
             int const octave = pKF->mvKeysUn[i].octave;
 
-            std::unordered_map<KeyFrame*, size_t> observations = pMP->GetObservations();
+            std::unordered_map<KeyFrame*, size_t> const& observations = pMP->GetObservations();
 
             int nObs = 0;
 
-            for (auto mit = observations.begin(), mend = observations.end(); mit != mend; ++mit)
+            for (auto const& pair : observations)
             {
-                KeyFrame* pKFi = mit->first;
-
-                if (pKFi == pKF)
+                if (pair.first == pKF || pair.first->isBad())
                     continue;
 
-                int const octave_key_frame = pKFi->mvKeysUn[mit->second].octave;
-
-                if (octave_key_frame <= octave + 1 && ++nObs >= thObs)
+                if (pair.first->mvKeysUn[pair.second].octave <= octave + 1 && ++nObs >= thObs)
+                {
+                    ++nRedundantObservations;
                     break;
+                }
             }
-
-            if (nObs >= thObs)
-                ++nRedundantObservations;
         }
 
         if (nRedundantObservations > 0.9 * nMPs)

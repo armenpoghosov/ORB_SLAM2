@@ -148,7 +148,6 @@ g2o/core/optimization_algorithm_levenberg.cpp
 g2o/core/optimization_algorithm_levenberg.h
 g2o/core/jacobian_workspace.cpp 
 g2o/core/jacobian_workspace.h
-g2o/core/robust_kernel.cpp 
 g2o/core/robust_kernel.h
 g2o/core/robust_kernel_factory.cpp
 g2o/core/robust_kernel_factory.h

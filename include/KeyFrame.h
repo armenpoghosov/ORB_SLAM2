@@ -108,7 +108,6 @@ public:
     {
         std::unique_lock<std::mutex> lock(mMutexConnections);
         auto it = mConnectedKeyFrameWeights.find(pKF);
-        // PAE: have to look into all the types for counters
         return it != mConnectedKeyFrameWeights.end() ? (int)it->second : 0;
     }
 
@@ -243,6 +242,9 @@ public:
 
     cv::Mat const& get_Tcp() const
         { return mTcp; }
+
+    KeyFrame(KeyFrame const&) = delete;
+    KeyFrame& operator = (KeyFrame const&) = delete;
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:

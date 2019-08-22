@@ -37,78 +37,111 @@
 #include <Eigen/StdVector>
 #include <stack>
 
-namespace g2o {
+namespace g2o
+{
 
-  using namespace Eigen;
-
+using namespace Eigen;
 
 /**
- * \brief Templatized BaseVertex
- *
- * Templatized BaseVertex
- * D  : minimal dimension of the vertex, e.g., 3 for rotation in 3D
- * T  : internal type to represent the estimate, e.g., Quaternion for rotation in 3D
- */
-  template <int D, typename T>
-  class BaseVertex : public OptimizableGraph::Vertex {
-    public:
+* \brief Templatized BaseVertex
+*
+* Templatized BaseVertex
+* D  : minimal dimension of the vertex, e.g., 3 for rotation in 3D
+* T  : internal type to represent the estimate, e.g., Quaternion for rotation in 3D
+*/
+template <int D, typename T>
+class BaseVertex : public OptimizableGraph::Vertex
+{
+public:
+
     typedef T EstimateType;
-    typedef std::stack<EstimateType, 
-                       std::vector<EstimateType,  Eigen::aligned_allocator<EstimateType> > >
-    BackupStackType;
+    typedef std::stack<EstimateType, std::vector<EstimateType, Eigen::aligned_allocator<EstimateType> > > BackupStackType;
 
-    static const int Dimension = D;           ///< dimension of the estimate (minimal) in the manifold space
+    static const int Dimension = D; ///< dimension of the estimate (minimal) in the manifold space
+    typedef Eigen::Map<Matrix<double, D, D>, Matrix<double, D, D>::Flags & AlignedBit ? Aligned : Unaligned>  HessianBlockType;
 
-    typedef Eigen::Map<Matrix<double, D, D>, Matrix<double,D,D>::Flags & AlignedBit ? Aligned : Unaligned >  HessianBlockType;
+public:
 
-  public:
     BaseVertex();
 
-    virtual const double& hessian(int i, int j) const { assert(i<D && j<D); return _hessian(i,j);}
-    virtual double& hessian(int i, int j)  { assert(i<D && j<D); return _hessian(i,j);}
-    virtual double hessianDeterminant() const {return _hessian.determinant();}
-    virtual double* hessianData() { return const_cast<double*>(_hessian.data());}
+    virtual const double& hessian(int i, int j) const
+        { return _hessian(i, j); }
+    virtual double& hessian(int i, int j)
+        { return _hessian(i, j);}
+
+    virtual double hessianDeterminant() const
+        { return _hessian.determinant(); }
+    virtual double* hessianData()
+        { return const_cast<double*>(_hessian.data()); }
 
     virtual void mapHessianMemory(double* d);
 
-    virtual int copyB(double* b_) const {
-      memcpy(b_, _b.data(), Dimension * sizeof(double));
-      return Dimension; 
+    virtual int copyB(double* b_) const
+    {
+        std::memcpy(b_, _b.data(), Dimension * sizeof(double));
+        return Dimension; 
     }
 
-    virtual const double& b(int i) const { assert(i < D); return _b(i);}
-    virtual double& b(int i) { assert(i < D); return _b(i);}
-    virtual double* bData() { return _b.data();}
+    virtual const double& b(int i) const
+        { return _b(i); }
+    virtual double& b(int i)
+        { return _b(i); }
+    virtual double* bData()
+        { return _b.data(); }
 
     virtual void clearQuadraticForm();
 
     //! updates the current vertex with the direct solution x += H_ii\b_ii
     //! @returns the determinant of the inverted hessian
-    virtual double solveDirect(double lambda=0);
+    virtual double solveDirect(double lambda = 0);
 
     //! return right hand side b of the constructed linear system
-    Matrix<double, D, 1>& b() { return _b;}
-    const Matrix<double, D, 1>& b() const { return _b;}
+    Matrix<double, D, 1>& b()
+        { return _b; }
+    Matrix<double, D, 1> const& b() const
+        { return _b; }
     //! return the hessian block associated with the vertex
-    HessianBlockType& A() { return _hessian;}
-    const HessianBlockType& A() const { return _hessian;}
+    HessianBlockType& A()
+        { return _hessian; }
+    HessianBlockType const& A() const
+        { return _hessian; }
 
-    virtual void push() { _backup.push(_estimate);}
-    virtual void pop() { assert(!_backup.empty()); _estimate = _backup.top(); _backup.pop(); updateCache();}
-    virtual void discardTop() { assert(!_backup.empty()); _backup.pop();}
-    virtual int stackSize() const {return _backup.size();}
+    virtual void push()
+        { _backup.push(_estimate); }
+
+    virtual void pop()
+    {
+        _estimate = _backup.top();
+        _backup.pop();
+        updateCache();
+    }
+
+    virtual void discardTop()
+        { _backup.pop(); }
+    
+    virtual int stackSize() const
+        { return _backup.size(); }
 
     //! return the current estimate of the vertex
-    const EstimateType& estimate() const { return _estimate;}
+    EstimateType const& estimate() const
+        { return _estimate; }
+    
     //! set the estimate for the vertex also calls updateCache()
-    void setEstimate(const EstimateType& et) { _estimate = et; updateCache();}
+    void setEstimate(const EstimateType& et)
+    {
+        _estimate = et;
+        updateCache();
+    }
 
-  protected:
-    HessianBlockType _hessian;
-    Matrix<double, D, 1> _b;
-    EstimateType _estimate;
-    BackupStackType _backup;
-  public:
+protected:
+
+    HessianBlockType        _hessian;
+    Matrix<double, D, 1>    _b;
+    EstimateType            _estimate;
+    BackupStackType         _backup;
+
+public:
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

@@ -29,88 +29,61 @@
 
 #include <cmath>
 
-namespace g2o {
-
-RobustKernelScaleDelta::RobustKernelScaleDelta(const RobustKernelPtr& kernel, double delta) :
-  RobustKernel(delta),
-  _kernel(kernel)
+namespace g2o
 {
-}
-
-RobustKernelScaleDelta::RobustKernelScaleDelta(double delta) :
-  RobustKernel(delta)
-{
-}
-
-void RobustKernelScaleDelta::setKernel(const RobustKernelPtr& ptr)
-{
-  _kernel = ptr;
-}
 
 void RobustKernelScaleDelta::robustify(double error, Eigen::Vector3d& rho) const
 {
-  if (_kernel.get()) {
-    double dsqr = _delta * _delta;
-    double dsqrReci = 1. / dsqr;
-    _kernel->robustify(dsqrReci * error, rho);
-    rho[0] *= dsqr;
-    rho[2] *= dsqrReci;
-  } else { // no robustification
-    rho[0] = error;
-    rho[1] = 1.;
-    rho[2] = 0.;
-  }
-}
-
-void RobustKernelHuber::setDelta(double delta)
-{
-	dsqr = delta*delta;
-	_delta = delta;
-}
-
-
-void RobustKernelHuber::setDeltaSqr(const double &delta, const double &deltaSqr)
-{
-	dsqr = deltaSqr;
-	_delta = delta;
+    if (_kernel.get())
+    {
+        double dsqr = _delta * _delta;
+        double dsqrReci = 1. / dsqr;
+        _kernel->robustify(dsqrReci * error, rho);
+        rho[0] *= dsqr;
+        rho[2] *= dsqrReci;
+    }
+    else // no robustification
+    {
+        rho[0] = error;
+        rho[1] = 1.;
+        rho[2] = 0.;
+    }
 }
 
 void RobustKernelHuber::robustify(double e, Eigen::Vector3d& rho) const
 {
-  //dsqr = _delta * _delta;
-  if (e <= dsqr) { // inlier
-    rho[0] = e;
-    rho[1] = 1.;
-    rho[2] = 0.;
-  } else { // outlier
-    double sqrte = sqrt(e); // absolut value of the error
-    rho[0] = 2*sqrte*_delta - dsqr; // rho(e)   = 2 * delta * e^(1/2) - delta^2
-    rho[1] = _delta / sqrte;        // rho'(e)  = delta / sqrt(e)
-    rho[2] = - 0.5 * rho[1] / e;    // rho''(e) = -1 / (2*e^(3/2)) = -1/2 * (delta/e) / e
-  }
-}
-
-void RobustKernelTukey::setDeltaSqr(const double &deltaSqr, const double &inv)
-{
- _deltaSqr = deltaSqr;
- _invDeltaSqr = inv;
- 
+    if (e <= dsqr)  // inlier
+    {
+        rho[0] = e;
+        rho[1] = 1.;
+        rho[2] = 0.;
+    }
+    else // outlier
+    {
+        double sqrte = std::sqrt(e);        // absolut value of the error
+        rho[0] = 2 * sqrte * _delta - dsqr; // rho(e)   = 2 * delta * e^(1/2) - delta^2
+        rho[1] = _delta / sqrte;            // rho'(e)  = delta / sqrt(e)
+        rho[2] = - 0.5 * rho[1] / e;        // rho''(e) = -1 / (2*e^(3/2)) = -1/2 * (delta/e) / e
+    }
 }
 
 void RobustKernelTukey::robustify(double e, Eigen::Vector3d& rho) const
 {
-  if (e <= _deltaSqr) { // inlier
-    double factor = e*_invDeltaSqr;
-    double d = 1-factor;
-    double dd = d*d;
-    rho[0] = _deltaSqr*(1-dd*d);
-    rho[1] = 3*dd;
-    rho[2] = -6*_invDeltaSqr*d;
-  } else { // outlier
-    rho[0] = _deltaSqr; // rho(e)   = delta^2
-    rho[1] = 0.;
-    rho[2] = 0.;   
-  }
+    if (e <= _deltaSqr) // inlier
+    {
+        double factor = e * _invDeltaSqr;
+        double d = 1-factor;
+        double dd = d * d;
+        rho[0] = _deltaSqr * (1 - dd * d);
+        rho[1] = 3 * dd;
+        rho[2] = -6 * _invDeltaSqr * d;
+    }
+    else  // outlier
+    {
+        rho[0] = _deltaSqr; // rho(e)   = delta^2
+        rho[1] = 0.;
+        rho[2] = 0.;
+    }
 }
 
 void RobustKernelPseudoHuber::robustify(double e2, Eigen::Vector3d& rho) const

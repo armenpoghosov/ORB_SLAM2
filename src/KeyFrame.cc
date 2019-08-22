@@ -31,17 +31,13 @@ uint64_t KeyFrame::s_next_id = 0;
 
 KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     :
-    mnFrameId(F.get_id()),
     mTimeStamp(F.get_time_stamp()),
-
     // TODO: PAE: review these
     mnGridCols(Frame::FRAME_GRID_COLS),
     mnGridRows(Frame::FRAME_GRID_ROWS),
-
     // TODO: PAE: remove these
     mfGridElementWidthInv(F.mfGridElementWidthInv),
     mfGridElementHeightInv(F.mfGridElementHeightInv),
-
     // TODO: these probably have to be removed too
     fx(F.fx),
     fy(F.fy),
@@ -52,42 +48,38 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
     mbf(F.get_mbf()),
     mb(F.get_mb()),
     mThDepth(F.mThDepth),
-
-
     m_kf_N(F.get_frame_N()),
     mvKeys(F.get_key_points()),
     mvKeysUn(F.mvKeysUn),
     mvuRight(F.mvuRight),
     mvDepth(F.mvDepth),
     mDescriptors(F.get_descriptors().clone()),
-    mBowVec(F.get_BoW()),
-    mFeatVec(F.get_BoW_features()),
     mnScaleLevels(F.mnScaleLevels),
     mfScaleFactor(F.mfScaleFactor),
     mfLogScaleFactor(F.mfLogScaleFactor),
     mvScaleFactors(F.mvScaleFactors),
     mvLevelSigma2(F.mvLevelSigma2),
     mvInvLevelSigma2(F.mvInvLevelSigma2),
-
-    // TODO: these probably have to be removed too
     mnMinX(F.mnMinX),
     mnMinY(F.mnMinY),
     mnMaxX(F.mnMaxX),
     mnMaxY(F.mnMaxY),
+    // TODO: these probably have to be removed too
     mK(F.get_K()),
-
-    mvpMapPoints(F.mvpMapPoints),
+    m_id(s_next_id++),
+    mnFrameId(F.get_id()),
+    mBowVec(F.get_BoW()),
+    mFeatVec(F.get_BoW_features()),
+    mvpMapPoints(F.get_map_points()),
     mpKeyFrameDB(pKFDB),
     mpORBvocabulary(F.get_orb_vocabulary()),
-    mbFirstConnection(true),
     mpParent(nullptr),
+    mbFirstConnection(true),
     mbNotErase(false),
     mbToBeErased(false),
     mbBad(false),
     mpMap(pMap)
 {
-    m_id = s_next_id++;
-
     mGrid.resize(mnGridCols);
 
     for (int i = 0; i < mnGridCols; ++i)
@@ -159,16 +151,16 @@ void KeyFrame::UpdateBestCovisibles()
         [] (std::pair<std::size_t, KeyFrame*> const& p1,
             std::pair<std::size_t, KeyFrame*> const& p2) -> bool
         {
-            return p1.first != p2.first ? (p1.first < p2.first) : (p1.second->get_id() > p2.second->get_id());
+            return p1.first != p2.first ? (p1.first > p2.first) : (p1.second->get_id() < p2.second->get_id());
         });
 
     std::vector<KeyFrame*> vkf; vkf.reserve(vPairs.size());
     std::vector<std::size_t> vws; vws.reserve(vPairs.size());
 
-    for (auto it = vPairs.crbegin(), itEnd = vPairs.crend(); it != itEnd; ++it)
+    for (auto const& pair : vPairs)
     {
-        vkf.push_back(it->second);
-        vws.push_back(it->first);
+        vkf.push_back(pair.second);
+        vws.push_back(pair.first);
     }
 
     mvpOrderedConnectedKeyFrames = std::move(vkf);
@@ -279,7 +271,6 @@ void KeyFrame::UpdateConnections()
         }
     }
 
-    // This should not happen
     if (KFcounter.empty())
         return;
 
@@ -318,7 +309,7 @@ void KeyFrame::UpdateConnections()
         [] (std::pair<std::size_t, KeyFrame*> const& p1,
             std::pair<std::size_t, KeyFrame*> const& p2) -> bool
         {
-            return p1.first != p2.first ? (p1.first < p2.first) : (p1.second->get_id() > p2.second->get_id());
+            return p1.first != p2.first ? (p1.first > p2.first) : (p1.second->get_id() < p2.second->get_id());
         });
 
     // TODO: PAE: refactored but still crappy!
@@ -328,10 +319,10 @@ void KeyFrame::UpdateConnections()
     std::vector<std::size_t> vOrderedWeights;
     vOrderedWeights.reserve(vPairs.size());
 
-    for (auto it = vPairs.crbegin(), itEnd = vPairs.crend(); it != itEnd; ++it)
+    for (auto const& pair : vPairs)
     {
-        vpOrderedConnectedKeyFrames.push_back(it->second);
-        vOrderedWeights.push_back(it->first);
+        vpOrderedConnectedKeyFrames.push_back(pair.second);
+        vOrderedWeights.push_back(pair.first);
     }
 
     {
@@ -405,47 +396,39 @@ void KeyFrame::SetBadFlag()
         mConnectedKeyFrameWeights.clear();
         mvpOrderedConnectedKeyFrames.clear();
 
+        mbBad = true;
+
         // Update Spanning Tree
         std::unordered_set<KeyFrame*> sParentCandidates;
         sParentCandidates.insert(mpParent);
 
-        // Assign at each iteration one children with a parent (the pair with highest covisibility weight)
+        // Assign at each iteration one child with a parent
+        // (the pair with highest covisibility weight)
         // Include that children as new parent candidate for the rest
         while (!mspChildrens.empty())
         {
-            bool bContinue = false;
-
-            int max = -1;
+            int max = 0;
             KeyFrame* pC;
             KeyFrame* pP;
 
-            for (KeyFrame* pKF : mspChildrens)
+            for (KeyFrame* pChildKF : mspChildrens)
             {
-                if (pKF->isBad())
+                if (pChildKF->isBad())
                     continue;
 
-                // Check if a parent candidate is connected to the keyframe
-                std::vector<KeyFrame*> vpConnected = pKF->GetVectorCovisibleKeyFrames();
-                for (std::size_t i = 0, iend = vpConnected.size(); i < iend; ++i)
+                for (KeyFrame* pParentKF : sParentCandidates)
                 {
-                    for (KeyFrame* pcKF : sParentCandidates)
+                    int const w = pChildKF->GetWeight(pParentKF);
+                    if (w > max)
                     {
-                        if (vpConnected[i]->m_id != pcKF->m_id)
-                            continue;
-
-                        int const w = pKF->GetWeight(vpConnected[i]);
-                        if (w > max)
-                        {
-                            pC = pKF;
-                            pP = vpConnected[i];
-                            max = w;
-                            bContinue = true;
-                        }
+                        pC = pChildKF;
+                        pP = pParentKF;
+                        max = w;
                     }
                 }
             }
 
-            if (bContinue)
+            if (max == 0)
                 break;
 
             pC->ChangeParent(pP);
@@ -453,14 +436,20 @@ void KeyFrame::SetBadFlag()
             mspChildrens.erase(pC);
         }
 
-        // If a children has no covisibility links with any parent candidate, assign to the original parent of this KF
+        // if no children has no covisibility links with any parent
+        // candidate, assign to the original parent of this KF
+        // TODO: review this logic as it brings to a situation when parent has no covisibility with one of his children!
         for (KeyFrame* pKF : mspChildrens)
+        {
+            if (pKF->isBad())
+                continue;
+
             pKF->ChangeParent(mpParent);
+        }
 
         mpParent->EraseChild(this);
-        mTcp = m_Tcw * mpParent->GetPoseInverse();
 
-        mbBad = true;
+        mTcp = m_Tcw * mpParent->GetPoseInverse();
     }
 
     mpMap->EraseKeyFrame(this);
@@ -551,14 +540,13 @@ float KeyFrame::ComputeSceneMedianDepth(int q) const
     }
 
     std::vector<float> vDepths;
-    vDepths.reserve(m_kf_N);
+    vDepths.reserve(vpMapPoints.size());
 
     cv::Mat Rcw2 = Tcw.row(2).colRange(0, 3).t();
     float const zcw = Tcw.at<float>(2, 3);
 
-    for (std::size_t i = 0; i < m_kf_N; ++i)
+    for (MapPoint* pMP : vpMapPoints)
     {
-        MapPoint* pMP = mvpMapPoints[i];
         if (pMP == nullptr)
             continue;
 

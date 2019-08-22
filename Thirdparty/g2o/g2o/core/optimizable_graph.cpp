@@ -228,17 +228,18 @@ namespace g2o {
   }
 
 
-  OptimizableGraph::OptimizableGraph()
-  {
-    _nextEdgeId = 0; _edge_has_id = false;
+OptimizableGraph::OptimizableGraph()
+{
+    _nextEdgeId = 0;
+    _edge_has_id = false;
     _graphActions.resize(AT_NUM_ELEMENTS);
-  }
+}
 
-  OptimizableGraph::~OptimizableGraph()
-  {
+OptimizableGraph::~OptimizableGraph()
+{
     clear();
     clearParameters();
-  }
+}
 
   bool OptimizableGraph::addVertex(HyperGraph::Vertex* v, Data* userData)
   {

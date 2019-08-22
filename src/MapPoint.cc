@@ -212,13 +212,10 @@ void MapPoint::Replace(MapPoint* pMP)
 void MapPoint::ComputeDistinctiveDescriptors()
 {
     std::unordered_map<KeyFrame*, size_t> observations;
-
     {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
-
         if (mbBad)
             return;
-
         observations = mObservations;
     }
 
@@ -231,10 +228,8 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     for (auto const& pair : observations)
     {
-        KeyFrame* pKF = pair.first;
-
-        if (!pKF->isBad())
-            vDescriptors.emplace_back(pKF->mDescriptors.row((int)pair.second));
+        if (!pair.first->isBad())
+            vDescriptors.emplace_back(pair.first->mDescriptors.row((int)pair.second));
     }
 
     if (vDescriptors.empty())
@@ -307,10 +302,23 @@ void MapPoint::UpdateNormalAndDepth()
 
     cv::Mat normal = cv::Mat::zeros(3, 1, CV_32F);
 
+    // TODO: PAE: just to be sure we don't have non-determinizm here
+    std::vector<KeyFrame*> frames;
+    frames.reserve(observations.size());
     for (auto const& pair : observations)
+        frames.push_back(pair.first);
+    std::sort(frames.begin(), frames.end(),
+        [] (KeyFrame const* p1, KeyFrame const* p2) -> bool
+        {
+            return p1->get_id() < p2->get_id();
+        });
+
+    for (KeyFrame const* pKF : frames)
     {
-        cv::Mat Owi = pair.first->GetCameraCenter();
+        cv::Mat Owi = pKF->GetCameraCenter();
         cv::Mat normali = Pos - Owi;
+        // TODO: PAE: in fact this can be source of
+        // non-determinizm but we don't care for the moment
         normal += normali / cv::norm(normali);
     }
 

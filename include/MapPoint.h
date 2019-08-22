@@ -131,10 +131,10 @@ public:
 
     void ComputeDistinctiveDescriptors();
 
-    cv::Mat GetDescriptor() const
+    cv::Mat const GetDescriptor() const
     {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
-        return mDescriptor.clone();
+        return mDescriptor;
     }
 
     void UpdateNormalAndDepth();

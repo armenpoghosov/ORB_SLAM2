@@ -29,64 +29,30 @@
 #include <assert.h>
 #include <queue>
 
-namespace g2o {
+namespace g2o
+{
 
-  HyperGraph::Vertex::Vertex(int id) : _id(id)
-  {
-  }
+HyperGraph::Vertex* HyperGraph::vertex(int id)
+{
+    auto it = _vertices.find(id);
+    return it == _vertices.end() ? nullptr : it->second;
+}
 
-  HyperGraph::Vertex::~Vertex()
-  {
-  }
+HyperGraph::Vertex const* HyperGraph::vertex(int id) const
+{
+    auto it = _vertices.find(id);
+    return it == _vertices.end() ? nullptr : it->second;
+}
 
-  HyperGraph::Edge::Edge(int id) : _id(id)
-  {
-  }
 
-  HyperGraph::Edge::~Edge()
-  {
-  }
 
-  void HyperGraph::Edge::resize(size_t size)
-  {
-    _vertices.resize(size, 0);
-  }
 
-  void HyperGraph::Edge::setId(int id)
-  {
-    _id = id;
-  }
-
-  HyperGraph::Vertex* HyperGraph::vertex(int id)
-  {
-    VertexIDMap::iterator it=_vertices.find(id);
-    if (it==_vertices.end())
-      return 0;
-    return it->second;
-  }
-
-  const HyperGraph::Vertex* HyperGraph::vertex(int id) const
-  {
-    VertexIDMap::const_iterator it=_vertices.find(id);
-    if (it==_vertices.end())
-      return 0;
-    return it->second;
-  }
-
-  bool HyperGraph::addVertex(Vertex* v)
-  {
-    Vertex* vn=vertex(v->id());
-    if (vn)
-      return false;
-    _vertices.insert( std::make_pair(v->id(),v) );
-    return true;
-  }
-
-  /**
-   * changes the id of a vertex already in the graph, and updates the bookkeeping
-   @ returns false if the vertex is not in the graph;
-  */
-  bool HyperGraph::changeId(Vertex* v, int newId){
+/**
+* changes the id of a vertex already in the graph, and updates the bookkeeping
+@ returns false if the vertex is not in the graph;
+*/
+bool HyperGraph::changeId(Vertex* v, int newId)
+{
     Vertex* v2 = vertex(v->id());
     if (v != v2)
       return false;
@@ -94,10 +60,10 @@ namespace g2o {
     v->setId(newId);
     _vertices.insert(std::make_pair(v->id(), v));
     return true;
-  }
+}
 
-  bool HyperGraph::addEdge(Edge* e)
-  {
+bool HyperGraph::addEdge(Edge* e)
+{
     std::pair<EdgeSet::iterator, bool> result = _edges.insert(e);
     if (! result.second)
       return false;
@@ -144,23 +110,22 @@ namespace g2o {
     return true;
   }
 
-  HyperGraph::HyperGraph()
-  {
-  }
-
-  void HyperGraph::clear()
-  {
-    for (VertexIDMap::iterator it=_vertices.begin(); it!=_vertices.end(); ++it)
-      delete (it->second);
-    for (EdgeSet::iterator it=_edges.begin(); it!=_edges.end(); ++it)
-      delete (*it);
-    _vertices.clear();
-    _edges.clear();
-  }
-
-  HyperGraph::~HyperGraph()
-  {
+HyperGraph::~HyperGraph()
+{
     clear();
-  }
+}
+
+void HyperGraph::clear()
+{
+    for (auto const& pair : _vertices)
+        delete pair.second;
+
+    _vertices.clear();
+
+    for (Edge* e : _edges)
+        delete e;
+
+    _edges.clear();
+}
 
 } // end namespace

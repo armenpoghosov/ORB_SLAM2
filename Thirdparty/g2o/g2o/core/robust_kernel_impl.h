@@ -29,82 +29,114 @@
 
 #include "robust_kernel.h"
 
-namespace g2o {
+namespace g2o
+{
 
-  /**
-   * \brief scale a robust kernel to another delta (window size)
-   *
-   * Scales a robust kernel to another window size. Useful, in case if
-   * one implements a kernel which only is designed for a fixed window
-   * size.
-   */
-  class  RobustKernelScaleDelta : public RobustKernel
-  {
-    public:
-      /**
-       * construct the scaled kernel ontop of another kernel which might be shared accross
-       * several scaled kernels
-       */
-      explicit RobustKernelScaleDelta(const RobustKernelPtr& kernel, double delta = 1.);
-      explicit RobustKernelScaleDelta(double delta = 1.);
+/**
+* \brief scale a robust kernel to another delta (window size)
+*
+* Scales a robust kernel to another window size. Useful, in case if
+* one implements a kernel which only is designed for a fixed window
+* size.
+*/
+class  RobustKernelScaleDelta : public RobustKernel
+{
+public:
 
-      //! return the underlying kernel
-      const RobustKernelPtr kernel() const { return _kernel;}
-      //! use another kernel for the underlying operation
-      void setKernel(const RobustKernelPtr& ptr);
+    /**
+    * construct the scaled kernel ontop of another kernel which might be shared accross
+    * several scaled kernels
+    */
+    explicit RobustKernelScaleDelta(const RobustKernelPtr& kernel, double delta)
+        :
+        RobustKernel(delta),
+        _kernel(kernel)
+    {}
 
-      void robustify(double error, Eigen::Vector3d& rho) const;
+    explicit RobustKernelScaleDelta(double delta)
+        :
+        RobustKernel(delta)
+    {}
 
-    protected:
-      RobustKernelPtr _kernel;
-  };
+    //! return the underlying kernel
+    const RobustKernelPtr kernel() const
+        { return _kernel;}
+    //! use another kernel for the underlying operation
+    void setKernel(RobustKernelPtr const& ptr)
+        { _kernel = ptr; }
 
-  /**
-   * \brief Huber Cost Function
-   *
-   * Loss function as described by Huber
-   * See http://en.wikipedia.org/wiki/Huber_loss_function
-   *
-   * If e^(1/2) < d
-   * rho(e) = e
-   *
-   * else
-   *
-   *               1/2    2
-   * rho(e) = 2 d e    - d
-   */
-  class  RobustKernelHuber : public RobustKernel
-  {
-    public:
-      virtual void setDelta(double delta);
-      virtual void setDeltaSqr(const double &delta, const double &deltaSqr);
-      virtual void robustify(double e2, Eigen::Vector3d& rho) const;
+    void robustify(double error, Eigen::Vector3d& rho) const;
 
-    private:
-      float dsqr;
-  };
+protected:
 
-   /**
-   * \brief Tukey Cost Function
-   *
-   *
-   * If e^(1/2) < d
-   * rho(e) = delta2(1-(1-e/delta2)^3)
-   *
-   * else
-   *              
-   * rho(e) = delta2
-   */
-  class  RobustKernelTukey : public RobustKernel
-  {
-    public:
+    RobustKernelPtr _kernel;
+};
 
-      virtual void setDeltaSqr(const double &deltaSqr, const double &inv);
-      virtual void robustify(double e2, Eigen::Vector3d& rho) const;
-    private:
-      float _deltaSqr;
-      float _invDeltaSqr;
-  };
+/**
+* \brief Huber Cost Function
+*
+* Loss function as described by Huber
+* See http://en.wikipedia.org/wiki/Huber_loss_function
+*
+* If e^(1/2) < d
+* rho(e) = e
+*
+* else
+*
+*               1/2    2
+* rho(e) = 2 d e    - d
+*/
+class  RobustKernelHuber : public RobustKernel
+{
+public:
+
+    void setDelta(double delta)
+    {
+        RobustKernel::setDelta(delta);
+        dsqr = delta * delta;
+    }
+
+    virtual void setDeltaSqr(double delta, double deltaSqr)
+    {
+        RobustKernel::setDelta(delta);
+        dsqr = deltaSqr;
+    }
+
+    virtual void robustify(double e2, Eigen::Vector3d& rho) const;
+
+private:
+
+    double  dsqr;
+};
+
+/**
+* \brief Tukey Cost Function
+*
+*
+* If e^(1/2) < d
+* rho(e) = delta2(1-(1-e/delta2)^3)
+*
+* else
+*              
+* rho(e) = delta2
+*/
+class  RobustKernelTukey : public RobustKernel
+{
+public:
+
+    virtual void setDeltaSqr(double deltaSqr, double inv)
+    {
+        _deltaSqr = deltaSqr;
+        _invDeltaSqr = inv;
+    }
+
+    virtual void robustify(double e2, Eigen::Vector3d& rho) const;
+
+private:
+
+    double  _deltaSqr;
+    double  _invDeltaSqr;
+};
 
 
   /**

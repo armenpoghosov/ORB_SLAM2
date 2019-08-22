@@ -257,7 +257,7 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
     std::vector<g2o::EdgeSE3ProjectXYZOnlyPose*> vpEdgesMono;
     vpEdgesMono.reserve(N);
 
-    std::vector<size_t> vnIndexEdgeMono;
+    std::vector<std::size_t> vnIndexEdgeMono;
     vnIndexEdgeMono.reserve(N);
 
     std::vector<g2o::EdgeStereoSE3ProjectXYZOnlyPose*> vpEdgesStereo;
@@ -295,6 +295,7 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
                 obs << kpUn.pt.x, kpUn.pt.y;
 
                 g2o::EdgeSE3ProjectXYZOnlyPose* e = new g2o::EdgeSE3ProjectXYZOnlyPose();
+                e->setId((int)pMP->get_id());
                 e->setVertex(0, optimizer.vertex(0));
                 e->setMeasurement(obs);
 
@@ -327,6 +328,7 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
                 obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
 
                 g2o::EdgeStereoSE3ProjectXYZOnlyPose* e = new g2o::EdgeStereoSE3ProjectXYZOnlyPose();
+                e->setId((int)pMP->get_id());
                 e->setVertex(0, optimizer.vertex(0));
                 e->setMeasurement(obs);
 
@@ -361,9 +363,9 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
     // We perform 4 optimizations, after each optimization we classify observation
     // as inlier/outlier, At the next optimization, outliers are not included, but
     // at the end they can be classified as inliers again.
-    static float const chi2Mono[4] = { 5.991f, 5.991f, 5.991f, 5.991f };
+    static float const chi2Mono[4] = { 6.f, 5.f, 4.f, 3.5f };
     static float const chi2Stereo[4] = { 7.815f, 7.815f, 7.815f, 7.815f };
-    static int const its[4] = { 10, 10, 10, 10 };
+    static int const its[4] = { 10, 20, 30, 40 };
 
     std::size_t nBad = 0;
 
@@ -416,9 +418,7 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
     }
 
     // Recover optimized pose and return number of inliers
-    g2o::VertexSE3Expmap* vSE3_recov = (g2o::VertexSE3Expmap*)optimizer.vertex(0);
-    g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
-    pFrame->SetPose(Converter::toCvMat(SE3quat_recov));
+    pFrame->SetPose(Converter::toCvMat(vSE3->estimate()));
 
     return nInitialCorrespondences - nBad;
 }
