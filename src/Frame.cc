@@ -239,6 +239,11 @@ Frame::Frame(cv::Mat const& imGray, double timeStamp, ORBextractor* extractor,
 
 void Frame::commit_replaced_map_points()
 {
+    // PAE: TODO: this function seems to produce duplicates in matched points if they are replaced by fuse
+    std::unordered_set<MapPoint*> set;
+    set.reserve(mvpMapPoints.size());
+    set.insert(mvpMapPoints.begin(), mvpMapPoints.end());
+
     for (std::size_t i = 0; i < m_frame_N; ++i)
     {
         MapPoint*& rpMP = mvpMapPoints[i];
@@ -247,8 +252,9 @@ void Frame::commit_replaced_map_points()
             continue;
 
         MapPoint* pRep = rpMP->GetReplaced();
+
         if (pRep != nullptr)
-            rpMP = pRep;
+            rpMP = set.insert(pRep).second ? pRep : nullptr;
     }
 }
 
@@ -342,8 +348,9 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit) const
     // Check distance is in the scale invariance region of the MapPoint
     float const maxDistance = pMP->GetMaxDistanceInvariance();
     float const minDistance = pMP->GetMinDistanceInvariance();
-    cv::Mat const PO = P-mOw;
-    float const dist = cv::norm(PO);
+
+    cv::Mat const PO = P - mOw;
+    float const dist = (float)cv::norm(PO);
 
     if (dist < minDistance || dist > maxDistance)
         return false;
@@ -356,15 +363,12 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit) const
     if (viewCos < viewingCosLimit)
         return false;
 
-    // Predict scale in the image
-    int const nPredictedLevel = pMP->PredictScale(dist,this);
-
     // Data used by the tracking
     pMP->mbTrackInView = true;
     pMP->mTrackProjX = u;
     pMP->mTrackProjXR = u - mbf * invz;
     pMP->mTrackProjY = v;
-    pMP->mnTrackScaleLevel= nPredictedLevel;
+    pMP->mnTrackScaleLevel = pMP->PredictScale(dist, this);
     pMP->mTrackViewCos = viewCos;
 
     return true;
@@ -397,9 +401,6 @@ std::vector<size_t> Frame::GetFeaturesInArea(float x, float y, float r, int minL
         for (int iy = nMinCellY; iy <= nMaxCellY; ++iy)
         {
             std::vector<std::size_t> const& vCell = mGrid[ix][iy];
-
-            if (vCell.empty())
-                continue;
 
             for (size_t const key_index : vCell)
             {

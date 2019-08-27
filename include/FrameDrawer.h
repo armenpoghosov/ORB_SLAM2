@@ -24,7 +24,7 @@
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
-#include<mutex>
+#include <mutex>
 
 namespace ORB_SLAM2
 {
@@ -62,7 +62,7 @@ protected:
     std::vector<int>            mvIniMatches;
     int                         mState;
     Map*                        mpMap;
-    std::mutex                  mMutex;
+    std::mutex                  m_mutex;
 };
 
 } //namespace ORB_SLAM

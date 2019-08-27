@@ -264,7 +264,7 @@ void KeyFrame::UpdateConnections()
         std::unordered_map<KeyFrame*, size_t> const& observations = pMP->GetObservations();
         for (auto const& pair : observations)
         {
-            if (pair.first->m_id == m_id)
+            if (pair.first == this)
                 continue;
 
             ++KFcounter[pair.first];
@@ -405,13 +405,13 @@ void KeyFrame::SetBadFlag()
         // Assign at each iteration one child with a parent
         // (the pair with highest covisibility weight)
         // Include that children as new parent candidate for the rest
-        while (!mspChildrens.empty())
+        while (!m_children.empty())
         {
             int max = 0;
             KeyFrame* pC;
             KeyFrame* pP;
 
-            for (KeyFrame* pChildKF : mspChildrens)
+            for (KeyFrame* pChildKF : m_children)
             {
                 if (pChildKF->isBad())
                     continue;
@@ -419,7 +419,7 @@ void KeyFrame::SetBadFlag()
                 for (KeyFrame* pParentKF : sParentCandidates)
                 {
                     int const w = pChildKF->GetWeight(pParentKF);
-                    if (w > max)
+                    if (w > max || (w == max && pChildKF->get_id() < pC->get_id()))
                     {
                         pC = pChildKF;
                         pP = pParentKF;
@@ -433,13 +433,13 @@ void KeyFrame::SetBadFlag()
 
             pC->ChangeParent(pP);
             sParentCandidates.insert(pC);
-            mspChildrens.erase(pC);
+            m_children.erase(pC);
         }
 
         // if no children has no covisibility links with any parent
         // candidate, assign to the original parent of this KF
         // TODO: review this logic as it brings to a situation when parent has no covisibility with one of his children!
-        for (KeyFrame* pKF : mspChildrens)
+        for (KeyFrame* pKF : m_children)
         {
             if (pKF->isBad())
                 continue;

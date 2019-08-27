@@ -60,6 +60,8 @@ public:
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
         KeyFrameDatabase* pKFDB, const string &strSettingPath, int sensor);
 
+    ~Tracking();
+
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
     void GrabImageStereo(cv::Mat const& imRectLeft, cv::Mat const& imRectRight, double timestamp);
     void GrabImageRGBD(cv::Mat const& imRGB, cv::Mat const& imD, double timestamp);
@@ -254,6 +256,10 @@ protected:
 
     // TODO: PAE: need to syncronoze it
     std::future<void>           m_future;
+
+
+    std::ofstream               m_ofs;
+
 };
 
 } //namespace ORB_SLAM

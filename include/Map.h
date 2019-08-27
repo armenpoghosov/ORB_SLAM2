@@ -42,28 +42,26 @@ public:
         mnBigChangeIdx(0)
     {}
 
-    void AddKeyFrame(KeyFrame *pKF);
+    bool AddKeyFrame(KeyFrame *pKF);
 
-    void AddMapPoint(MapPoint *pMP)
+    bool AddMapPoint(MapPoint *pMP)
     {
         std::unique_lock<std::mutex> lock(mMutexMap);
-        mspMapPoints.insert(pMP);
+        return mspMapPoints.insert(pMP).second;
     }
 
-    void EraseMapPoint(MapPoint *pMP)
+    bool EraseMapPoint(MapPoint *pMP)
     {
         std::unique_lock<std::mutex> lock(mMutexMap);
-        mspMapPoints.erase(pMP);
-        // TODO: This only erase the pointer.
-        // Delete the MapPoint
+        // TODO: This only erases the pointer.
+        return mspMapPoints.erase(pMP) != 0;
     }
 
-    void EraseKeyFrame(KeyFrame *pKF)
+    bool EraseKeyFrame(KeyFrame *pKF)
     {
         std::unique_lock<std::mutex> lock(mMutexMap);
-        mspKeyFrames.erase(pKF);
-        // TODO: This only erase the pointer.
-        // Delete the MapPoint
+        // TODO: This only erases the pointer.
+        return mspKeyFrames.erase(pKF) != 0;
     }
 
     // TODO: PAE: what does this thing do? ... it does not validate anything right?
@@ -80,12 +78,7 @@ public:
         { return mnBigChangeIdx; }
 
     std::vector<KeyFrame*> GetAllKeyFrames() const;
-
-    std::vector<MapPoint*> GetAllMapPoints() const
-    {
-        std::unique_lock<std::mutex> lock(mMutexMap);
-        return std::vector<MapPoint*>(mspMapPoints.begin(), mspMapPoints.end());
-    }
+    std::vector<MapPoint*> GetAllMapPoints() const;
 
     std::unordered_set<MapPoint*> GetAllMapPointsSet() const
     {

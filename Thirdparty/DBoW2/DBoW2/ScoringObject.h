@@ -38,12 +38,13 @@ public:
     virtual bool mustNormalize(LNorm &norm) const = 0;
 
     /// Log of epsilon
-    static const double LOG_EPS; 
+    static double const LOG_EPS;
+
     // If you change the type of WordValue, make sure you change also the
     // epsilon value (this is needed by the KL method)
 
-  virtual ~GeneralScoring() {} //!< Required for virtual base classes
-	
+    virtual ~GeneralScoring()  //!< Required for virtual base classes
+    {}
 };
 
 /** 
@@ -52,25 +53,19 @@ public:
  * @param MUSTNORMALIZE if vectors must be normalized to compute the score
  * @param NORM type of norm to use when MUSTNORMALIZE
  */
-#define __SCORING_CLASS(NAME, MUSTNORMALIZE, NORM) \
-  NAME: public GeneralScoring \
-  { public: \
-    /** \
-     * Computes score between two vectors \
-     * @param v \
-     * @param w \
-     * @return score between v and w \
-     */ \
-    virtual double score(const BowVector &v, const BowVector &w) const; \
-    \
-    /** \
-     * Says if a vector must be normalized according to the scoring function \
-     * @param norm (out) if true, norm to use
-     * @return true iff vectors must be normalized \
-     */ \
-    virtual inline bool mustNormalize(LNorm &norm) const  \
-      { norm = NORM; return MUSTNORMALIZE; } \
-  }
+#define __SCORING_CLASS(NAME, MUSTNORMALIZE, NORM)                      \
+NAME: public GeneralScoring                                             \
+{                                                                       \
+public:                                                                 \
+                                                                        \
+    virtual double score(BowVector const& v, BowVector const& w) const; \
+                                                                        \
+    virtual bool mustNormalize(LNorm& norm) const                       \
+    {                                                                   \
+        norm = NORM;                                                    \
+        return MUSTNORMALIZE;                                           \
+    }                                                                   \
+}
   
 /// L1 Scoring object
 class __SCORING_CLASS(L1Scoring, true, L1);

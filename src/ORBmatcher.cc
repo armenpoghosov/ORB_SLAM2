@@ -45,7 +45,7 @@ ORBmatcher::ORBmatcher(float nnratio, bool check_orientation)
 {}
 
 std::size_t ORBmatcher::SearchByProjection(Frame& F,
-    std::unordered_set<MapPoint*> const& vpMapPoints, float th)
+    std::unordered_set<MapPoint*> const& vpMapPoints, float th, std::ofstream* ofs)
 {
     // -----------------------------------------------------------------------------
     // TODO: PAE: this is just to ensure we avoid randomization
@@ -71,8 +71,20 @@ std::size_t ORBmatcher::SearchByProjection(Frame& F,
 
         int const nPredictedLevel = pMP->mnTrackScaleLevel;
 
-        std::vector<size_t> const& vIndices = F.GetFeaturesInArea(pMP->mTrackProjX, pMP->mTrackProjY,
+        std::vector<std::size_t> const& vIndices = F.GetFeaturesInArea(pMP->mTrackProjX, pMP->mTrackProjY,
             r * F.mvScaleFactors[nPredictedLevel], nPredictedLevel - 1, nPredictedLevel);
+
+        if (F.get_id() == 221 && pMP->get_id() == 1368 && ofs != nullptr)
+        {
+            (*ofs) << "--------------------------------------------------" << std::endl;
+            (*ofs) << pMP->mTrackProjX << ',' << pMP->mTrackProjY << std::endl;
+            (*ofs) << pMP->GetMinDistanceInvariance() << ',' << pMP->GetMaxDistanceInvariance() << std::endl;
+            (*ofs) << r * F.mvScaleFactors[nPredictedLevel] << ',' << nPredictedLevel - 1 << ',' << nPredictedLevel << std::endl;
+            (*ofs) << "indices" << std::endl;
+            for (std::size_t index : vIndices)
+                (*ofs) << index << '|';
+            (*ofs) << std::endl << "--------------------------------------------------" << std::endl;
+        }
 
         if (vIndices.empty())
             continue;
@@ -827,7 +839,7 @@ std::size_t ORBmatcher::Fuse(KeyFrame* pKF, std::unordered_set<MapPoint*> const&
     map_points_vector.reserve(map_points.size());
     map_points_vector.insert(map_points_vector.end(), map_points.begin(), map_points.end());
     std::sort(map_points_vector.begin(), map_points_vector.end(),
-        [](MapPoint const* p1, MapPoint const* p2)->bool
+        [] (MapPoint const* p1, MapPoint const* p2)->bool
         {
             return p1->get_id() < p2->get_id();
         });
@@ -924,7 +936,7 @@ std::size_t ORBmatcher::Fuse(KeyFrame* pKF, std::unordered_set<MapPoint*> const&
 
             cv::Mat const& dKF = pKF->mDescriptors.row((int)idx);
 
-            int const dist = DescriptorDistance(dMP,dKF);
+            int const dist = DescriptorDistance(dMP, dKF);
             if (dist < bestDist)
             {
                 bestDist = dist;
@@ -1336,7 +1348,7 @@ std::size_t ORBmatcher::SearchByProjection(Frame& CF, Frame const& LF, float th,
     {
         MapPoint* pMP = LF.mvpMapPoints[i];
 
-        if (pMP == nullptr || LF.mvbOutlier[i])
+        if (pMP == nullptr || LF.mvbOutlier[i] || pMP->isBad())
             continue;
 
         cv::Mat x3Dw = pMP->GetWorldPos();

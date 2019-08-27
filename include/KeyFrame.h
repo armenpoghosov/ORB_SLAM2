@@ -104,24 +104,24 @@ public:
         return mvpOrderedConnectedKeyFrames;
     }
 
-    int GetWeight(KeyFrame* pKF) const
+    std::size_t GetWeight(KeyFrame* pKF) const
     {
         std::unique_lock<std::mutex> lock(mMutexConnections);
         auto it = mConnectedKeyFrameWeights.find(pKF);
-        return it != mConnectedKeyFrameWeights.end() ? (int)it->second : 0;
+        return it != mConnectedKeyFrameWeights.end() ? it->second : 0;
     }
 
     // Spanning tree functions
     void AddChild(KeyFrame* pKF)
     {
         std::unique_lock<std::mutex> lockCon(mMutexConnections);
-        mspChildrens.insert(pKF);
+        m_children.insert(pKF);
     }
 
     void EraseChild(KeyFrame* pKF)
     {
         std::unique_lock<std::mutex> lockCon(mMutexConnections);
-        mspChildrens.erase(pKF);
+        m_children.erase(pKF);
     }
 
     void ChangeParent(KeyFrame* pKF);
@@ -129,7 +129,7 @@ public:
     std::unordered_set<KeyFrame*> GetChilds() const
     {
         std::unique_lock<std::mutex> lockCon(mMutexConnections);
-        return mspChildrens;
+        return m_children;
     }
 
     KeyFrame* GetParent() const
@@ -141,7 +141,7 @@ public:
     bool hasChild(KeyFrame* pKF) const
     {
         std::unique_lock<std::mutex> lock(mMutexConnections);
-        return mspChildrens.count(pKF) != 0;
+        return m_children.count(pKF) != 0;
     }
 
     // Loop Edges
@@ -342,7 +342,7 @@ protected:
 
     // Spanning Tree and Loop Edges
     KeyFrame*                       mpParent;
-    std::unordered_set<KeyFrame*>   mspChildrens;
+    std::unordered_set<KeyFrame*>   m_children;
     std::unordered_set<KeyFrame*>   mspLoopEdges;
     bool                            mbFirstConnection;
 

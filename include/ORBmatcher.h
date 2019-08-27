@@ -54,7 +54,7 @@ public:
     // Search matches between Frame keypoints and projected MapPoints. Returns number of matches
     // Used to track the local map (Tracking)
     std::size_t SearchByProjection(Frame& F,
-        std::unordered_set<MapPoint*> const& vpMapPoints, float th = 3.f);
+        std::unordered_set<MapPoint*> const& vpMapPoints, float th = 3.f, std::ofstream* ofs = nullptr);
 
     // Project MapPoints tracked in last frame into the current frame and search matches.
     // Used to track from previous frame (Tracking)

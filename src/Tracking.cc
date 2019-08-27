@@ -150,6 +150,13 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         mDepthMapFactor = fSettings["DepthMapFactor"];
         mDepthMapFactor = std::fabs(mDepthMapFactor) < 1e-5f ? 1.f : (1.f / mDepthMapFactor);
     }
+
+    m_ofs.open("C:\\Users\\ArmenPoghosovSystemA\\Documents\\Work\\Learning\\ORB_SLAM2\\tracking_dump.txt", ofstream::out | ofstream::trunc);
+}
+
+Tracking::~Tracking()
+{
+    m_ofs.close();
 }
 
 void Tracking::GrabImageStereo(cv::Mat const& imRectLeft, cv::Mat const& imRectRight, double timestamp)
@@ -824,7 +831,139 @@ bool Tracking::TrackLocalMap()
 
     SearchLocalPoints();
 
-    // Optimize Pose
+    if (mLastFrame.get_id() == 600)
+    {
+        m_ofs << "--------------------------------------------------------------------------" << std::endl;
+        m_ofs << "LocalMap points" << std::endl;
+
+        std::vector<MapPoint*> lmp;
+        lmp.reserve(mvpLocalMapPoints.size());
+        lmp.insert(lmp.end(), mvpLocalMapPoints.begin(), mvpLocalMapPoints.end());
+        std::sort(lmp.begin(), lmp.end(),
+            [] (MapPoint const* p1, MapPoint const* p2) -> bool
+            {
+                return p1->get_id() < p2->get_id();
+            });
+
+        for (MapPoint* pMP : lmp)
+        {
+            if (pMP == nullptr)
+            {
+                m_ofs << "nullptr" << std::endl;
+                continue;
+            }
+
+            m_ofs << pMP->get_id() << ',' << pMP->isBad() << ',' << pMP->mnLastFrameSeen << std::endl;
+
+            uint32_t const* const ddata = pMP->GetDescriptor().ptr<uint32_t>();
+            m_ofs << ddata[0] << '|' << ddata[1] << '|' << ddata[2] << '|' << ddata[3] << '|' <<
+                ddata[4] << '|' << ddata[5] << '|' << ddata[6] << '|' << ddata[7] << std::endl;
+
+            m_ofs << pMP->GetWorldPos() << std::endl;
+        }
+    }
+
+    if (mLastFrame.get_id() == 600)
+    {
+        m_ofs << "--------------------------------------------------------------------------" << std::endl;
+        m_ofs << "Frame Id: " << mLastFrame.get_id() << std::endl;
+        m_ofs << "KeyPoints: -----------------------------" << std::endl;
+
+        for (cv::KeyPoint const& kp : mLastFrame.get_key_points())
+        {
+            m_ofs << kp.pt.x << ',' << kp.pt.y << ',' << kp.angle << ',' <<
+                kp.response << ',' << kp.octave << ',' << kp.size << std::endl;
+        }
+
+        m_ofs << "MapPoints: -----------------------------" << std::endl;
+
+        for (std::size_t i = 0; i < mLastFrame.get_frame_N(); ++i)
+        {
+            MapPoint*& rpMP = mLastFrame.mvpMapPoints[i];
+
+            if (rpMP == nullptr)
+            {
+                m_ofs << "nullptr" << std::endl;
+                continue;
+            }
+
+            m_ofs << mLastFrame.mvbOutlier[i] << ',' << rpMP->isBad() << ',' << std::endl;
+
+            uint32_t const* const ddata = mLastFrame.get_descriptor(i).ptr<uint32_t>();
+            m_ofs << ddata[0] << '|' << ddata[1] << '|' << ddata[2] << '|' << ddata[3] << '|' <<
+                ddata[4] << '|' << ddata[5] << '|' << ddata[6] << '|' << ddata[7] << std::endl;
+
+            m_ofs << rpMP->GetWorldPos() << std::endl;
+        }
+
+        m_ofs << "--------------------------------------------------------------------------" << std::endl;
+        m_ofs << "Frame Id: " << mCurrentFrame.get_id() << std::endl;
+        m_ofs << "KeyPoints: -----------------------------" << std::endl;
+
+        for (cv::KeyPoint const& kp : mCurrentFrame.get_key_points())
+        {
+            m_ofs << kp.pt.x << ',' << kp.pt.y << ',' << kp.angle << ',' <<
+                kp.response << ',' << kp.octave << ',' << kp.size << std::endl;
+        }
+
+        m_ofs << "--------------------------------------------------" << std::endl;
+        for (int i = 0; i < Frame::FRAME_GRID_COLS; ++i)
+            for (int j = 0; j < Frame::FRAME_GRID_ROWS; ++j)
+            {
+                for (std::size_t index : mCurrentFrame.mGrid[i][j])
+                {
+                    m_ofs << index << '|';
+                }
+                m_ofs << std::endl;
+            }
+        m_ofs << std::endl << "--------------------------------------------------" << std::endl;
+
+        m_ofs << "MapPoints: -----------------------------" << std::endl;
+
+        for (std::size_t i = 0; i < mCurrentFrame.get_frame_N(); ++i)
+        {
+            MapPoint*& rpMP = mCurrentFrame.mvpMapPoints[i];
+
+            if (rpMP == nullptr)
+            {
+                m_ofs << "nullptr" << std::endl;
+                continue;
+            }
+
+            m_ofs << mCurrentFrame.mvbOutlier[i] << ',' << rpMP->get_id() << ',' << rpMP->isBad() << ',' << std::endl;
+
+            uint32_t const* const ddata = mCurrentFrame.get_descriptor(i).ptr<uint32_t>();
+            m_ofs << ddata[0] << '|' << ddata[1] << '|' << ddata[2] << '|' << ddata[3] << '|' <<
+                ddata[4] << '|' << ddata[5] << '|' << ddata[6] << '|' << ddata[7] << std::endl;
+
+            m_ofs << rpMP->GetWorldPos() << std::endl;
+        }
+
+        /*
+        m_ofs << "--------------------------------------------------------------------------" << std::endl;
+        m_ofs << "KeyFrame Id: " << pKF->get_id() << std::endl;
+        m_ofs << "MapPoints: -----------------------------" << std::endl;
+
+        std::vector<MapPoint*> const& map_points = pKF->GetMapPointMatches();
+        for (MapPoint* pMP : map_points)
+        {
+            if (pMP == nullptr)
+            {
+                m_ofs << "nullptr" << std::endl;
+                continue;
+            }
+
+            m_ofs << pMP->isBad() << std::endl;
+            uint32_t const* const ddata = pMP->GetDescriptor().ptr<uint32_t>();
+            m_ofs << ddata[0] << '|' << ddata[1] << '|' << ddata[2] << '|' << ddata[3] << '|' <<
+                ddata[4] << '|' << ddata[5] << '|' << ddata[6] << '|' << ddata[7] << std::endl;
+            m_ofs << pMP->GetWorldPos() << std::endl;
+        }*/
+
+        m_ofs.close();
+        abort();
+    }
+
     Optimizer::PoseOptimization(&mCurrentFrame, 3);
 
     mnMatchesInliers = 0;
@@ -1008,6 +1147,8 @@ void Tracking::SearchLocalPoints()
     // Project points in frame and check its visibility
     for (MapPoint* pMP : mvpLocalMapPoints)
     {
+        pMP->mbTrackInView = false;
+
         if (pMP->mnLastFrameSeen == mCurrentFrame.get_id() || pMP->isBad())
             continue;
 
@@ -1026,7 +1167,7 @@ void Tracking::SearchLocalPoints()
         // If the camera has been relocalised recently, perform a coarser search
         float const th = (mCurrentFrame.get_id() < mnLastRelocFrameId + 2) ?
             5.f : (mSensor == System::RGBD ? 1.f : 3.f);
-        matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th);
+        matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th, &m_ofs);
     }
 }
 
@@ -1060,6 +1201,8 @@ void Tracking::UpdateLocalPoints()
 
 void Tracking::UpdateLocalKeyFrames()
 {
+    mvpLocalKeyFrames.clear();
+
     // Each map point vote for the keyframes in which it has been observed
     std::unordered_map<KeyFrame*, std::size_t> keyframeCounter;
 
@@ -1102,7 +1245,8 @@ void Tracking::UpdateLocalKeyFrames()
         if (pKF->isBad())
             continue;
 
-        if (pair.second > max)
+        if (pair.second > max ||
+            (pair.second == max && pKF->get_id() < pKFmax->get_id()))
         {
             max = pair.second;
             pKFmax = pKF;
@@ -1155,7 +1299,6 @@ void Tracking::UpdateLocalKeyFrames()
         head_next = nullptr;
     }
 
-    mvpLocalKeyFrames.clear();
     mvpLocalKeyFrames.reserve(map.size());
 
     for (auto const& pair : map)
@@ -1467,10 +1610,6 @@ void Tracking::MapPointCulling()
 
 void Tracking::CreateNewMapPoints()
 {
-    // Retrieve neighbor keyframes in covisibility graph
-    std::vector<KeyFrame*> const& vpNeighKFs =
-        mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(mSensor == System::MONOCULAR ? 20 : 10);
-
     ORBmatcher matcher(0.6f, false);
 
     cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
@@ -1494,27 +1633,22 @@ void Tracking::CreateNewMapPoints()
 
     float const ratioFactor = 1.5f * mpCurrentKeyFrame->mfScaleFactor;
 
+    // Retrieve neighbor keyframes in covisibility graph
+    std::vector<KeyFrame*> const& vpNeighKFs =
+        mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(mSensor == System::MONOCULAR ? 20 : 10);
+
     // Search matches with epipolar restriction and triangulate
     for (KeyFrame* pKF2 : vpNeighKFs)
     {
         // Check first that baseline is not too short
         cv::Mat Ow2 = pKF2->GetCameraCenter();
 
-        float const baseline_length = (float)cv::norm(Ow2 - Ow1);
+        double const baseline_length = cv::norm(Ow2 - Ow1);
 
-        if (mSensor != System::MONOCULAR)
-        {
-            if (baseline_length < pKF2->mb)
-                continue;
-        }
-        else
-        {
-            float const medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-            float const ratioBaselineDepth = baseline_length / medianDepthKF2;
-
-            if (ratioBaselineDepth < 0.01)
-                continue;
-        }
+        if ((mSensor != System::MONOCULAR) ?
+            (baseline_length < pKF2->mb) :
+            (baseline_length / pKF2->ComputeSceneMedianDepth(2) < 0.01))
+            continue;
 
         // Compute Fundamental Matrix
         cv::Mat F12 = ComputeF12(mpCurrentKeyFrame, pKF2);

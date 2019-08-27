@@ -103,15 +103,15 @@ void MapPoint::SetWorldPos(cv::Mat const& Pos)
     Pos.copyTo(mWorldPos);
 }
 
-bool MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
+bool MapPoint::AddObservation(KeyFrame* pKF, std::size_t index)
 {
     std::unique_lock<std::mutex> lock(mMutexFeatures);
 
-    auto const& pair = mObservations.emplace(pKF, idx);
+    auto const& pair = mObservations.emplace(pKF, index);
 
     if (pair.second)
     {
-        if (pKF->mvuRight[idx] >= 0.f)
+        if (pKF->mvuRight[index] >= 0.f)
             m_observe_count += 2;
         else
             ++m_observe_count;
@@ -137,7 +137,16 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
             mObservations.erase(it);
 
             if (mpRefKF == pKF)
-                mpRefKF = mObservations.begin()->first;
+            {
+                auto it = std::min_element(mObservations.begin(), mObservations.end(),
+                    [] (std::pair<KeyFrame* const, std::size_t> const& p1,
+                        std::pair<KeyFrame* const, std::size_t> const& p2) -> bool
+                    {
+                        return p1.first->get_id() < p2.first->get_id();
+                    });
+
+                mpRefKF = it != mObservations.end() ? it->first : nullptr;
+            }
 
             // If only 2 observations or less, discard point
             if (m_observe_count <= 2)
@@ -211,7 +220,7 @@ void MapPoint::Replace(MapPoint* pMP)
 
 void MapPoint::ComputeDistinctiveDescriptors()
 {
-    std::unordered_map<KeyFrame*, size_t> observations;
+    std::unordered_map<KeyFrame*, std::size_t> observations;
     {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
         if (mbBad)
@@ -222,21 +231,19 @@ void MapPoint::ComputeDistinctiveDescriptors()
     if (observations.empty())
         return;
 
-    // Retrieve all observed descriptors
-    std::vector<cv::Mat> vDescriptors;
+    std::vector<std::pair<cv::Mat, uint64_t> > vDescriptors;
     vDescriptors.reserve(observations.size());
 
     for (auto const& pair : observations)
     {
         if (!pair.first->isBad())
-            vDescriptors.emplace_back(pair.first->mDescriptors.row((int)pair.second));
+            vDescriptors.emplace_back(pair.first->mDescriptors.row((int)pair.second), pair.first->get_id());
     }
 
-    if (vDescriptors.empty())
-        return;
-
-    // Compute distances between them
     size_t const N = vDescriptors.size();
+
+    if (N == 0)
+        return;
 
     std::vector<int> Distances(N * N);
 
@@ -246,16 +253,15 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
         for (size_t j = i + 1; j < N; ++j)
         {
-            int distij = ORBmatcher::DescriptorDistance(vDescriptors[i], vDescriptors[j]);
+            int distij = ORBmatcher::DescriptorDistance(vDescriptors[i].first, vDescriptors[j].first);
             Distances[i * N + j] = distij;
             Distances[j * N + i] = distij;
         }
     }
 
     // Take the descriptor with least median distance to the rest
-    int BestMedian = INT_MAX;
-    
     std::size_t BestIdx = 0;
+    int BestMedian = INT_MAX;
 
     for (std::size_t i = 0; i < N; ++i)
     {
@@ -265,7 +271,8 @@ void MapPoint::ComputeDistinctiveDescriptors()
         std::sort(it, itEnd);
 
         int median = it[(std::size_t)(0.5 * (N - 1))];
-        if (median < BestMedian)
+        if (median < BestMedian ||
+            (median == BestMedian && vDescriptors[i].second < vDescriptors[BestIdx].second))
         {
             BestMedian = median;
             BestIdx = i;
@@ -274,7 +281,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
-        mDescriptor = vDescriptors[BestIdx].clone();
+        mDescriptor = vDescriptors[BestIdx].first.clone();
     }
 }
 
@@ -302,6 +309,7 @@ void MapPoint::UpdateNormalAndDepth()
 
     cv::Mat normal = cv::Mat::zeros(3, 1, CV_32F);
 
+    // ----------------------------------------------------------------------------------
     // TODO: PAE: just to be sure we don't have non-determinizm here
     std::vector<KeyFrame*> frames;
     frames.reserve(observations.size());
@@ -314,11 +322,10 @@ void MapPoint::UpdateNormalAndDepth()
         });
 
     for (KeyFrame const* pKF : frames)
+    // ----------------------------------------------------------------------------------
     {
         cv::Mat Owi = pKF->GetCameraCenter();
         cv::Mat normali = Pos - Owi;
-        // TODO: PAE: in fact this can be source of
-        // non-determinizm but we don't care for the moment
         normal += normali / cv::norm(normali);
     }
 

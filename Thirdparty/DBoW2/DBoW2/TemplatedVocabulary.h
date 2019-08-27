@@ -1020,31 +1020,30 @@ void TemplatedVocabulary<TDescriptor, F>::transform(
 
     if (empty()) // safe for subclasses
         return;
-  
+
     // normalize 
     LNorm norm;
+    uint32_t i_feature = 0;
     bool const must = m_scoring_object->mustNormalize(norm);
 
     if (m_weighting == TF || m_weighting == TF_IDF)
     {
-        uint32_t i_feature = 0;
-
         for (TDescriptor const& desc : features)
         {
             // w is the idf value if TF_IDF, 1 if TF
-            WordId id; NodeId nid; WordValue w;
-            transform(desc, id, w, &nid, levelsup);
+            WordId wid; NodeId nid; WordValue wv;
+            transform(desc, wid, wv, &nid, levelsup);
 
-            if (w > 0) // not stopped
+            if (wv > 0.) // not stopped
             {
-                v.addWeight(id, w);
+                v.addWeight(wid, wv);
                 fv.addFeature(nid, i_feature);
             }
 
             ++i_feature;
         }
     
-        if (!v.empty() && !must)
+        if (!must && !v.empty())
         {
             // unnecessary when normalizing
             double const nd = (double)v.size();
@@ -1054,16 +1053,15 @@ void TemplatedVocabulary<TDescriptor, F>::transform(
     }
     else // IDF || BINARY
     {
-        uint32_t i_feature = 0;
         for (TDescriptor const& desc : features)
         {
             // w is idf if IDF, or 1 if BINARY
-            WordId id; NodeId nid; WordValue w;
-            transform(desc, id, w, &nid, levelsup);
+            WordId wid; NodeId nid; WordValue wv;
+            transform(desc, wid, wv, &nid, levelsup);
 
-            if (w > 0) // not stopped
+            if (wv > 0) // not stopped
             {
-                v.addIfNotExist(id, w);
+                v.addIfNotExist(wid, wv);
                 fv.addFeature(nid, i_feature);
             }
 

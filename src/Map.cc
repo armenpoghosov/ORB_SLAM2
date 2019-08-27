@@ -28,18 +28,22 @@
 namespace ORB_SLAM2
 {
 
-void Map::AddKeyFrame(KeyFrame *pKF)
+bool Map::AddKeyFrame(KeyFrame *pKF)
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
 
-    mspKeyFrames.insert(pKF);
+    auto const& pair = mspKeyFrames.insert(pKF);
 
     if (pKF->get_id() > mnMaxKFid)
         mnMaxKFid = pKF->get_id();
+
+    return pair.second;
 }
 
 std::vector<KeyFrame*> Map::GetAllKeyFrames() const
 {
+    // --------------------------------------------------------------------------
+    // TODO: PAE: we need determinizm for now
     std::vector<KeyFrame*> kfs;
     {
         std::unique_lock<std::mutex> lock(mMutexMap);
@@ -48,12 +52,34 @@ std::vector<KeyFrame*> Map::GetAllKeyFrames() const
     }
 
     std::sort(kfs.begin(), kfs.end(),
-        [](KeyFrame const* p1, KeyFrame const* p2)->bool
+        [] (KeyFrame const* p1, KeyFrame const* p2)->bool
         {
             return p1->get_id() < p2->get_id();
         });
+    // --------------------------------------------------------------------------
 
     return kfs;
+}
+
+std::vector<MapPoint*> Map::GetAllMapPoints() const
+{
+    // --------------------------------------------------------------------------
+    // TODO: PAE: we need determinizm for now
+    std::vector<MapPoint*> mps;
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        mps.reserve(mspMapPoints.size());
+        mps.insert(mps.end(), mspMapPoints.begin(), mspMapPoints.end());
+    }
+
+    std::sort(mps.begin(), mps.end(),
+        [] (MapPoint const* p1, MapPoint const* p2)->bool
+        {
+            return p1->get_id() < p2->get_id();
+        });
+    // --------------------------------------------------------------------------
+
+    return mps;
 }
 
 void Map::clear()

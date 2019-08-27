@@ -87,7 +87,7 @@ public:
     bool IsInKeyFrame(KeyFrame *pKF) const
     {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
-        return mObservations.count(pKF) != 0;
+        return mObservations.find(pKF) != mObservations.end();
     }
 
     void SetBadFlag();

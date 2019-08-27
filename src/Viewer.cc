@@ -69,10 +69,10 @@ Viewer::~Viewer()
 
 void Viewer::Run()
 {
-    mbFinished = false;
     mbStopped = false;
+    mbFinished = false;
 
-    pangolin::CreateWindowAndBind("ORB-SLAM2: Map Viewer",1024,768);
+    pangolin::CreateWindowAndBind("ORB-SLAM2: Map Viewer", 1024, 768);
 
     // 3D Mouse handler requires depth testing to be enabled
     glEnable(GL_DEPTH_TEST);
@@ -143,8 +143,10 @@ void Viewer::Run()
         d_cam.Activate(s_cam);
         glClearColor(1.0f,1.0f,1.0f,1.0f);
         mpMapDrawer->DrawCurrentCamera(Twc);
+
         if (menuShowKeyFrames || menuShowGraph)
             mpMapDrawer->DrawKeyFrames(menuShowKeyFrames,menuShowGraph);
+
         if (menuShowPoints)
             mpMapDrawer->DrawMapPoints();
 
@@ -171,13 +173,13 @@ void Viewer::Run()
 
         if (Stop())
         {
-            while(isStopped())
+            while (isStopped())
             {
                 std::this_thread::sleep_for(std::chrono::microseconds(3000));
             }
         }
 
-        if(CheckFinish())
+        if (CheckFinish())
             break;
     }
 

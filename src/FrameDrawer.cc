@@ -50,7 +50,7 @@ cv::Mat FrameDrawer::DrawFrame()
     int state; // Tracking state
 
     {
-        std::unique_lock<std::mutex> lock(mMutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
 
         state = mState;
         if (mState == Tracking::SYSTEM_NOT_READY)
@@ -173,7 +173,7 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
 void FrameDrawer::Update(Tracking *pTracker)
 {
-    std::unique_lock<std::mutex> lock(mMutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     pTracker->get_current_frame().get_image_left().copyTo(mIm);
 
@@ -199,7 +199,7 @@ void FrameDrawer::Update(Tracking *pTracker)
             if (pMP == nullptr || pTracker->get_current_frame().mvbOutlier[i])
                 continue;
 
-            if (pMP->Observations() > 0)
+            if (pMP->Observations() != 0)
                 mvbMap[i] = true;
             else
                 mvbVO[i] = true;
