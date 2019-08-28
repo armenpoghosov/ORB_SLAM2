@@ -363,7 +363,7 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
     // We perform 4 optimizations, after each optimization we classify observation
     // as inlier/outlier, At the next optimization, outliers are not included, but
     // at the end they can be classified as inliers again.
-    static float const chi2Mono[4] = { 6.f, 5.f, 4.f, 3.5f };
+    static float const chi2Mono[4] = { 6.f, 5.f, 4.5f, 4.2f };
     static float const chi2Stereo[4] = { 7.815f, 7.815f, 7.815f, 7.815f };
     static int const its[4] = { 10, 20, 30, 40 };
 
@@ -383,8 +383,9 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
 
             size_t const idx = vnIndexEdgeMono[i];
 
+            /*
             if (pFrame->mvbOutlier[idx])
-                e->computeError();
+                e->computeError();*/
 
             bool const is_bad = e->chi2() > chi2Mono[it];
             pFrame->mvbOutlier[idx] = is_bad;
@@ -401,8 +402,10 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
 
             size_t const idx = vnIndexEdgeStereo[i];
 
+            /*
             if (pFrame->mvbOutlier[idx])
                 e->computeError();
+            */
 
             bool const is_bad = e->chi2() > chi2Stereo[it];
             pFrame->mvbOutlier[idx] = is_bad;

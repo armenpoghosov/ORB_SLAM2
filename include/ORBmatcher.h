@@ -58,7 +58,7 @@ public:
 
     // Project MapPoints tracked in last frame into the current frame and search matches.
     // Used to track from previous frame (Tracking)
-    std::size_t SearchByProjection(Frame& CurrentFrame, Frame const& LastFrame, float th, bool bMono);
+    std::size_t SearchByProjection(Frame& rCF, Frame const& rLF, float th, bool bMono);
 
     // Project MapPoints seen in KeyFrame into the Frame and search matches.
     // Used in relocalisation (Tracking)

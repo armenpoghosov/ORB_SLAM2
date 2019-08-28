@@ -26,7 +26,7 @@
 
 #include "hyper_graph.h"
 
-#include <assert.h>
+#include <cassert>
 #include <queue>
 
 namespace g2o
@@ -74,41 +74,49 @@ bool HyperGraph::addEdge(Edge* e)
     return true;
   }
 
-  bool HyperGraph::removeVertex(Vertex* v)
-  {
-    VertexIDMap::iterator it=_vertices.find(v->id());
-    if (it==_vertices.end())
-      return false;
-    assert(it->second==v);
-    //remove all edges which are entering or leaving v;
+bool HyperGraph::removeVertex(Vertex* v)
+{
+    VertexIDMap::iterator it = _vertices.find(v->id());
+    if (it == _vertices.end())
+        return false;
+
+    assert(it->second == v);
+
+    // TODO: PAE: needs retinking ... remove all edges which are entering or leaving v;
     EdgeSet tmp(v->edges());
-    for (EdgeSet::iterator it=tmp.begin(); it!=tmp.end(); ++it){
-      if (!removeEdge(*it)){
-        assert(0);
-      }
+
+    for (EdgeSet::iterator it = tmp.begin(); it != tmp.end(); ++it)
+    {
+        if (!removeEdge(*it))
+        {
+            assert(0);
+        }
     }
+
     _vertices.erase(it);
+
     delete v;
+
     return true;
-  }
+}
 
-  bool HyperGraph::removeEdge(Edge* e)
-  {
-    EdgeSet::iterator it = _edges.find(e);
-    if (it == _edges.end())
-      return false;
-    _edges.erase(it);
+bool HyperGraph::removeEdge(Edge* e)
+{
+    if (_edges.erase(e) == 0)
+        return false;
 
-    for (std::vector<Vertex*>::iterator vit = e->vertices().begin(); vit != e->vertices().end(); ++vit) {
-      Vertex* v = *vit;
-      it = v->edges().find(e);
-      assert(it!=v->edges().end());
-      v->edges().erase(it);
+    for (Vertex* v : e->vertices())
+    {
+        if (v->edges().erase(e) == 0)
+        {
+            assert(false);
+        }
     }
 
     delete e;
+
     return true;
-  }
+}
 
 HyperGraph::~HyperGraph()
 {

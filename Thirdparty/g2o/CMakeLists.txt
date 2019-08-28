@@ -116,7 +116,6 @@ g2o/core/batch_stats.h
 g2o/core/openmp_mutex.h
 g2o/core/block_solver.h              
 g2o/core/block_solver.hpp            
-g2o/core/parameter.cpp               
 g2o/core/parameter.h                 
 g2o/core/cache.cpp                   
 g2o/core/cache.h

@@ -48,6 +48,9 @@ public:
     Solver();
     virtual ~Solver();
 
+    Solver(Solver const&) = delete;
+    Solver& operator = (Solver const&) = delete;
+
 public:
 
     /**
@@ -162,12 +165,6 @@ protected:
     std::size_t         _additionalVectorSpace;
 
     void resizeVector(std::size_t sx);
-
-private:
-
-    // Disable the copy constructor and assignment operator
-    Solver(Solver const&) = delete;
-    Solver& operator = (Solver const&) = delete;
 };
 
 } // end namespace

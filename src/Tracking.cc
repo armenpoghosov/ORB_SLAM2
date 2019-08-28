@@ -831,7 +831,7 @@ bool Tracking::TrackLocalMap()
 
     SearchLocalPoints();
 
-    if (mLastFrame.get_id() == 600)
+    if (mLastFrame.get_id() == 691)
     {
         m_ofs << "--------------------------------------------------------------------------" << std::endl;
         m_ofs << "LocalMap points" << std::endl;
@@ -863,7 +863,7 @@ bool Tracking::TrackLocalMap()
         }
     }
 
-    if (mLastFrame.get_id() == 600)
+    if (mLastFrame.get_id() == 691)
     {
         m_ofs << "--------------------------------------------------------------------------" << std::endl;
         m_ofs << "Frame Id: " << mLastFrame.get_id() << std::endl;

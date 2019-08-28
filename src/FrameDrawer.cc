@@ -175,9 +175,11 @@ void FrameDrawer::Update(Tracking *pTracker)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    pTracker->get_current_frame().get_image_left().copyTo(mIm);
+    Frame const& rCF = pTracker->get_current_frame();
 
-    mvCurrentKeys = pTracker->get_current_frame().get_key_points();
+    rCF.get_image_left().copyTo(mIm);
+
+    mvCurrentKeys = rCF.get_key_points();
     N = mvCurrentKeys.size();
 
     mvbVO = vector<bool>(N);
@@ -194,9 +196,9 @@ void FrameDrawer::Update(Tracking *pTracker)
     {
         for (std::size_t i = 0; i < N; ++i)
         {
-            MapPoint* pMP = pTracker->get_current_frame().mvpMapPoints[i];
+            MapPoint* pMP = rCF.mvpMapPoints[i];
 
-            if (pMP == nullptr || pTracker->get_current_frame().mvbOutlier[i])
+            if (pMP == nullptr || rCF.mvbOutlier[i])
                 continue;
 
             if (pMP->Observations() != 0)
