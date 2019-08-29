@@ -270,7 +270,7 @@ void System::SaveKeyFrameTrajectoryTUM(std::string const& filename)
     cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
 
     std::vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
-    std::sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
+    std::sort(vpKFs.begin(), vpKFs.end(), KeyFrame::lId);
 
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
@@ -280,9 +280,10 @@ void System::SaveKeyFrameTrajectoryTUM(std::string const& filename)
     f.open(filename.c_str());
     f << fixed;
 
-    for (size_t i = 0; i < vpKFs.size(); ++i)
+    for (size_t i = 1; i < vpKFs.size(); ++i)
     {
         KeyFrame* pKF = vpKFs[i];
+        KeyFrame* pKFM1 = vpKFs[i - 1];
 
        // pKF->SetPose(pKF->GetPose()*Two);
 
@@ -290,12 +291,20 @@ void System::SaveKeyFrameTrajectoryTUM(std::string const& filename)
             continue;
 
         cv::Mat R = pKF->GetRotation().t();
-        vector<float> q = Converter::toQuaternion(R);
+        cv::Mat RM1 = pKFM1->GetRotation().t();
+        cv::Mat deltaR = RM1.t() * R;
+
+        //std::vector<float> q = Converter::toQuaternion(R);
+        
         cv::Mat t = pKF->GetCameraCenter();
+        cv::Mat tm1 = pKFM1->GetCameraCenter();
 
         f << std::setprecision(6) << pKF->mTimeStamp << std::setprecision(7) <<
-            " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2) << std::endl;/* <<
-            " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;*/
+            " " << (t.at<float>(0) - tm1.at<float>(0)) <<
+            " " << (t.at<float>(1) - tm1.at<float>(1)) <<
+            " " << (t.at<float>(2) - tm1.at<float>(2)) <<
+            " " << deltaR << std::endl;
+            //" " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
     }
 
     f.close();

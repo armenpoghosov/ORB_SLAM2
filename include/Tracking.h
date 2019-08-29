@@ -219,12 +219,12 @@ protected:
     // Map
     Map*                        mpMap;
 
-    //Calibration matrix
+    // Calibration matrix
     cv::Mat                     mK;
     cv::Mat                     mDistCoef;
     float                       mbf;
 
-    //New KeyFrame rules (according to fps)
+    // New KeyFrame rules (according to fps)
     int                         mMinFrames;
     int                         mMaxFrames;
 
@@ -256,8 +256,6 @@ protected:
 
     // TODO: PAE: need to syncronoze it
     std::future<void>           m_future;
-
-
     std::ofstream               m_ofs;
 
 };

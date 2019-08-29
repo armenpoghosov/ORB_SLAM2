@@ -74,6 +74,7 @@ std::size_t ORBmatcher::SearchByProjection(Frame& F,
         std::vector<std::size_t> const& vIndices = F.GetFeaturesInArea(pMP->mTrackProjX, pMP->mTrackProjY,
             r * F.mvScaleFactors[nPredictedLevel], nPredictedLevel - 1, nPredictedLevel);
 
+        /*
         if (F.get_id() == 221 && pMP->get_id() == 1368 && ofs != nullptr)
         {
             (*ofs) << "--------------------------------------------------" << std::endl;
@@ -84,7 +85,7 @@ std::size_t ORBmatcher::SearchByProjection(Frame& F,
             for (std::size_t index : vIndices)
                 (*ofs) << index << '|';
             (*ofs) << std::endl << "--------------------------------------------------" << std::endl;
-        }
+        }*/
 
         if (vIndices.empty())
             continue;

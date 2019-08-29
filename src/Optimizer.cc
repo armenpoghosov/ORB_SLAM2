@@ -237,7 +237,7 @@ Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, 
     return result;
 }
 
-std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
+std::size_t Optimizer::PoseOptimization(Frame* pFrame)
 {
     g2o::BlockSolver_6_3::LinearSolverType* linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
     g2o::BlockSolver_6_3* solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
@@ -363,9 +363,9 @@ std::size_t Optimizer::PoseOptimization(Frame* pFrame, int call_context)
     // We perform 4 optimizations, after each optimization we classify observation
     // as inlier/outlier, At the next optimization, outliers are not included, but
     // at the end they can be classified as inliers again.
-    static float const chi2Mono[4] = { 6.f, 5.f, 4.5f, 4.2f };
+    static float const chi2Mono[4] = { 5.991,5.891,5.791, 5.691 };
     static float const chi2Stereo[4] = { 7.815f, 7.815f, 7.815f, 7.815f };
-    static int const its[4] = { 10, 20, 30, 40 };
+    static int const its[4] = { 10, 10, 10, 10 };
 
     std::size_t nBad = 0;
 
@@ -709,7 +709,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
     // Recover optimized data
 
-    // Keyframes
     for (KeyFrame* pKF : local_key_frames)
     {
         g2o::VertexSE3Expmap* vSE3 = (g2o::VertexSE3Expmap*)(optimizer.vertex(pKF->get_id()));
@@ -717,7 +716,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         pKF->SetPose(Converter::toCvMat(SE3quat));
     }
 
-    // Points
     for (MapPoint* pMP : local_map_points)
     {
         g2o::VertexSBAPointXYZ* vPoint = (g2o::VertexSBAPointXYZ*)(optimizer.vertex(pMP->get_id() + maxKFid + 1));

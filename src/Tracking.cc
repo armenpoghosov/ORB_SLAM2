@@ -276,7 +276,6 @@ void Tracking::Track()
     }
     else
     {
-        // System is initialized. Track Frame.
         bool bOK;
 
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
@@ -314,8 +313,8 @@ void Tracking::Track()
 
             cv::Mat TcwMM;
 
-            vector<bool> vbOutMM;
-            vector<MapPoint*> vpMPsMM;
+            std::vector<bool> vbOutMM;
+            std::vector<MapPoint*> vpMPsMM;
 
             if (!mVelocity.empty())
             {
@@ -687,7 +686,7 @@ bool Tracking::TrackReferenceKeyFrame()
     mCurrentFrame.mvpMapPoints = std::move(vpMapPointMatches);
     mCurrentFrame.SetPose(mLastFrame.mTcw);
 
-    Optimizer::PoseOptimization(&mCurrentFrame, 1);
+    Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers
     std::size_t nmatchesMap = 0;
@@ -790,7 +789,7 @@ bool Tracking::TrackWithMotionModel()
         return false;
 
     // Optimize frame pose with all matches
-    Optimizer::PoseOptimization(&mCurrentFrame, 2);
+    Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers
     std::size_t nmatchesMap = 0;
@@ -831,6 +830,7 @@ bool Tracking::TrackLocalMap()
 
     SearchLocalPoints();
 
+    /*
     if (mLastFrame.get_id() == 691)
     {
         m_ofs << "--------------------------------------------------------------------------" << std::endl;
@@ -958,13 +958,11 @@ bool Tracking::TrackLocalMap()
             m_ofs << ddata[0] << '|' << ddata[1] << '|' << ddata[2] << '|' << ddata[3] << '|' <<
                 ddata[4] << '|' << ddata[5] << '|' << ddata[6] << '|' << ddata[7] << std::endl;
             m_ofs << pMP->GetWorldPos() << std::endl;
-        }*/
-
-        m_ofs.close();
-        abort();
+        }
     }
+    */
 
-    Optimizer::PoseOptimization(&mCurrentFrame, 3);
+    Optimizer::PoseOptimization(&mCurrentFrame);
 
     mnMatchesInliers = 0;
 
@@ -1173,10 +1171,8 @@ void Tracking::SearchLocalPoints()
 
 void Tracking::UpdateLocalMap()
 {
-    // This is for visualization
     mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
 
-    // Update
     UpdateLocalKeyFrames();
     UpdateLocalPoints();
 }

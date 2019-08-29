@@ -41,7 +41,7 @@ public:
 
     static void LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);
 
-    static std::size_t PoseOptimization(Frame* pFrame, int call_context = 0);
+    static std::size_t PoseOptimization(Frame* pFrame);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
     static void OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
