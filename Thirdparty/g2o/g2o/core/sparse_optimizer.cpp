@@ -199,17 +199,14 @@ bool SparseOptimizer::buildIndexMapping(SparseOptimizer::VertexContainer& vlist)
     {
         for (OptimizableGraph::Vertex* v : vlist)
         {
-            if (!v->fixed())
-            {
-                if (static_cast<int>(v->marginalized()) == marginalized)
-                {
-                    v->setHessianIndex(_ivMap.size());
-                    _ivMap.push_back(v);
-                }
-            }
-            else
+            if (v->fixed())
             {
                 v->setHessianIndex(-1);
+            }
+            else if (static_cast<int>(v->marginalized()) == marginalized)
+            {
+                v->setHessianIndex(_ivMap.size());
+                _ivMap.push_back(v);
             }
         }
     }

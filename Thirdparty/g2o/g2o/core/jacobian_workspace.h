@@ -35,61 +35,65 @@
 
 #include "hyper_graph.h"
 
-namespace g2o {
+namespace g2o
+{
 
-  struct OptimizableGraph;
+struct OptimizableGraph;
 
-  /**
-   * \brief provide memory workspace for computing the Jacobians
-   *
-   * The workspace is used by an OptimizableGraph to provide temporary memory
-   * for computing the Jacobian of the error functions.
-   * Before calling linearizeOplus on an edge, the workspace needs to be allocated
-   * by calling allocate().
-   */
-  class  JacobianWorkspace
-  {
-    public:
-      typedef std::vector<Eigen::VectorXd, Eigen::aligned_allocator<Eigen::VectorXd> >      WorkspaceVector;
+/**
+* \brief provide memory workspace for computing the Jacobians
+*
+* The workspace is used by an OptimizableGraph to provide temporary memory
+* for computing the Jacobian of the error functions.
+* Before calling linearizeOplus on an edge, the workspace needs to be allocated
+* by calling allocate().
+*/
 
-    public:
-      JacobianWorkspace();
-      ~JacobianWorkspace();
+class  JacobianWorkspace
+{
+public:
 
-      /**
-       * allocate the workspace
-       */
-      bool allocate();
+    typedef std::vector<Eigen::VectorXd, Eigen::aligned_allocator<Eigen::VectorXd> >      WorkspaceVector;
 
-      /**
-       * update the maximum required workspace needed by taking into account this edge
-       */
-      void updateSize(const HyperGraph::Edge* e);
+public:
 
-      /**
-       * update the required workspace by looking at a full graph
-       */
-      void updateSize(const OptimizableGraph& graph);
+    JacobianWorkspace();
 
-      /**
-       * manually update with the given parameters
-       */
-      void updateSize(int numVertices, int dimension);
+    /**
+    * allocate the workspace
+    */
+    bool allocate();
 
-      /**
-       * return the workspace for a vertex in an edge
-       */
-      double* workspaceForVertex(int vertexIndex)
-      {
+    /**
+    * update the maximum required workspace needed by taking into account this edge
+    */
+    void updateSize(HyperGraph::Edge const* e);
+
+    /**
+    * update the required workspace by looking at a full graph
+    */
+    void updateSize(OptimizableGraph const& graph);
+
+    /**
+    * manually update with the given parameters
+    */
+    void updateSize(int numVertices, int dimension);
+
+    /**
+    * return the workspace for a vertex in an edge
+    */
+    double* workspaceForVertex(int vertexIndex)
+    {
         assert(vertexIndex >= 0 && (size_t)vertexIndex < _workspace.size() && "Index out of bounds");
         return _workspace[vertexIndex].data();
-      }
+    }
 
-    protected:
-      WorkspaceVector _workspace;   ///< the memory pre-allocated for computing the Jacobians
-      int _maxNumVertices;          ///< the maximum number of vertices connected by a hyper-edge
-      int _maxDimension;            ///< the maximum dimension (number of elements) for a Jacobian
-  };
+protected:
+
+    WorkspaceVector _workspace;         ///< the memory pre-allocated for computing the Jacobians
+    int             _maxNumVertices;    ///< the maximum number of vertices connected by a hyper-edge
+    int             _maxDimension;      ///< the maximum dimension (number of elements) for a Jacobian
+};
 
 } // end namespace
 

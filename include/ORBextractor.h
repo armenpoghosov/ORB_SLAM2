@@ -33,12 +33,6 @@ namespace ORB_SLAM2
 class ORBextractor
 {
 public:
-    
-    enum
-    {
-        HARRIS_SCORE    = 0,
-        FAST_SCORE      = 1
-    };
 
     enum : int
     {
@@ -52,21 +46,24 @@ public:
     // Compute the ORB features and descriptors on an image.
     // ORB are dispersed on the image using an octree.
     // Mask is ignored in the current implementation.
-    void operator () (cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors);
+    //void operator () (cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors);
+    void extract(cv::InputArray image,
+        std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors);
 
-    int GetLevels() const
-        { return nlevels; }
+    int get_levels() const
+        { return (int)m_image_pyramid.size(); }
 
     float GetScaleFactor() const
-        { return m_scaleFactor; }
+        { return 2.0f ; }
 
     // TODO: PAE: to be removed
     std::vector<float> GetScaleFactors() const
     {
-        std::vector<float> result(nlevels);
+        int const levels = get_levels();
+        std::vector<float> result(levels);
         result[0] = 1.f;
-        for (int level = 1; level < nlevels; ++level)
-            result[level] = result[level - 1] * m_scaleFactor;
+        for (int level = 1; level < levels; ++level)
+            result[level] = result[level - 1] * 2.0f;
         return result;
     }
 
@@ -95,11 +92,19 @@ public:
         return result;
     }
 
-    std::vector<cv::Mat> mvImagePyramid;
+    cv::Mat const& get_image(int level = 0) const
+        { return m_image_pyramid[level]; }
 
-protected:
+private:
 
-    void ComputePyramid(cv::Mat image);
+    void compute_pyramid(cv::Mat const& image);
+    void extract_worker(std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors);
+
+
+
+
+
+
     void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);    
 
     static  std::vector<cv::KeyPoint> DistributeOctTree(
@@ -107,13 +112,15 @@ protected:
         int minX, int maxX, int minY, int maxY, int nFeatures);
 
     int                     nfeatures;
-    float                   m_scaleFactor;
-    int                     nlevels;
+
+    std::vector<cv::Mat>    m_image_pyramid;
+
     int                     iniThFAST;
     int                     minThFAST;
     std::vector<int>        mnFeaturesPerLevel;
     std::vector<float>      mvScaleFactor;
     std::vector<float>      mvLevelSigma2;
+
 };
 
 } //namespace ORB_SLAM

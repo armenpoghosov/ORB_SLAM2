@@ -102,7 +102,8 @@ bool Initializer::Initialize(Frame const& rCF, std::vector<int> const& vMatches1
     // Compute ratio of scores
     float RH = SH / (SH + SF);
 
-    // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
+    // Try to reconstruct from homography or fundamental depending on the ratio (0.40 - 0.45)
+    // TODO: PAE: min paralax was 1. in both cases!!! 
     if (RH > 0.40)
         return ReconstructH(vbMatchesInliersH, H, mK, R21, t21, vP3D, vbTriangulated, 1.f, 10);
     else //if (pF_HF>0.6)
@@ -527,9 +528,7 @@ bool Initializer::ReconstructF(std::vector<bool>& vbMatchesInliers, cv::Mat& F21
 
     // If there is not a clear winner or not enough triangulated points reject initialization
     if (maxGood < nMinGood || nsimilar > 1)
-    {
         return false;
-    }
 
     // If best reconstruction has enough parallax initialize
     if (maxGood == nGood1)
@@ -828,7 +827,7 @@ void Initializer::Normalize(std::vector<cv::KeyPoint> const& vKeys,
 
 int Initializer::CheckRT(cv::Mat const& R, cv::Mat const& t,
     std::vector<cv::KeyPoint> const& vKeys1, std::vector<cv::KeyPoint> const& vKeys2,
-    std::vector<pair<int, int> > const& vMatches12, std::vector<bool>& vbMatchesInliers,
+    std::vector<std::pair<int, int> > const& vMatches12, std::vector<bool>& vbMatchesInliers,
     cv::Mat const& K, std::vector<cv::Point3f>& vP3D, float th2, std::vector<bool>& vbGood, float& parallax)
 {
     // Calibration parameters

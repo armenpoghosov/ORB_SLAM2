@@ -510,7 +510,6 @@ void Tracking::MonocularInitialization()
 
     if (mpInitializer != nullptr)
     {
-        // Try to initialize
         if (size_vKeys <= MIN_KEY_COUNT_FOR_INITIALIZATOIN)
         {
             delete mpInitializer;
@@ -526,7 +525,7 @@ void Tracking::MonocularInitialization()
         if (matcher.SearchForInitialization(mInitialFrame, mCurrentFrame,
                 mvbPrevMatched, mvIniMatches, 100) < MIN_KEY_COUNT_FOR_INITIALIZATOIN ||
             // NOTE: PAE: added by me
-            mCurrentFrame.get_id() - mInitialFrame.get_id() > 3)
+            mCurrentFrame.get_id() - mInitialFrame.get_id() > 10)
         {
             delete mpInitializer;
             mpInitializer = nullptr;
